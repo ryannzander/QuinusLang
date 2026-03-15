@@ -17,7 +17,7 @@ A systems programming language with assembly-level control and readable syntax. 
 ### From source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
 cargo build --release
 ```
@@ -315,7 +315,7 @@ Install the `syntax/` extension for Cursor/VS Code:
 
 Docs are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages:
 
-1. Edit `mkdocs.yml` — set `site_url` to your Pages URL (e.g. `https://username.github.io/QuinusLang/`)
+1. Edit `mkdocs.yml` — set `site_url` to your Pages URL (e.g. `https://ryannzander.github.io/QuinusLang/`)
 2. Push to GitHub — the `Deploy docs` workflow builds and deploys to the `gh-pages` branch
 3. Enable Pages — Repo → Settings → Pages → Source: Deploy from branch → Branch: `gh-pages`
 
