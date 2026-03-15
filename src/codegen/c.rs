@@ -85,6 +85,19 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
 
 fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Result<()> {
     match item {
+        TopLevelItem::Const(c) => {
+            out.push_str(&format!("static const {} {} = ", type_to_c(&c.ty), c.name));
+            emit_expr(out, &c.init, ctx)?;
+            out.push_str(";\n\n");
+        }
+        TopLevelItem::Static(s) => {
+            out.push_str(&format!("static {} {}", type_to_c(&s.ty), s.name));
+            if let Some(init) = &s.init {
+                out.push_str(" = ");
+                emit_expr(out, init, ctx)?;
+            }
+            out.push_str(";\n\n");
+        }
         TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
         TopLevelItem::Struct(s) => emit_struct(out, s)?,
         TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
@@ -265,6 +278,43 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
                 emit_stmt(out, s, ctx)?;
             }
             out.push_str("    }\n");
+        }
+        Stmt::Foreach { var, iter, body } => {
+            let idx = "_foreach_i";
+            out.push_str("    {\n");
+            out.push_str(&format!("    size_t {};\n", idx));
+            out.push_str(&format!("    for ({} = 0; {} < sizeof(", idx, idx));
+            emit_expr(out, iter, ctx)?;
+            out.push_str(")/sizeof((");
+            emit_expr(out, iter, ctx)?;
+            out.push_str(")[0]); ");
+            out.push_str(&format!("{}++) {{\n", idx));
+            out.push_str("        long ");
+            out.push_str(var);
+            out.push_str(" = (");
+            emit_expr(out, iter, ctx)?;
+            out.push_str(")[");
+            out.push_str(idx);
+            out.push_str("];\n");
+            ctx.vars.insert(var.clone(), var.clone());
+            ctx.var_types.insert(var.clone(), Type::Int);
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+            out.push_str("    }\n");
+            out.push_str("    }\n");
+        }
+        Stmt::Break => out.push_str("    break;\n"),
+        Stmt::Continue => out.push_str("    continue;\n"),
+        Stmt::Hazard { body } => {
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
+        Stmt::InlineAsm { instructions } => {
+            for instr in instructions {
+                out.push_str(&format!("    __asm__ __volatile__(\"{}\");\n", instr.replace('"', "\\\"")));
+            }
         }
         Stmt::ExprStmt(e) => {
             out.push_str("    ");

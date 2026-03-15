@@ -25,6 +25,36 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
 
     match stream.peek() {
+        Some(Token::Eternal) => {
+            stream.consume();
+            Ok(TopLevelItem::Const(parse_const_def(stream)?))
+        }
+        Some(Token::Anchor) => {
+            stream.consume();
+            Ok(TopLevelItem::Static(parse_static_def(stream)?))
+        }
+        Some(Token::Open) => {
+            stream.consume();
+            let open = true;
+            match stream.peek() {
+                Some(Token::Craft) => {
+                    stream.consume();
+                    Ok(TopLevelItem::Fn(parse_fn_def_with_open(stream, open)?))
+                }
+                Some(Token::Form) => {
+                    stream.consume();
+                    Ok(TopLevelItem::Struct(parse_struct_def(stream)?))
+                }
+                _ => {
+                    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+                    Err(Error::Parse {
+                        line,
+                        col,
+                        message: "Expected craft or form after open".to_string(),
+                    })
+                }
+            }
+        }
         Some(Token::Craft) => {
             stream.consume();
             Ok(TopLevelItem::Fn(parse_fn_def(stream)?))
@@ -49,19 +79,23 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
             stream.consume();
             Ok(TopLevelItem::Mod(parse_mod_def(stream)?))
         }
-        Some(Token::Import) => {
+        Some(Token::Import) | Some(Token::Bring) => {
             stream.consume();
             Ok(TopLevelItem::Import(parse_import(stream)?))
         }
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected craft, form, state, fusion, class, realm, or import".to_string(),
+            message: "Expected eternal, anchor, craft, form, state, fusion, class, realm, import, or bring".to_string(),
         }),
     }
 }
 
 fn parse_fn_def(stream: &mut TokenStream) -> Result<FnDef> {
+    parse_fn_def_with_open(stream, false)
+}
+
+fn parse_fn_def_with_open(stream: &mut TokenStream, open: bool) -> Result<FnDef> {
     let name = expect_ident(stream)?;
     stream.expect("(")?;
     let params = parse_params(stream)?;
@@ -80,7 +114,32 @@ fn parse_fn_def(stream: &mut TokenStream) -> Result<FnDef> {
         params,
         return_type,
         body,
+        open,
     })
+}
+
+fn parse_const_def(stream: &mut TokenStream) -> Result<ConstDef> {
+    let name = expect_ident(stream)?;
+    stream.expect(":")?;
+    let ty = parse_type(stream)?;
+    stream.expect("=")?;
+    let init = parse_expr(stream)?;
+    stream.expect(";")?;
+    Ok(ConstDef { name, ty, init })
+}
+
+fn parse_static_def(stream: &mut TokenStream) -> Result<StaticDef> {
+    let name = expect_ident(stream)?;
+    stream.expect(":")?;
+    let ty = parse_type(stream)?;
+    let init = if stream.peek() == Some(&Token::Eq) {
+        stream.consume();
+        Some(parse_expr(stream)?)
+    } else {
+        None
+    };
+    stream.expect(";")?;
+    Ok(StaticDef { name, ty, init })
 }
 
 fn parse_enum_def(stream: &mut TokenStream) -> Result<EnumDef> {
@@ -307,6 +366,34 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
     }
 }
 
+fn parse_hazard_block(stream: &mut TokenStream) -> Result<Vec<Stmt>> {
+    let mut stmts = Vec::new();
+    while stream.peek() != Some(&Token::RBrace) {
+        if stream.peek() == Some(&Token::Machine) {
+            stream.consume();
+            stream.expect("{")?;
+            let mut instructions = Vec::new();
+            while stream.peek() != Some(&Token::RBrace) {
+                if let Some((Token::Str(s), _, _)) = stream.consume() {
+                    instructions.push(s);
+                } else {
+                    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+                    return Err(Error::Parse {
+                        line,
+                        col,
+                        message: "Expected string in machine block".to_string(),
+                    });
+                }
+            }
+            stream.expect("}")?;
+            stmts.push(Stmt::InlineAsm { instructions });
+        } else {
+            stmts.push(parse_stmt(stream)?);
+        }
+    }
+    Ok(stmts)
+}
+
 fn parse_block(stream: &mut TokenStream) -> Result<Vec<Stmt>> {
     let mut stmts = Vec::new();
     while stream.peek() != Some(&Token::RBrace) {
@@ -380,6 +467,37 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             let body = parse_block(stream)?;
             stream.expect("}")?;
             Ok(Stmt::While { cond, body })
+        }
+        Some(Token::Foreach) => {
+            stream.consume();
+            let var = expect_ident(stream)?;
+            stream.expect("in")?;
+            let iter = parse_expr(stream)?;
+            stream.expect("{")?;
+            let body = parse_block(stream)?;
+            stream.expect("}")?;
+            Ok(Stmt::Foreach {
+                var,
+                iter: Box::new(iter),
+                body,
+            })
+        }
+        Some(Token::Stop) => {
+            stream.consume();
+            stream.expect(";")?;
+            Ok(Stmt::Break)
+        }
+        Some(Token::Skip) => {
+            stream.consume();
+            stream.expect(";")?;
+            Ok(Stmt::Continue)
+        }
+        Some(Token::Hazard) => {
+            stream.consume();
+            stream.expect("{")?;
+            let body = parse_hazard_block(stream)?;
+            stream.expect("}")?;
+            Ok(Stmt::Hazard { body })
         }
         Some(Token::Send) => {
             stream.consume();

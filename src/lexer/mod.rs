@@ -16,6 +16,14 @@ pub enum Token {
     For,
     #[token("loopwhile")]
     Loopwhile,
+    #[token("foreach")]
+    Foreach,
+    #[token("stop")]
+    Stop,
+    #[token("skip")]
+    Skip,
+    #[token("in")]
+    In,
     #[token("craft")]
     Craft,
     #[token("send")]
@@ -24,6 +32,10 @@ pub enum Token {
     Make,
     #[token("shift")]
     Shift,
+    #[token("eternal")]
+    Eternal,
+    #[token("anchor")]
+    Anchor,
     #[token("form")]
     Form,
     #[token("state")]
@@ -54,8 +66,16 @@ pub enum Token {
     Mark,
     #[token("reach")]
     Reach,
+    #[token("hazard")]
+    Hazard,
+    #[token("machine")]
+    Machine,
     #[token("import")]
     Import,
+    #[token("bring")]
+    Bring,
+    #[token("open")]
+    Open,
     #[token("try")]
     Try,
     #[token("catch")]

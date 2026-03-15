@@ -9,6 +9,8 @@ pub struct Program {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelItem {
+    Const(ConstDef),
+    Static(StaticDef),
     Fn(FnDef),
     Struct(StructDef),
     Class(ClassDef),
@@ -25,6 +27,20 @@ pub struct EnumDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct ConstDef {
+    pub name: String,
+    pub ty: Type,
+    pub init: Expr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StaticDef {
+    pub name: String,
+    pub ty: Type,
+    pub init: Option<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnionDef {
     pub name: String,
     pub fields: Vec<FieldDef>,
@@ -36,6 +52,7 @@ pub struct FnDef {
     pub params: Vec<Param>,
     pub return_type: Option<Type>,
     pub body: Vec<Stmt>,
+    pub open: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -142,6 +159,11 @@ pub enum Stmt {
     If { cond: Expr, then_body: Vec<Stmt>, else_body: Option<Vec<Stmt>> },
     For { init: Option<Box<Stmt>>, cond: Option<Expr>, step: Option<Box<Stmt>>, body: Vec<Stmt> },
     While { cond: Expr, body: Vec<Stmt> },
+    Foreach { var: String, iter: Box<Expr>, body: Vec<Stmt> },
+    Break,
+    Continue,
+    Hazard { body: Vec<Stmt> },
+    InlineAsm { instructions: Vec<String> },
     ExprStmt(Expr),
     Return(Option<Expr>),
     TryCatch { try_body: Vec<Stmt>, catch_param: Option<String>, catch_body: Vec<Stmt> },

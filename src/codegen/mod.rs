@@ -59,6 +59,7 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut CodegenContex
         TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
         TopLevelItem::Struct(_) => {}
         TopLevelItem::Enum(_) | TopLevelItem::Union(_) => {}
+        TopLevelItem::Const(_) | TopLevelItem::Static(_) => {}
         TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
@@ -263,6 +264,23 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
             }
             out.push_str(&format!("    jmp {}\n", loop_label));
             out.push_str(&format!("{}:\n", end_label));
+        }
+        Stmt::Foreach { var: _, iter, body } => {
+            emit_expr(out, &iter, ctx)?;
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
+        Stmt::Break | Stmt::Continue => {}
+        Stmt::Hazard { body } => {
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
+        Stmt::InlineAsm { instructions } => {
+            for instr in instructions {
+                out.push_str(&format!("    {}\n", instr));
+            }
         }
         Stmt::While { cond, body } => {
             let loop_label = new_label();

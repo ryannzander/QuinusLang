@@ -75,6 +75,12 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
         TopLevelItem::Struct(s) => {
             scope.structs.insert(s.name.clone(), s.clone());
         }
+        TopLevelItem::Const(c) => {
+            scope.vars.insert(c.name.clone(), c.ty.clone());
+        }
+        TopLevelItem::Static(s) => {
+            scope.vars.insert(s.name.clone(), s.ty.clone());
+        }
         TopLevelItem::Enum(e) => {
             scope.enums.insert(e.name.clone(), e.clone());
         }
@@ -107,6 +113,24 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
                 check_stmt(symbol_table, stmt)?;
             }
             symbol_table.scopes.pop();
+        }
+        TopLevelItem::Const(c) => {
+            let init_ty = check_expr(symbol_table, &c.init)?;
+            if !is_assignable(&init_ty, &c.ty) {
+                return Err(Error::Semantic {
+                    message: format!("Cannot assign {} to constant {}", init_ty, c.ty),
+                });
+            }
+        }
+        TopLevelItem::Static(s) => {
+            if let Some(init) = &s.init {
+                let init_ty = check_expr(symbol_table, init)?;
+                if !is_assignable(&init_ty, &s.ty) {
+                    return Err(Error::Semantic {
+                        message: format!("Cannot assign {} to static {}", init_ty, s.ty),
+                    });
+                }
+            }
         }
         TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) => {}
         TopLevelItem::Mod(m) => {
@@ -227,6 +251,26 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             }
             symbol_table.scopes.pop();
         }
+        Stmt::Foreach { var, iter, body } => {
+            let iter_ty = check_expr(symbol_table, iter)?;
+            symbol_table.scopes.push(Scope::default());
+            if let Type::Array(elem) = &iter_ty {
+                symbol_table.scopes.last_mut().unwrap().vars.insert(var.clone(), *elem.clone());
+            } else {
+                symbol_table.scopes.last_mut().unwrap().vars.insert(var.clone(), Type::Int);
+            }
+            for s in body {
+                check_stmt(symbol_table, s)?;
+            }
+            symbol_table.scopes.pop();
+        }
+        Stmt::Break | Stmt::Continue => {}
+        Stmt::Hazard { body } => {
+            for s in body {
+                check_stmt(symbol_table, s)?;
+            }
+        }
+        Stmt::InlineAsm { .. } => {}
         Stmt::ExprStmt(e) => {
             check_expr(symbol_table, e)?;
         }
