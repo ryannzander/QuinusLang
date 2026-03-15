@@ -29,7 +29,8 @@ jobs:
       - name: Update version in Cargo.toml
         shell: pwsh
         run: |
-          (Get-Content Cargo.toml) -replace 'version = "[^"]+"', "version = `"$env:VERSION`"" | Set-Content Cargo.toml
+          # Only replace package version (X.Y.Z), not dependency versions like clap "4"
+          (Get-Content Cargo.toml) -replace 'version = "\d+\.\d+\.\d+"', "version = `"$env:VERSION`"" | Set-Content Cargo.toml
 
       - name: Update version in installer.iss
         shell: pwsh
