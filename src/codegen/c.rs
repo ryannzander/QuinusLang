@@ -1,14 +1,21 @@
 //! C code generator - transpiles to C, compiled with system compiler
 
-use crate::ast::*;
+use crate::ast::{EnumVariant, *};
 use crate::error::Result;
 use crate::semantic::AnnotatedProgram;
 use std::collections::HashMap;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 struct Ctx {
     vars: HashMap<String, String>,
     var_types: HashMap<String, Type>,
+    program: Option<std::sync::Arc<crate::ast::Program>>,
+}
+
+impl Default for Ctx {
+    fn default() -> Self {
+        Self { vars: HashMap::new(), var_types: HashMap::new(), program: None }
+    }
 }
 
 fn type_to_c(ty: &Type) -> String {
@@ -36,6 +43,12 @@ fn type_to_c(ty: &Type) -> String {
         Type::F32 => "float".to_string(),
         Type::F64 => "double".to_string(),
         Type::Ptr(inner) => format!("{}*", type_to_c(inner).trim_end_matches('*')),
+        Type::Tuple(inner) => {
+            let parts: Vec<String> = inner.iter().enumerate()
+                .map(|(i, t)| format!("{} _{}", type_to_c(t), i))
+                .collect();
+            format!("struct {{ {} }}", parts.join("; "))
+        }
     }
 }
 
@@ -57,6 +70,7 @@ fn type_to_printf(ty: &Type) -> &'static str {
         Type::Array(_) | Type::ArraySized(_, _) | Type::Named(_) => "%p",
         Type::I8 | Type::I16 => "%d",
         Type::Ptr(_) => "%p",
+        Type::Tuple(_) => "%p",
     }
 }
 
@@ -74,6 +88,7 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
             Some(Type::Ptr(t)) => Some(*t),
             _ => None,
         },
+        Expr::Field { base, .. } => expr_type(base, ctx),
         _ => None,
     }
 }
@@ -86,10 +101,22 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <string.h>\n");
 
     let mut ctx = Ctx::default();
+    ctx.program = Some(std::sync::Arc::new(program.program.clone()));
     for item in &program.program.items {
         emit_top_level(&mut out, item, &mut ctx)?;
     }
     Ok(out)
+}
+
+fn find_method_struct(program: &crate::ast::Program, method_name: &str) -> Option<String> {
+    for item in &program.items {
+        if let TopLevelItem::Impl(impl_def) = item {
+            if impl_def.methods.iter().any(|m| m.name == method_name) {
+                return Some(impl_def.struct_name.clone());
+            }
+        }
+    }
+    None
 }
 
 fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Result<()> {
@@ -118,6 +145,35 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
             }
         }
         TopLevelItem::Import(_) => {}
+        TopLevelItem::Alias(_) => {}
+        TopLevelItem::Impl(impl_def) => {
+            for m in &impl_def.methods {
+                let ret = m.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
+                let struct_ty = impl_def.struct_name.clone();
+                out.push_str(&format!("{} {}_{}(", ret, struct_ty, m.name));
+                out.push_str(&format!("{}* self", struct_ty));
+                for p in &m.params {
+                    if p.name != "self" {
+                        out.push_str(&format!(", {} {}", type_to_c(&p.ty), p.name));
+                    }
+                }
+                out.push_str(") {\n");
+                let mut fn_ctx = Ctx::default();
+                fn_ctx.program = ctx.program.clone();
+                fn_ctx.vars.insert("self".to_string(), "self".to_string());
+                fn_ctx.var_types.insert("self".to_string(), Type::Ptr(Box::new(Type::Named(impl_def.struct_name.clone()))));
+                for p in &m.params {
+                    if p.name != "self" {
+                        fn_ctx.vars.insert(p.name.clone(), p.name.clone());
+                        fn_ctx.var_types.insert(p.name.clone(), p.ty.clone());
+                    }
+                }
+                for stmt in &m.body {
+                    emit_stmt(out, stmt, &mut fn_ctx)?;
+                }
+                out.push_str("}\n\n");
+            }
+        }
     }
     Ok(())
 }
@@ -125,7 +181,11 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
 fn emit_enum(out: &mut String, e: &EnumDef) -> Result<()> {
     out.push_str(&format!("typedef enum {{\n"));
     for (i, v) in e.variants.iter().enumerate() {
-        out.push_str(&format!("    {} = {}", v, i));
+        let vname = match v {
+            EnumVariant::Unit(n) => n.clone(),
+            EnumVariant::Tuple(n, _) => n.clone(),
+        };
+        out.push_str(&format!("    {} = {}", vname, i));
         if i < e.variants.len() - 1 {
             out.push_str(",");
         }
@@ -201,7 +261,7 @@ fn emit_class(out: &mut String, c: &ClassDef, _ctx: &mut Ctx) -> Result<()> {
     Ok(())
 }
 
-fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
+fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
     let ret = f.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
     out.push_str(&format!("{} {}(", ret, f.name));
     for (i, p) in f.params.iter().enumerate() {
@@ -212,6 +272,7 @@ fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
     }
     out.push_str(") {\n");
     let mut fn_ctx = Ctx::default();
+    fn_ctx.program = ctx.program.clone();
     for p in &f.params {
         fn_ctx.vars.insert(p.name.clone(), p.name.clone());
         fn_ctx.var_types.insert(p.name.clone(), p.ty.clone());
@@ -287,29 +348,46 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
             out.push_str("    }\n");
         }
         Stmt::Foreach { var, iter, body } => {
-            let idx = "_foreach_i";
-            out.push_str("    {\n");
-            out.push_str(&format!("    size_t {};\n", idx));
-            out.push_str(&format!("    for ({} = 0; {} < sizeof(", idx, idx));
-            emit_expr(out, iter, ctx)?;
-            out.push_str(")/sizeof((");
-            emit_expr(out, iter, ctx)?;
-            out.push_str(")[0]); ");
-            out.push_str(&format!("{}++) {{\n", idx));
-            out.push_str("        long ");
-            out.push_str(var);
-            out.push_str(" = (");
-            emit_expr(out, iter, ctx)?;
-            out.push_str(")[");
-            out.push_str(idx);
-            out.push_str("];\n");
-            ctx.vars.insert(var.clone(), var.clone());
-            ctx.var_types.insert(var.clone(), Type::Int);
-            for s in body {
-                emit_stmt(out, s, ctx)?;
+            if let Expr::Range { start, end } = iter.as_ref() {
+                out.push_str("    {\n");
+                out.push_str(&format!("    int {};\n", var));
+                out.push_str(&format!("    for ({} = ", var));
+                emit_expr(out, start, ctx)?;
+                out.push_str(&format!("; {} < ", var));
+                emit_expr(out, end, ctx)?;
+                out.push_str(&format!("; {}++) {{\n", var));
+                ctx.vars.insert(var.clone(), var.clone());
+                ctx.var_types.insert(var.clone(), Type::I32);
+                for s in body {
+                    emit_stmt(out, s, ctx)?;
+                }
+                out.push_str("    }\n");
+                out.push_str("    }\n");
+            } else {
+                let idx = "_foreach_i";
+                out.push_str("    {\n");
+                out.push_str(&format!("    size_t {};\n", idx));
+                out.push_str(&format!("    for ({} = 0; {} < sizeof(", idx, idx));
+                emit_expr(out, iter, ctx)?;
+                out.push_str(")/sizeof((");
+                emit_expr(out, iter, ctx)?;
+                out.push_str(")[0]); ");
+                out.push_str(&format!("{}++) {{\n", idx));
+                out.push_str("        long ");
+                out.push_str(var);
+                out.push_str(" = (");
+                emit_expr(out, iter, ctx)?;
+                out.push_str(")[");
+                out.push_str(idx);
+                out.push_str("];\n");
+                ctx.vars.insert(var.clone(), var.clone());
+                ctx.var_types.insert(var.clone(), Type::Int);
+                for s in body {
+                    emit_stmt(out, s, ctx)?;
+                }
+                out.push_str("    }\n");
+                out.push_str("    }\n");
             }
-            out.push_str("    }\n");
-            out.push_str("    }\n");
         }
         Stmt::Break => out.push_str("    break;\n"),
         Stmt::Continue => out.push_str("    continue;\n"),
@@ -344,6 +422,30 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
             for s in try_body {
                 emit_stmt(out, s, ctx)?;
             }
+        }
+        Stmt::Defer { body } => {
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
+        Stmt::Choose { expr, arms } => {
+            out.push_str("    {\n    int _choose_val = (int)(");
+            emit_expr(out, expr, ctx)?;
+            out.push_str(");\n");
+            for (i, arm) in arms.iter().enumerate() {
+                let prefix = if i == 0 { "    if " } else { "    else if " };
+                let cond = match &arm.pattern {
+                    ChoosePattern::UnitVariant(_v) => format!("_choose_val == {}", i),
+                    ChoosePattern::TupleVariant(_, _) => format!("_choose_val == {}", i),
+                    ChoosePattern::Ident(_) => "1".to_string(),
+                };
+                out.push_str(&format!("{}({}) {{\n", prefix, cond));
+                for s in &arm.body {
+                    emit_stmt(out, s, ctx)?;
+                }
+                out.push_str("    }\n");
+            }
+            out.push_str("    }\n");
         }
     }
     Ok(())
@@ -448,6 +550,28 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str(")");
         }
         Expr::Call { callee, args } => {
+            if let Expr::Field { base, field } = callee.as_ref() {
+                if let Some(ref prog) = ctx.program {
+                    if let Some(struct_name) = find_method_struct(prog, field) {
+                        out.push_str(&format!("{}_{}(", struct_name, field));
+                        let base_ty = expr_type(base, ctx);
+                        let need_addr = matches!(base_ty, Some(Type::Named(_)));
+                        if need_addr {
+                            out.push_str("&(");
+                        }
+                        emit_expr(out, base, ctx)?;
+                        if need_addr {
+                            out.push_str(")");
+                        }
+                        for arg in args {
+                            out.push_str(", ");
+                            emit_expr(out, arg, ctx)?;
+                        }
+                        out.push_str(")");
+                        return Ok(());
+                    }
+                }
+            }
             let callee_name = callee.as_ref();
             let is_print = matches!(callee_name, Expr::Ident(n) if n == "print");
             let is_writeln = matches!(callee_name, Expr::Ident(n) if n == "writeln");
@@ -587,6 +711,46 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                 emit_expr(out, e, ctx)?;
             }
             out.push_str(" }");
+        }
+        Expr::Range { start, end } => {
+            out.push_str("((");
+            emit_expr(out, start, ctx)?;
+            out.push_str(") <= (");
+            emit_expr(out, end, ctx)?;
+            out.push_str("))");
+        }
+        Expr::Tuple(elems) => {
+            out.push_str("(");
+            for (i, e) in elems.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                emit_expr(out, e, ctx)?;
+            }
+            out.push_str(")");
+        }
+        Expr::Interpolate(parts) => {
+            let mut fmt_parts = Vec::new();
+            let mut args = Vec::new();
+            for p in parts {
+                match p {
+                    InterpolatePart::Str(s) => fmt_parts.push(s.replace('%', "%%").replace('\\', "\\\\").replace('"', "\\\"")),
+                    InterpolatePart::Expr(e) => {
+                        fmt_parts.push("%ld".to_string());
+                        args.push(e.clone());
+                    }
+                }
+            }
+            out.push_str("(printf(\"");
+            for fp in &fmt_parts {
+                out.push_str(fp);
+            }
+            out.push_str("\\n\"");
+            for a in &args {
+                out.push_str(", ");
+                emit_expr(out, a, ctx)?;
+            }
+            out.push_str("), (void)0)");
         }
         Expr::New { class, args } => {
             out.push_str(&format!(

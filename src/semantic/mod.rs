@@ -98,6 +98,18 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
             }
         }
         TopLevelItem::Import(_) => {}
+        TopLevelItem::Alias(_) => {}
+        TopLevelItem::Impl(impl_def) => {
+            for m in &impl_def.methods {
+                scope.funcs.insert(
+                    format!("{}_{}", impl_def.struct_name, m.name),
+                    FuncSig {
+                        params: m.params.iter().map(|p| p.ty.clone()).collect(),
+                        return_type: m.return_type.clone(),
+                    },
+                );
+            }
+        }
     }
     Ok(())
 }
@@ -134,7 +146,20 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
                 }
             }
         }
-        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) => {}
+        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) | TopLevelItem::Alias(_) => {}
+        TopLevelItem::Impl(impl_def) => {
+            symbol_table.scopes.push(Scope::default());
+            for m in &impl_def.methods {
+                for p in &m.params {
+                    let scope = symbol_table.scopes.last_mut().unwrap();
+                    scope.vars.insert(p.name.clone(), p.ty.clone());
+                }
+                for stmt in &m.body {
+                    check_stmt(symbol_table, stmt)?;
+                }
+            }
+            symbol_table.scopes.pop();
+        }
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
                 check_top_level(symbol_table, sub)?;
@@ -284,6 +309,19 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 check_expr(symbol_table, e)?;
             }
         }
+        Stmt::Defer { body } => {
+            for s in body {
+                check_stmt(symbol_table, s)?;
+            }
+        }
+        Stmt::Choose { expr, arms } => {
+            check_expr(symbol_table, expr)?;
+            for arm in arms {
+                for s in &arm.body {
+                    check_stmt(symbol_table, s)?;
+                }
+            }
+        }
         Stmt::TryCatch { try_body, catch_body, .. } => {
             symbol_table.scopes.push(Scope::default());
             for s in try_body {
@@ -317,7 +355,10 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     return Ok(Type::Void); // Function reference (used in calls)
                 }
                 for (enum_name, e) in &scope.enums {
-                    if e.variants.contains(name) {
+                    if e.variants.iter().any(|v| match v {
+                        crate::ast::EnumVariant::Unit(n) => n == name,
+                        crate::ast::EnumVariant::Tuple(n, _) => n == name,
+                    }) {
                         return Ok(Type::Named(enum_name.clone()));
                     }
                 }
@@ -463,6 +504,26 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
         Expr::Field { base, field: _ } => {
             let _ = check_expr(symbol_table, base)?;
             Ok(Type::Int) // Simplified
+        }
+        Expr::Range { start, end } => {
+            let _ = check_expr(symbol_table, start)?;
+            let _ = check_expr(symbol_table, end)?;
+            Ok(Type::Int)
+        }
+        Expr::Tuple(elems) => {
+            let mut tys = Vec::new();
+            for e in elems {
+                tys.push(check_expr(symbol_table, e)?);
+            }
+            Ok(Type::Tuple(tys))
+        }
+        Expr::Interpolate(parts) => {
+            for p in parts {
+                if let InterpolatePart::Expr(e) = p {
+                    check_expr(symbol_table, e)?;
+                }
+            }
+            Ok(Type::Void)
         }
         Expr::New { class, args: _ } => {
             for scope in symbol_table.scopes.iter().rev() {

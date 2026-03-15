@@ -1,6 +1,6 @@
 //! Parser for QuinusLang
 
-use crate::ast::*;
+use crate::ast::{EnumVariant, *};
 use crate::error::{Error, Result};
 use crate::lexer::{Token, TokenStream};
 use std::path::Path;
@@ -174,10 +174,18 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
             stream.consume();
             Ok(TopLevelItem::Import(parse_import(stream)?))
         }
+        Some(Token::Alias) => {
+            stream.consume();
+            Ok(TopLevelItem::Alias(parse_alias_def(stream)?))
+        }
+        Some(Token::Impl) => {
+            stream.consume();
+            Ok(TopLevelItem::Impl(parse_impl_def(stream)?))
+        }
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected eternal, anchor, craft, form, state, fusion, class, realm, import, or bring".to_string(),
+            message: "Expected eternal, anchor, craft, form, state, fusion, class, realm, import, bring, alias, or impl".to_string(),
         }),
     }
 }
@@ -238,7 +246,22 @@ fn parse_enum_def(stream: &mut TokenStream) -> Result<EnumDef> {
     stream.expect("{")?;
     let mut variants = Vec::new();
     while stream.peek() != Some(&Token::RBrace) {
-        variants.push(expect_ident(stream)?);
+        let vname = expect_ident(stream)?;
+        let variant = if stream.peek() == Some(&Token::LParen) {
+            stream.consume();
+            let mut tys = Vec::new();
+            while stream.peek() != Some(&Token::RParen) {
+                tys.push(parse_type(stream)?);
+                if stream.peek() == Some(&Token::Comma) {
+                    stream.consume();
+                }
+            }
+            stream.expect(")")?;
+            EnumVariant::Tuple(vname, tys)
+        } else {
+            EnumVariant::Unit(vname)
+        };
+        variants.push(variant);
         if stream.peek() == Some(&Token::Comma) {
             stream.consume();
         }
@@ -401,13 +424,64 @@ fn parse_import(stream: &mut TokenStream) -> Result<Import> {
     Ok(Import { path })
 }
 
+fn parse_choose_pattern(stream: &mut TokenStream) -> Result<ChoosePattern> {
+    let name = expect_ident(stream)?;
+    if stream.peek() == Some(&Token::LParen) {
+        stream.consume();
+        let mut bindings = Vec::new();
+        while stream.peek() != Some(&Token::RParen) {
+            bindings.push(expect_ident(stream)?);
+            if stream.peek() == Some(&Token::Comma) {
+                stream.consume();
+            }
+        }
+        stream.expect(")")?;
+        Ok(ChoosePattern::TupleVariant(name, bindings))
+    } else if name == "_" {
+        Ok(ChoosePattern::Ident("_".to_string()))
+    } else {
+        Ok(ChoosePattern::UnitVariant(name))
+    }
+}
+
+fn parse_impl_def(stream: &mut TokenStream) -> Result<ImplDef> {
+    let struct_name = expect_ident(stream)?;
+    stream.expect("{")?;
+    let mut methods = Vec::new();
+    while stream.peek() != Some(&Token::RBrace) {
+        if stream.peek() == Some(&Token::Craft) {
+            stream.consume();
+            methods.push(parse_method_def(stream)?);
+        } else {
+            let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+            return Err(Error::Parse { line, col, message: "Expected craft in impl block".to_string() });
+        }
+    }
+    stream.expect("}")?;
+    Ok(ImplDef { struct_name, methods })
+}
+
+fn parse_alias_def(stream: &mut TokenStream) -> Result<AliasDef> {
+    let name = expect_ident(stream)?;
+    stream.expect("=")?;
+    let ty = parse_type(stream)?;
+    stream.expect(";")?;
+    Ok(AliasDef { name, ty })
+}
+
 fn parse_params(stream: &mut TokenStream) -> Result<Vec<Param>> {
     let mut params = Vec::new();
     while stream.peek() != Some(&Token::RParen) {
         let name = expect_ident(stream)?;
         stream.expect(":")?;
         let ty = parse_type(stream)?;
-        params.push(Param { name, ty });
+        let default = if stream.peek() == Some(&Token::Eq) {
+            stream.consume();
+            Some(parse_expr(stream)?)
+        } else {
+            None
+        };
+        params.push(Param { name, ty, default });
         if stream.peek() == Some(&Token::Comma) {
             stream.consume();
         }
@@ -421,6 +495,21 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
         stream.consume();
         let inner = parse_type(stream)?;
         return Ok(Type::Ptr(Box::new(inner)));
+    }
+    if stream.peek() == Some(&Token::LParen) {
+        stream.consume();
+        let first = parse_type(stream)?;
+        if stream.peek() == Some(&Token::Comma) {
+            let mut elems = vec![first];
+            while stream.peek() == Some(&Token::Comma) {
+                stream.consume();
+                elems.push(parse_type(stream)?);
+            }
+            stream.expect(")")?;
+            return Ok(Type::Tuple(elems));
+        }
+        stream.expect(")")?;
+        return Ok(first);
     }
     match stream.consume() {
         Some((Token::Ident(s), _, _)) => {
@@ -624,6 +713,43 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 catch_param,
                 catch_body,
             })
+        }
+        Some(Token::Defer) => {
+            stream.consume();
+            stream.expect("{")?;
+            let body = parse_block(stream)?;
+            stream.expect("}")?;
+            Ok(Stmt::Defer { body })
+        }
+        Some(Token::Choose) => {
+            stream.consume();
+            stream.expect("(")?;
+            let expr = parse_expr(stream)?;
+            stream.expect(")")?;
+            stream.expect("{")?;
+            let mut arms = Vec::new();
+            while stream.peek() != Some(&Token::RBrace) {
+                let pattern = parse_choose_pattern(stream)?;
+                if stream.peek() != Some(&Token::FatArrow) {
+                    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+                    return Err(Error::Parse { line, col, message: "Expected =>".to_string() });
+                }
+                stream.consume();
+                let arm_body = if stream.peek() == Some(&Token::LBrace) {
+                    stream.consume();
+                    let b = parse_block(stream)?;
+                    stream.expect("}")?;
+                    b
+                } else {
+                    vec![parse_stmt(stream)?]
+                };
+                if stream.peek() == Some(&Token::Comma) {
+                    stream.consume();
+                }
+                arms.push(ChooseArm { pattern, body: arm_body });
+            }
+            stream.expect("}")?;
+            Ok(Stmt::Choose { expr: Box::new(expr), arms })
         }
         Some(Token::Make) => {
             stream.consume();
@@ -878,6 +1004,14 @@ fn parse_postfix(stream: &mut TokenStream) -> Result<Expr> {
                     }
                 }
             }
+            Some(Token::DotDot) => {
+                stream.consume();
+                let end = parse_expr(stream)?;
+                expr = Expr::Range {
+                    start: Box::new(expr),
+                    end: Box::new(end),
+                };
+            }
             Some(Token::Dot) => {
                 stream.consume();
                 let field = expect_ident(stream)?;
@@ -916,9 +1050,19 @@ fn parse_primary(stream: &mut TokenStream) -> Result<Expr> {
             Ok(Expr::New { class, args })
         }
         Some((Token::LParen, _, _)) => {
-            let expr = parse_expr(stream)?;
-            stream.expect(")")?;
-            Ok(expr)
+            let first = parse_expr(stream)?;
+            if stream.peek() == Some(&Token::Comma) {
+                let mut elems = vec![first];
+                while stream.peek() == Some(&Token::Comma) {
+                    stream.consume();
+                    elems.push(parse_expr(stream)?);
+                }
+                stream.expect(")")?;
+                Ok(Expr::Tuple(elems))
+            } else {
+                stream.expect(")")?;
+                Ok(first)
+            }
         }
         Some((Token::LBrace, _, _)) => {
             let mut elems = Vec::new();

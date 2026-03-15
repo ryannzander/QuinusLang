@@ -80,6 +80,12 @@ pub enum Token {
     Try,
     #[token("catch")]
     Catch,
+    #[token("alias")]
+    Alias,
+    #[token("defer")]
+    Defer,
+    #[token("choose")]
+    Choose,
     #[token("pub")]
     Pub,
     #[token("priv")]
@@ -140,6 +146,8 @@ pub enum Token {
     Dot,
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),

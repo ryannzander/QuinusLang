@@ -18,12 +18,20 @@ pub enum TopLevelItem {
     Union(UnionDef),
     Mod(ModDef),
     Import(Import),
+    Alias(AliasDef),
+    Impl(ImplDef),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnumDef {
     pub name: String,
-    pub variants: Vec<String>,
+    pub variants: Vec<EnumVariant>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EnumVariant {
+    Unit(String),
+    Tuple(String, Vec<Type>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,6 +67,7 @@ pub struct FnDef {
 pub struct Param {
     pub name: String,
     pub ty: Type,
+    pub default: Option<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,6 +119,18 @@ pub struct Import {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AliasDef {
+    pub name: String,
+    pub ty: Type,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImplDef {
+    pub struct_name: String,
+    pub methods: Vec<MethodDef>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int,
     Float,
@@ -119,6 +140,7 @@ pub enum Type {
     Array(Box<Type>),
     ArraySized(Box<Type>, u32),
     Named(String),
+    Tuple(Vec<Type>),
     // Spec type names
     U8, U16, U32, U64,
     I8, I16, I32, I64,
@@ -150,6 +172,7 @@ impl fmt::Display for Type {
             Type::F32 => write!(f, "f32"),
             Type::F64 => write!(f, "f64"),
             Type::Ptr(inner) => write!(f, "link {}", inner),
+            Type::Tuple(inner) => write!(f, "({})", inner.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(", ")),
         }
     }
 }
@@ -169,6 +192,21 @@ pub enum Stmt {
     ExprStmt(Expr),
     Return(Option<Expr>),
     TryCatch { try_body: Vec<Stmt>, catch_param: Option<String>, catch_body: Vec<Stmt> },
+    Defer { body: Vec<Stmt> },
+    Choose { expr: Box<Expr>, arms: Vec<ChooseArm> },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChooseArm {
+    pub pattern: ChoosePattern,
+    pub body: Vec<Stmt>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChoosePattern {
+    UnitVariant(String),
+    TupleVariant(String, Vec<String>),
+    Ident(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -193,6 +231,9 @@ pub enum Expr {
     Field { base: Box<Expr>, field: String },
     New { class: String, args: Vec<Expr> },
     ArrayInit(Vec<Expr>),
+    Range { start: Box<Expr>, end: Box<Expr> },
+    Tuple(Vec<Expr>),
+    Interpolate(Vec<InterpolatePart>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,6 +246,12 @@ pub enum BinOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnOp {
     Neg, Not,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InterpolatePart {
+    Str(String),
+    Expr(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

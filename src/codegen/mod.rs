@@ -67,6 +67,8 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut CodegenContex
             }
         }
         TopLevelItem::Import(_) => {}
+        TopLevelItem::Alias(_) => {}
+        TopLevelItem::Impl(_) => {}
     }
     Ok(())
 }
@@ -311,6 +313,29 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
                 emit_stmt(out, s, ctx)?;
             }
         }
+        Stmt::Defer { body } => {
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
+        Stmt::Choose { expr, arms } => {
+            let end_label = new_label();
+            emit_expr(out, expr, ctx)?;
+            out.push_str("    push rax\n");
+            for (i, arm) in arms.iter().enumerate() {
+                out.push_str("    pop rax\n    push rax\n");
+                out.push_str(&format!("    cmp rax, {}\n", i));
+                let skip_label = new_label();
+                out.push_str(&format!("    jne {}\n", skip_label));
+                for s in &arm.body {
+                    emit_stmt(out, s, ctx)?;
+                }
+                out.push_str(&format!("    jmp {}\n", end_label));
+                out.push_str(&format!("{}:\n", skip_label));
+            }
+            out.push_str("    pop rax\n");
+            out.push_str(&format!("{}:\n", end_label));
+        }
     }
     Ok(())
 }
@@ -451,6 +476,27 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
         Expr::ArrayInit(elems) => {
             if let Some(first) = elems.first() {
                 emit_expr(out, first, ctx)?;
+            }
+        }
+        Expr::Range { start, end } => {
+            emit_expr(out, start, ctx)?;
+            out.push_str("    push rax\n");
+            emit_expr(out, end, ctx)?;
+            out.push_str("    pop rcx\n");
+            out.push_str("    cmp rcx, rax\n");
+            out.push_str("    setle al\n");
+            out.push_str("    movzx rax, al\n");
+        }
+        Expr::Tuple(elems) => {
+            if let Some(first) = elems.first() {
+                emit_expr(out, first, ctx)?;
+            }
+        }
+        Expr::Interpolate(parts) => {
+            for p in parts {
+                if let InterpolatePart::Expr(e) = p {
+                    emit_expr(out, e, ctx)?;
+                }
             }
         }
         Expr::New { class, args } => {

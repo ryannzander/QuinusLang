@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Features - QuinusLang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+      <li><a href="language.html">Language</a></li>
+      <li><a href="functions.html">Functions</a></li>
+      <li><a href="types.html">Types</a></li>
+      <li><a href="control-flow.html">Control Flow</a></li>
+      <li><a href="structs.html">Structs & Enums</a></li>
+      <li><a href="pointers.html">Pointers</a></li>
+      <li><a href="arrays.html">Arrays</a></li>
+      <li><a href="strings.html">Strings & Builtins</a></li>
+      <li><a href="modules.html">Modules</a></li>
+      <li><a href="unsafe.html">Unsafe & Assembly</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+      <li><a href="advanced.html">Advanced Features</a></li>
+      <li><a href="https://github.com/ryannzander/QuinusLang" target="_blank" rel="noopener">GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Advanced Features</h1>
+
+    <h2>Type Aliases</h2>
+    <p>Create type aliases with <code>alias</code> for readability:</p>
+    <pre><code>alias Id = u64;
+alias Buffer = [u8; 256];
+alias FloatPair = (f64, f64);
+
+make x: Id = 42;
+make buf: Buffer = { 0 };</code></pre>
+
+    <h2>Defer Blocks</h2>
+    <p>Run cleanup code when leaving the current scope with <code>defer</code>:</p>
+    <pre><code>{
+    make shift f = open_file("data.txt");
+    defer {
+        close(f);
+    }
+    // ... use f ...
+}  // close(f) runs here</code></pre>
+
+    <h2>Range Iteration</h2>
+    <p>Iterate over numeric ranges with <code>foreach ... in start..end</code>:</p>
+    <pre><code>foreach i in 0..10 {
+    print(i);
+}
+
+foreach n in 5..15 {
+    print(n * 2);
+}</code></pre>
+    <p>The range is exclusive of the end value (0..10 iterates 0 through 9).</p>
+
+    <h2>Tuples and Multiple Return Values</h2>
+    <p>Return multiple values using tuple types:</p>
+    <pre><code>craft div_rem(a: i32, b: i32) -> (i32, i32) {
+    send (a / b, a % b);
+}
+
+craft main() -> void {
+    make (q, r) = div_rem(17, 5);
+    print(q);  // 3
+    print(r);  // 2
+    send;
+}</code></pre>
+    <p>Tuple literals use parentheses: <code>(1, 2, 3)</code>.</p>
+
+    <h2>Default Parameters</h2>
+    <p>Parameters can have default values:</p>
+    <pre><code>craft greet(name: str, count: i32 = 1) -> void {
+    foreach i in 0..count {
+        print(name);
+    }
+    send;
+}
+
+greet("Hi");      // count defaults to 1
+greet("Hi", 3);   // count is 3</code></pre>
+
+    <h2>Pattern Matching: choose</h2>
+    <p>Match on enum values with <code>choose</code>:</p>
+    <pre><code>state Color {
+    Red,
+    Green,
+    Blue
+}
+
+craft describe(c: Color) -> void {
+    choose (c) {
+        Red => { print("red"); }
+        Green => { print("green"); }
+        Blue => { print("blue"); }
+        _ => { print("unknown"); }
+    }
+    send;
+}</code></pre>
+
+    <h2>Enum Variants with Payloads</h2>
+    <p>Enums can carry data in their variants:</p>
+    <pre><code>state Maybe {
+    None,
+    Some(i32)
+}
+
+craft unwrap(m: Maybe) -> i32 {
+    choose (m) {
+        Some(x) => { send x; }
+        None => { panic(); send 0; }
+    }
+}</code></pre>
+
+    <h2>Method Syntax for Structs</h2>
+    <p>Add methods to structs with <code>impl</code> blocks:</p>
+    <pre><code>form Point {
+    x: i32,
+    y: i32
+}
+
+impl Point {
+    craft distance(self: Point) -> f64 {
+        make dx: f64 = self.x;
+        make dy: f64 = self.y;
+        send sqrt(dx*dx + dy*dy);
+    }
+}
+
+craft main() -> void {
+    make shift p: Point = { x: 3, y: 4 };
+    print(p.distance());
+    send;
+}</code></pre>
+    <p>Methods take <code>self</code> as the first parameter. Call with <code>value.method()</code>.</p>
+  </main>
+</body>
+</html>
