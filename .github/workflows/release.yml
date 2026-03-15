@@ -20,7 +20,7 @@ jobs:
         run: choco install innosetup -y
 
       - name: Install LLVM
-        run: choco install llvm --version=17.0.6 -y
+        run: choco install llvm --version=17.0.6 -y --allow-downgrade
 
       - name: Set version from tag
         shell: pwsh
