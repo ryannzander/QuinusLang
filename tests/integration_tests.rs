@@ -109,6 +109,23 @@ fn test_formatter_roundtrip() {
 }
 
 #[test]
+fn test_str_module() {
+    let source = r#"
+bring "str";
+craft main() -> void {
+    make t: str = str.trim("  hi  ");
+    make c: str = str.concat("a", "b");
+    send;
+}
+"#;
+    let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("ql_str_trim") || c_code.contains("str_trim"));
+    assert!(c_code.contains("ql_str_concat") || c_code.contains("str_concat"));
+}
+
+#[test]
 fn test_os_cwd() {
     let source = r#"
 bring "os";

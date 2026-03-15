@@ -203,6 +203,11 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <math.h>\n");
     out.push_str("#ifdef _WIN32\n#include <direct.h>\n#define getcwd _getcwd\n#else\n#include <unistd.h>\n#endif\n");
 
+    // Emit str runtime if str module is used
+    if program_uses_module(&program.program, "str") {
+        out.push_str(STR_RUNTIME);
+    }
+
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &program.program.items {
         if let TopLevelItem::Fn(f) = item {
@@ -237,6 +242,41 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
         emit_top_level(&mut out, item, &mut ctx)?;
     }
     Ok(out)
+}
+
+const STR_RUNTIME: &str = r#"
+static char* ql_str_trim(const char* s) {
+    if (!s) return (char*)"";
+    while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+    const char* end = s;
+    while (*end) end++;
+    while (end > s && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r')) end--;
+    size_t n = end - s;
+    char* r = (char*)malloc(n + 1);
+    memcpy(r, s, n);
+    r[n] = 0;
+    return r;
+}
+static char* ql_str_concat(const char* a, const char* b) {
+    if (!a) a = "";
+    if (!b) b = "";
+    size_t la = strlen(a), lb = strlen(b);
+    char* r = (char*)malloc(la + lb + 1);
+    memcpy(r, a, la + 1);
+    strcat(r, b);
+    return r;
+}
+"#;
+
+fn program_uses_module(program: &crate::ast::Program, name: &str) -> bool {
+    for item in &program.items {
+        match item {
+            crate::ast::TopLevelItem::Import(i) if i.path.first().map(|s| s.as_str()) == Some(name) => return true,
+            crate::ast::TopLevelItem::Mod(m) if m.name == name => return true,
+            _ => {}
+        }
+    }
+    false
 }
 
 fn find_method_struct(program: &crate::ast::Program, method_name: &str) -> Option<String> {
@@ -298,7 +338,7 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
-            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax"];
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
             }
