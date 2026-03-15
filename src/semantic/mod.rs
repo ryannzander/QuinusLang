@@ -142,26 +142,37 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
         }
         Stmt::Assign { target, value } => {
             check_expr(symbol_table, value)?;
-            if let AssignTarget::Ident(name) = target {
-                let mut found = false;
-                let mut is_mutable = false;
-                for scope in symbol_table.scopes.iter().rev() {
-                    if scope.vars.contains_key(name) {
-                        found = true;
-                        is_mutable = scope.mutable_vars.contains(name);
-                        break;
+            match target {
+                AssignTarget::Ident(name) => {
+                    let mut found = false;
+                    let mut is_mutable = false;
+                    for scope in symbol_table.scopes.iter().rev() {
+                        if scope.vars.contains_key(name) {
+                            found = true;
+                            is_mutable = scope.mutable_vars.contains(name);
+                            break;
+                        }
+                    }
+                    if !found {
+                        return Err(Error::Semantic {
+                            message: format!("Undefined variable: {}", name),
+                        });
+                    }
+                    if !is_mutable {
+                        return Err(Error::Semantic {
+                            message: format!("Cannot assign to immutable variable: {}", name),
+                        });
                     }
                 }
-                if !found {
-                    return Err(Error::Semantic {
-                        message: format!("Undefined variable: {}", name),
-                    });
+                AssignTarget::Deref(operand) => {
+                    let ty = check_expr(symbol_table, operand)?;
+                    if !matches!(ty, Type::Ptr(_)) {
+                        return Err(Error::Semantic {
+                            message: "Cannot assign through non-pointer".to_string(),
+                        });
+                    }
                 }
-                if !is_mutable {
-                    return Err(Error::Semantic {
-                        message: format!("Cannot assign to immutable variable: {}", name),
-                    });
-                }
+                _ => {}
             }
         }
         Stmt::If { cond, then_body, else_body } => {
@@ -264,6 +275,19 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     Ok(Type::Bool)
                 }
                 BinOp::And | BinOp::Or => Ok(Type::Bool),
+            }
+        }
+        Expr::AddrOf(operand) => {
+            let inner = check_expr(symbol_table, operand)?;
+            Ok(Type::Ptr(Box::new(inner)))
+        }
+        Expr::Deref(operand) => {
+            let inner = check_expr(symbol_table, operand)?;
+            match inner {
+                Type::Ptr(t) => Ok(*t),
+                _ => Err(Error::Semantic {
+                    message: "Cannot dereference non-pointer".to_string(),
+                }),
             }
         }
         Expr::Unary { op, operand } => {

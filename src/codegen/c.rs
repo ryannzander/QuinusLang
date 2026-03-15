@@ -11,29 +11,30 @@ struct Ctx {
     var_types: HashMap<String, Type>,
 }
 
-fn type_to_c(ty: &Type) -> &'static str {
+fn type_to_c(ty: &Type) -> String {
     match ty {
-        Type::Int => "long",
-        Type::Float => "double",
-        Type::Bool => "int",
-        Type::Str => "char*",
-        Type::Void => "void",
-        Type::Array(_) => "long*",
+        Type::Int => "long".to_string(),
+        Type::Float => "double".to_string(),
+        Type::Bool => "int".to_string(),
+        Type::Str => "char*".to_string(),
+        Type::Void => "void".to_string(),
+        Type::Array(_) => "long*".to_string(),
         Type::Named(name) => match name.as_str() {
-            "Point" => "Point*",
-            _ => "void*",
+            "Point" => "Point*".to_string(),
+            _ => "void*".to_string(),
         },
-        Type::U8 => "uint8_t",
-        Type::U16 => "uint16_t",
-        Type::U32 => "uint32_t",
-        Type::U64 => "uint64_t",
-        Type::I8 => "int8_t",
-        Type::I16 => "int16_t",
-        Type::I32 => "int32_t",
-        Type::I64 => "int64_t",
-        Type::Usize => "size_t",
-        Type::F32 => "float",
-        Type::F64 => "double",
+        Type::U8 => "uint8_t".to_string(),
+        Type::U16 => "uint16_t".to_string(),
+        Type::U32 => "uint32_t".to_string(),
+        Type::U64 => "uint64_t".to_string(),
+        Type::I8 => "int8_t".to_string(),
+        Type::I16 => "int16_t".to_string(),
+        Type::I32 => "int32_t".to_string(),
+        Type::I64 => "int64_t".to_string(),
+        Type::Usize => "size_t".to_string(),
+        Type::F32 => "float".to_string(),
+        Type::F64 => "double".to_string(),
+        Type::Ptr(inner) => format!("{}*", type_to_c(inner).trim_end_matches('*')),
     }
 }
 
@@ -47,6 +48,7 @@ fn type_to_printf(ty: &Type) -> &'static str {
         Type::Void => "%s",
         Type::Array(_) | Type::Named(_) => "%p",
         Type::I8 | Type::I16 => "%d",
+        Type::Ptr(_) => "%p",
     }
 }
 
@@ -59,6 +61,11 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
             Literal::Str(_) => Type::Str,
         }),
         Expr::Ident(name) => ctx.var_types.get(name).cloned(),
+        Expr::AddrOf(operand) => expr_type(operand, ctx).map(|t| Type::Ptr(Box::new(t))),
+        Expr::Deref(operand) => match expr_type(operand, ctx) {
+            Some(Type::Ptr(t)) => Some(*t),
+            _ => None,
+        },
         _ => None,
     }
 }
@@ -129,7 +136,7 @@ fn emit_class(out: &mut String, c: &ClassDef, _ctx: &mut Ctx) -> Result<()> {
     }
 
     for m in &c.methods {
-        let ret = m.return_type.as_ref().map(type_to_c).unwrap_or("void");
+        let ret = m.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
         out.push_str(&format!("{} {}_{}({}* this", ret, c.name, m.name, c.name));
         for p in &m.params {
             out.push_str(&format!(", {} {}", type_to_c(&p.ty), p.name));
@@ -149,7 +156,7 @@ fn emit_class(out: &mut String, c: &ClassDef, _ctx: &mut Ctx) -> Result<()> {
 }
 
 fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
-    let ret = f.return_type.as_ref().map(type_to_c).unwrap_or("void");
+    let ret = f.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
     out.push_str(&format!("{} {}(", ret, f.name));
     for (i, p) in f.params.iter().enumerate() {
         if i > 0 {
@@ -172,7 +179,7 @@ fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
 fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, ty, init, mutable: _ } => {
-            let cty = ty.as_ref().map(type_to_c).unwrap_or("long");
+            let cty = ty.as_ref().map(type_to_c).unwrap_or_else(|| "long".to_string());
             ctx.vars.insert(name.clone(), name.clone());
             if let Some(t) = ty.as_ref() {
                 ctx.var_types.insert(name.clone(), t.clone());
@@ -260,7 +267,7 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
 fn emit_for_init(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, ty, init, mutable: _ } => {
-            let cty = ty.as_ref().map(type_to_c).unwrap_or("long");
+            let cty = ty.as_ref().map(type_to_c).unwrap_or_else(|| "long".to_string());
             ctx.vars.insert(name.clone(), name.clone());
             if let Some(t) = ty.as_ref() {
                 ctx.var_types.insert(name.clone(), t.clone());
@@ -299,6 +306,10 @@ fn emit_assign_target(out: &mut String, target: &AssignTarget, ctx: &Ctx) -> Res
             out.push_str("[");
             emit_expr(out, index, ctx)?;
             out.push_str("]");
+        }
+        AssignTarget::Deref(operand) => {
+            out.push_str("*");
+            emit_expr(out, operand, ctx)?;
         }
     }
     Ok(())
@@ -393,6 +404,14 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
         Expr::Field { base, field } => {
             emit_expr(out, base, ctx)?;
             out.push_str(&format!("->{}", field));
+        }
+        Expr::AddrOf(operand) => {
+            out.push_str("&");
+            emit_expr(out, operand, ctx)?;
+        }
+        Expr::Deref(operand) => {
+            out.push_str("*");
+            emit_expr(out, operand, ctx)?;
         }
         Expr::New { class, args } => {
             out.push_str(&format!(

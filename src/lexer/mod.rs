@@ -44,6 +44,12 @@ pub enum Token {
     Implements,
     #[token("realm")]
     Realm,
+    #[token("link")]
+    Link,
+    #[token("mark")]
+    Mark,
+    #[token("reach")]
+    Reach,
     #[token("import")]
     Import,
     #[token("try")]

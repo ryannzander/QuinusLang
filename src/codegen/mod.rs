@@ -215,6 +215,13 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
                     emit_expr(out, value, ctx)?;
                     out.push_str("    mov [rcx], rax\n");
                 }
+                AssignTarget::Deref(operand) => {
+                    emit_expr(out, operand, ctx)?;
+                    out.push_str("    push rax\n");
+                    emit_expr(out, value, ctx)?;
+                    out.push_str("    pop rcx\n");
+                    out.push_str("    mov [rcx], rax\n");
+                }
             }
         }
         Stmt::If { cond, then_body, else_body } => {
@@ -396,6 +403,20 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
             emit_expr(out, base, ctx)?;
             let offset = field_offset(field);
             out.push_str(&format!("    mov rax, [rax+{}]\n", offset));
+        }
+        Expr::AddrOf(operand) => {
+            if let Expr::Ident(name) = operand.as_ref() {
+                let slot = ctx.get_slot(name);
+                out.push_str(&format!("    lea rax, [rbp-{}]\n", slot));
+            } else if let Expr::Deref(ptr) = operand.as_ref() {
+                emit_expr(out, ptr, ctx)?;
+            } else {
+                emit_expr(out, operand, ctx)?;
+            }
+        }
+        Expr::Deref(operand) => {
+            emit_expr(out, operand, ctx)?;
+            out.push_str("    mov rax, [rax]\n");
         }
         Expr::New { class, args } => {
             let size = 8 + 16; // vtable ptr + 2 fields for Point

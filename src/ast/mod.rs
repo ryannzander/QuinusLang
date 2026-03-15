@@ -92,6 +92,7 @@ pub enum Type {
     I8, I16, I32, I64,
     Usize,
     F32, F64,
+    Ptr(Box<Type>),
 }
 
 impl fmt::Display for Type {
@@ -115,6 +116,7 @@ impl fmt::Display for Type {
             Type::Usize => write!(f, "usize"),
             Type::F32 => write!(f, "f32"),
             Type::F64 => write!(f, "f64"),
+            Type::Ptr(inner) => write!(f, "link {}", inner),
         }
     }
 }
@@ -136,6 +138,7 @@ pub enum AssignTarget {
     Ident(String),
     Index { base: Box<Expr>, index: Box<Expr> },
     Field { base: Box<Expr>, field: String },
+    Deref(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -145,6 +148,8 @@ pub enum Expr {
     Binary { op: BinOp, left: Box<Expr>, right: Box<Expr> },
     Unary { op: UnOp, operand: Box<Expr> },
     Call { callee: Box<Expr>, args: Vec<Expr> },
+    AddrOf(Box<Expr>),
+    Deref(Box<Expr>),
     Index { base: Box<Expr>, index: Box<Expr> },
     Field { base: Box<Expr>, field: String },
     New { class: String, args: Vec<Expr> },

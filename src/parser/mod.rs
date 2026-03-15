@@ -225,6 +225,11 @@ fn parse_params(stream: &mut TokenStream) -> Result<Vec<Param>> {
 
 fn parse_type(stream: &mut TokenStream) -> Result<Type> {
     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+    if stream.peek() == Some(&Token::Link) {
+        stream.consume();
+        let inner = parse_type(stream)?;
+        return Ok(Type::Ptr(Box::new(inner)));
+    }
     match stream.consume() {
         Some((Token::Ident(s), _, _)) => {
             Ok(match s.as_str() {
@@ -519,6 +524,16 @@ fn parse_factor(stream: &mut TokenStream) -> Result<Expr> {
 
 fn parse_unary(stream: &mut TokenStream) -> Result<Expr> {
     match stream.peek() {
+        Some(Token::Mark) => {
+            stream.consume();
+            let operand = parse_unary(stream)?;
+            Ok(Expr::AddrOf(Box::new(operand)))
+        }
+        Some(Token::Reach) => {
+            stream.consume();
+            let operand = parse_unary(stream)?;
+            Ok(Expr::Deref(Box::new(operand)))
+        }
         Some(Token::Minus) => {
             stream.consume();
             let operand = parse_unary(stream)?;
@@ -628,6 +643,7 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget> {
             base,
             index,
         }),
+        Expr::Deref(operand) => Ok(AssignTarget::Deref(operand)),
         _ => Err(Error::Parse {
             line: 1,
             col: 1,
