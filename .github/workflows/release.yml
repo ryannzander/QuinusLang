@@ -20,14 +20,13 @@ jobs:
         run: choco install innosetup -y
 
       - name: Install LLVM 17
-        uses: KyleMayes/install-llvm-action@v2
-        with:
-          version: "17"
-          directory: ${{ runner.temp }}/llvm
+        run: choco install llvm --version=17.0.6 -y --allow-downgrade --ia "/D=C:\LLVM"
 
       - name: Set LLVM env for build
         shell: pwsh
-        run: "LLVM_SYS_170_PREFIX=$env:LLVM_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
+        run: |
+          "LLVM_SYS_170_PREFIX=C:\LLVM" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "LLVM_PATH=C:\LLVM" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set version from tag
         shell: pwsh
