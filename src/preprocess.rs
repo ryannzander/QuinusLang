@@ -1,9 +1,73 @@
 //! Bring/module preprocessor for QuinusLang
 //! Reads .q files, resolves bring statements recursively, outputs flattened source.
+//! Handles module-level compile flags: #define, #if, #else, #endif.
 
 use crate::error::{Error, Result};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+/// Process #define, #if, #ifdef, #ifndef, #else, #endif. Modifies defines in place. Returns filtered source.
+pub fn apply_compile_flags(source: &str, defines: &mut HashSet<String>) -> String {
+    let mut out = String::new();
+    let mut stack: Vec<bool> = vec![true]; // true = take, false = skip. Top = current branch.
+
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let take = *stack.last().unwrap_or(&true);
+        if trimmed.starts_with("#define ") {
+            if take {
+                let rest = trimmed[7..].trim_start();
+                let name = rest
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_');
+                if !name.is_empty() {
+                    defines.insert(name.to_string());
+                }
+            }
+            continue;
+        }
+        if trimmed.starts_with("#if ") {
+            let rest = trimmed[4..].trim_start();
+            let cond = rest.split_whitespace().next().unwrap_or("");
+            let ok = defines.contains(cond) || cond == "1" || cond == "true";
+            stack.push(ok && take);
+            continue;
+        }
+        if trimmed == "#ifndef" || trimmed.starts_with("#ifndef ") {
+            let name = if trimmed == "#ifndef" {
+                ""
+            } else {
+                trimmed[8..].trim_start().split_whitespace().next().unwrap_or("")
+            };
+            let ok = !defines.contains(name);
+            stack.push(ok && take);
+            continue;
+        }
+        if trimmed.starts_with("#ifdef ") {
+            let name = trimmed[7..].trim_start().split_whitespace().next().unwrap_or("");
+            let ok = defines.contains(name);
+            stack.push(ok && take);
+            continue;
+        }
+        if trimmed == "#else" {
+            if let Some(top) = stack.last_mut() {
+                *top = !*top;
+            }
+            continue;
+        }
+        if trimmed == "#endif" {
+            stack.pop();
+            continue;
+        }
+        if take {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
 
 /// Resolve a bring path (e.g. ["compiler", "lexer"] or ["vec"]) to a file path.
 /// Resolution order: base_dir/path.q, base_dir/src/path.q, base_dir/stdlib/path.q
@@ -97,6 +161,7 @@ fn flatten_inner(
     base_dir: &Path,
     seen: &mut HashSet<String>,
     output: &mut String,
+    defines: &mut HashSet<String>,
 ) -> Result<()> {
     let brings = extract_brings(source);
     for path in brings {
@@ -109,10 +174,11 @@ fn flatten_inner(
         let sub_source = std::fs::read_to_string(&file_path).map_err(|e| Error::Package {
             message: format!("Failed to read {}: {}", file_path.display(), e),
         })?;
-        flatten_inner(&sub_source, base_dir, seen, output)?;
+        flatten_inner(&sub_source, base_dir, seen, output, defines)?;
     }
 
     let body = content_without_brings(source);
+    let body = apply_compile_flags(&body, defines);
     if !body.trim().is_empty() {
         if !output.is_empty() {
             output.push('\n');
@@ -123,9 +189,20 @@ fn flatten_inner(
 }
 
 /// Preprocess a .q file: resolve all bring statements recursively and return flattened source.
+/// Pass initial defines (e.g. from --define FOO) to apply_compile_flags.
 pub fn preprocess(source: &str, base_dir: &Path) -> Result<String> {
+    preprocess_with_defines(source, base_dir, &[])
+}
+
+/// Preprocess with optional compile-time defines (e.g. --define DEBUG).
+pub fn preprocess_with_defines(
+    source: &str,
+    base_dir: &Path,
+    defines: &[String],
+) -> Result<String> {
     let mut seen = HashSet::new();
+    let mut def_set: HashSet<String> = defines.iter().cloned().collect();
     let mut output = String::new();
-    flatten_inner(source, base_dir, &mut seen, &mut output)?;
+    flatten_inner(source, base_dir, &mut seen, &mut output, &mut def_set)?;
     Ok(output)
 }

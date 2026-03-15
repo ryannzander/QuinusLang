@@ -308,6 +308,9 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
                 out.push_str(&format!("    {}\n", instr));
             }
         }
+        Stmt::InlineC { code } => {
+            out.push_str(&format!("    ; inline C: {}\n", code));
+        }
         Stmt::While { cond, body } => {
             let loop_label = new_label();
             let end_label = new_label();
@@ -545,6 +548,11 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
             out.push_str(&format!("    call _{}_init\n", class));
             out.push_str("    mov rax, rcx\n");
         }
+        Expr::Ok(inner) | Expr::Err(inner) => {
+            emit_expr(out, inner, ctx)?;
+            // NASM backend: Result not fully supported, use inner value
+        }
+        Expr::Move(inner) => emit_expr(out, inner, ctx)?,
     }
     Ok(())
 }

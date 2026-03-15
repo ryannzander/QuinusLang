@@ -61,6 +61,7 @@ pub struct SymbolTable {
 pub struct Scope {
     pub vars: HashMap<String, Type>,
     pub mutable_vars: HashSet<String>,
+    pub moved_vars: HashSet<String>,
     pub funcs: HashMap<String, FuncSig>,
     pub structs: HashMap<String, StructDef>,
     pub classes: HashMap<String, ClassDef>,
@@ -336,6 +337,9 @@ fn is_assignable(from: &Type, to: &Type) -> bool {
     if let (Type::ArraySized(from_inner, from_n), Type::ArraySized(to_inner, to_n)) = (from, to) {
         return from_n == to_n && is_assignable(from_inner, to_inner);
     }
+    if let (Type::Result(from_ok, from_err), Type::Result(to_ok, to_err)) = (from, to) {
+        return is_assignable(from_ok, to_ok) && is_assignable(from_err, to_err);
+    }
     match (from, to) {
         (Type::Int, Type::U32 | Type::U64 | Type::I32 | Type::I64 | Type::Usize) => true,
         (Type::Int, Type::Float | Type::F32 | Type::F64) => true,
@@ -512,7 +516,7 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 check_stmt(symbol_table, s)?;
             }
         }
-        Stmt::InlineAsm { .. } => {}
+        Stmt::InlineAsm { .. } | Stmt::InlineC { .. } => {}
         Stmt::ExprStmt(e) => {
             check_expr(symbol_table, e)?;
         }
@@ -527,11 +531,33 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             }
         }
         Stmt::Choose { expr, arms } => {
-            check_expr(symbol_table, expr)?;
+            let expr_ty = check_expr(symbol_table, expr)?;
             for arm in arms {
+                let mut scope = Scope::default();
+                if let Type::Result(ok_ty, err_ty) = &expr_ty {
+                    match &arm.pattern {
+                        ChoosePattern::TupleVariant(name, bindings) => {
+                            let ty = if name == "Ok" {
+                                ok_ty.as_ref().clone()
+                            } else if name == "Err" {
+                                err_ty.as_ref().clone()
+                            } else {
+                                continue;
+                            };
+                            for b in bindings {
+                                if b != "_" {
+                                    scope.vars.insert(b.clone(), ty.clone());
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                symbol_table.scopes.push(scope);
                 for s in &arm.body {
                     check_stmt(symbol_table, s)?;
                 }
+                symbol_table.scopes.pop();
             }
         }
         Stmt::TryCatch {
@@ -556,10 +582,11 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
 
 /// Get the type of an expression, if type-checking succeeds.
 pub fn type_of_expr(symbol_table: &SymbolTable, expr: &Expr) -> Option<Type> {
-    check_expr(symbol_table, expr).ok()
+    let mut st = symbol_table.clone();
+    check_expr(&mut st, expr).ok()
 }
 
-fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
+fn check_expr(symbol_table: &mut SymbolTable, expr: &Expr) -> Result<Type> {
     match expr {
         Expr::Literal(l) => Ok(match l {
             Literal::Int(_) => Type::Int,
@@ -704,13 +731,16 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                 }
             } else if let Expr::Field { base, field } = callee.as_ref() {
                 if let Expr::Ident(mod_name) = base.as_ref() {
-                    if let Some(mod_funcs) = symbol_table.mod_functions.get(mod_name) {
-                        if let Some(sig) = mod_funcs.get(field) {
-                            for arg in args {
-                                check_expr(symbol_table, arg)?;
-                            }
-                            return Ok(sig.return_type.clone().unwrap_or(Type::Void));
+                    let ret_ty = symbol_table
+                        .mod_functions
+                        .get(mod_name)
+                        .and_then(|m| m.get(field))
+                        .and_then(|s| s.return_type.clone());
+                    if ret_ty.is_some() {
+                        for arg in args {
+                            check_expr(symbol_table, arg)?;
                         }
+                        return Ok(ret_ty.unwrap_or(Type::Void));
                     }
                 }
                 let _ = check_expr(symbol_table, base)?;
@@ -793,6 +823,23 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                 }
             }
             Err(semantic_err(format!("Unknown class: {}", class)))
+        }
+        Expr::Ok(inner) => {
+            let inner_ty = check_expr(symbol_table, inner)?;
+            Ok(Type::Result(Box::new(inner_ty), Box::new(Type::Void)))
+        }
+        Expr::Err(inner) => {
+            let inner_ty = check_expr(symbol_table, inner)?;
+            Ok(Type::Result(Box::new(Type::Void), Box::new(inner_ty)))
+        }
+        Expr::Move(inner) => {
+            let ty = check_expr(symbol_table, inner)?;
+            if let Expr::Ident(name) = inner.as_ref() {
+                if let Some(scope) = symbol_table.scopes.last_mut() {
+                    scope.moved_vars.insert(name.clone());
+                }
+            }
+            Ok(ty)
         }
     }
 }

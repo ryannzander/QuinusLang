@@ -18,15 +18,14 @@ craft main() -> void {
 }
 ```
 
-## Installation
+## Next Steps
 
-```bash
-cargo install --path .
-```
+- [Installation](install.md) — Installer, portable zip, or from source
+- [Quick Tour](tour.md) — 15-minute walkthrough
+- [Language Reference](language.md) — Full syntax
+- [Standard Library](stdlib-index.md) — Available modules
+- [CLI Reference](cli.md) — All commands
 
 ## Links
 
-- [Language Reference](language.md)
-- [CLI Reference](cli.md)
-- [Contributing](../CONTRIBUTING.md)
 - [GitHub](https://github.com/ryannzander/QuinusLang)

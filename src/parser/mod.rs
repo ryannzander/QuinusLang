@@ -378,6 +378,7 @@ fn parse_union_def(stream: &mut TokenStream) -> Result<UnionDef> {
         fields.push(FieldDef {
             name: field_name,
             ty,
+            bits: None,
         });
         if stream.peek() == Some(&Token::Comma) {
             stream.consume();
@@ -395,9 +396,25 @@ fn parse_struct_def(stream: &mut TokenStream) -> Result<StructDef> {
         let field_name = expect_ident(stream)?;
         stream.expect(":")?;
         let ty = parse_type(stream)?;
+        let bits = if stream.peek() == Some(&Token::Colon) {
+            stream.consume();
+            let n = expect_int_literal(stream)?;
+            if n < 0 || n > 64 {
+                let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+                return Err(Error::Parse {
+                    line,
+                    col,
+                    message: "Bit width must be 1..64".to_string(),
+                });
+            }
+            Some(n as u32)
+        } else {
+            None
+        };
         fields.push(FieldDef {
             name: field_name,
             ty,
+            bits,
         });
         if stream.peek() == Some(&Token::Comma) {
             stream.consume();
@@ -455,6 +472,7 @@ fn parse_class_def(stream: &mut TokenStream) -> Result<ClassDef> {
             fields.push(FieldDef {
                 name: field_name,
                 ty,
+                bits: None,
             });
             if stream.peek() == Some(&Token::Semicolon) {
                 stream.consume();
@@ -661,6 +679,18 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
             "usize" => Type::Usize,
             "f32" => Type::F32,
             "f64" => Type::F64,
+            "Result" => {
+                if stream.peek() == Some(&Token::LParen) {
+                    stream.consume();
+                    let ok_ty = parse_type(stream)?;
+                    stream.expect(",")?;
+                    let err_ty = parse_type(stream)?;
+                    stream.expect(")")?;
+                    Type::Result(Box::new(ok_ty), Box::new(err_ty))
+                } else {
+                    Type::Named("Result".to_string())
+                }
+            }
             _ => Type::Named(s),
         }),
         Some((Token::LBracket, _, _)) => {
@@ -704,6 +734,32 @@ fn parse_hazard_block(stream: &mut TokenStream) -> Result<Vec<Stmt>> {
             }
             stream.expect("}")?;
             stmts.push(Stmt::InlineAsm { instructions });
+            if stream.peek() == Some(&Token::Semicolon) {
+                stream.consume();
+            }
+        } else if stream.peek() == Some(&Token::Cblock) {
+            stream.consume();
+            stream.expect("{")?;
+            let mut code_parts = Vec::new();
+            while stream.peek() != Some(&Token::RBrace) {
+                if let Some((Token::Str(s), _, _)) = stream.consume() {
+                    code_parts.push(s);
+                } else {
+                    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+                    return Err(Error::Parse {
+                        line,
+                        col,
+                        message: "Expected string in cblock".to_string(),
+                    });
+                }
+            }
+            stream.expect("}")?;
+            stmts.push(Stmt::InlineC {
+                code: code_parts.join(" "),
+            });
+            if stream.peek() == Some(&Token::Semicolon) {
+                stream.consume();
+            }
         } else {
             stmts.push(parse_stmt(stream)?);
         }
@@ -1104,6 +1160,11 @@ fn parse_unary(stream: &mut TokenStream) -> Result<Expr> {
                 operand: Box::new(operand),
             })
         }
+        Some(Token::Move) => {
+            stream.consume();
+            let operand = parse_unary(stream)?;
+            Ok(Expr::Move(Box::new(operand)))
+        }
         _ => parse_postfix(stream),
     }
 }
@@ -1208,7 +1269,20 @@ fn parse_primary(stream: &mut TokenStream) -> Result<Expr> {
             let parts = parse_interpolate_content(&s, line, col)?;
             Ok(Expr::Interpolate(parts))
         }
-        Some((Token::Ident(s), _, _)) => Ok(Expr::Ident(s)),
+        Some((Token::Ident(s), _, _)) => {
+            if (s == "Ok" || s == "Err") && stream.peek() == Some(&Token::LParen) {
+                stream.consume();
+                let inner = parse_expr(stream)?;
+                stream.expect(")")?;
+                Ok(if s == "Ok" {
+                    Expr::Ok(Box::new(inner))
+                } else {
+                    Expr::Err(Box::new(inner))
+                })
+            } else {
+                Ok(Expr::Ident(s))
+            }
+        }
         Some((Token::This, _, _)) => Ok(Expr::Ident("this".to_string())),
         Some((Token::New, _, _)) => {
             let class = expect_ident(stream)?;

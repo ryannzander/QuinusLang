@@ -91,6 +91,8 @@ pub struct StructDef {
 pub struct FieldDef {
     pub name: String,
     pub ty: Type,
+    /// Bit width for bitfields (e.g. `flags: u32 : 8`). None = normal field.
+    pub bits: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -172,6 +174,7 @@ pub enum Type {
     F32,
     F64,
     Ptr(Box<Type>),
+    Result(Box<Type>, Box<Type>),
 }
 
 impl fmt::Display for Type {
@@ -206,6 +209,7 @@ impl fmt::Display for Type {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Type::Result(ok, err) => write!(f, "Result({}, {})", ok, err),
         }
     }
 }
@@ -254,6 +258,9 @@ pub enum Stmt {
     },
     InlineAsm {
         instructions: Vec<String>,
+    },
+    InlineC {
+        code: String,
     },
     ExprStmt(Expr),
     Return(Option<Expr>),
@@ -339,6 +346,9 @@ pub enum Expr {
         operand: Box<Expr>,
         target_ty: Type,
     },
+    Ok(Box<Expr>),
+    Err(Box<Expr>),
+    Move(Box<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

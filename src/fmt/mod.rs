@@ -37,7 +37,14 @@ fn format_top_level(out: &mut String, item: &TopLevelItem) {
         TopLevelItem::Struct(s) => {
             let _ = writeln!(out, "form {} {{", s.name);
             for f in &s.fields {
-                let _ = writeln!(out, "    {}: {},", f.name, f.ty);
+                match f.bits {
+                    Some(b) => {
+                        let _ = writeln!(out, "    {}: {} : {},", f.name, f.ty, b);
+                    }
+                    None => {
+                        let _ = writeln!(out, "    {}: {},", f.name, f.ty);
+                    }
+                }
             }
             let _ = writeln!(out, "}}");
         }
@@ -297,6 +304,9 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             }
             let _ = writeln!(out, "{}}}", pad);
         }
+        Stmt::InlineC { code } => {
+            let _ = writeln!(out, "{}cblock {{ \"{}\" }}", pad, code.replace('\\', "\\\\").replace('"', "\\\""));
+        }
         Stmt::Assign { target, value } => {
             let _ = write!(out, "{}", pad);
             format_assign_target(out, target);
@@ -434,6 +444,20 @@ fn format_expr(out: &mut String, expr: &Expr) {
                 }
             }
             out.push('`');
+        }
+        Expr::Ok(inner) => {
+            out.push_str("Ok(");
+            format_expr(out, inner);
+            out.push(')');
+        }
+        Expr::Move(inner) => {
+            let _ = write!(out, "move ");
+            format_expr(out, inner);
+        }
+        Expr::Err(inner) => {
+            out.push_str("Err(");
+            format_expr(out, inner);
+            out.push(')');
         }
         _ => {
             out.push_str("/* expr */");

@@ -26,6 +26,9 @@ enum Commands {
         /// Emit C only, do not compile
         #[arg(long)]
         emit_c: bool,
+        /// Define for #if (e.g. --define DEBUG)
+        #[arg(long, action = clap::ArgAction::Append)]
+        define: Vec<String>,
     },
     /// Build and run a QuinusLang program
     Run {
@@ -88,7 +91,8 @@ fn main() -> anyhow::Result<()> {
             path,
             release,
             emit_c,
-        } => cmd_build(&path, release, emit_c),
+            define,
+        } => cmd_build(&path, release, emit_c, &define),
         Commands::Run { path, release } => cmd_run(&path, release),
         Commands::Parse { path } => cmd_parse(&path),
         Commands::Init { path } => cmd_init(&path),
@@ -105,7 +109,7 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result<()> {
+fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool, defines: &[String]) -> anyhow::Result<()> {
     let (source, _entry_path) = find_entry(path)?;
     let (base, base_dir) = if path.is_file() {
         let parent = path.parent().unwrap_or(path).to_path_buf();
@@ -123,7 +127,7 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
     } else {
         (path.clone(), path.clone())
     };
-    let flattened = preprocess::preprocess(&source, base_dir.as_path())?;
+    let flattened = preprocess::preprocess_with_defines(&source, base_dir.as_path(), defines)?;
     let program = parse(&flattened)?;
     let annotated = analyze(&program)?;
     let c_code = codegen::c::generate(&annotated)?;
@@ -197,7 +201,7 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
 }
 
 fn cmd_run(path: &PathBuf, release: bool) -> anyhow::Result<()> {
-    cmd_build(path, release, false)?;
+    cmd_build(path, release, false, &[])?;
     let base = path.canonicalize().unwrap_or_else(|_| path.clone());
     let base = if base.is_file() {
         base.parent().unwrap_or(&base).to_path_buf()
@@ -454,7 +458,7 @@ fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 if pending && std::time::Instant::now().duration_since(last_event) >= debounce {
                     pending = false;
-                    if let Err(e) = cmd_build(path, false, false) {
+                    if let Err(e) = cmd_build(path, false, false, &[]) {
                         eprintln!("Build failed: {}", e);
                     }
                 }

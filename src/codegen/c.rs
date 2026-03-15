@@ -12,6 +12,8 @@ struct Ctx {
     program: Option<std::sync::Arc<crate::ast::Program>>,
     symbol_table: Option<std::sync::Arc<crate::semantic::SymbolTable>>,
     tuple_typedefs: std::collections::HashMap<String, String>,
+    result_typedefs: std::collections::HashMap<String, String>,
+    return_type: Option<Type>,
 }
 
 impl Default for Ctx {
@@ -22,6 +24,8 @@ impl Default for Ctx {
             program: None,
             symbol_table: None,
             tuple_typedefs: std::collections::HashMap::new(),
+            result_typedefs: std::collections::HashMap::new(),
+            return_type: None,
         }
     }
 }
@@ -64,6 +68,11 @@ fn type_to_c(ty: &Type) -> String {
         Type::F32 => "float".to_string(),
         Type::F64 => "double".to_string(),
         Type::Ptr(inner) => format!("{}*", type_to_c(inner).trim_end_matches('*')),
+        Type::Result(ok, err) => format!(
+            "struct {{ int is_ok; union {{ {} val; {} err; }} u; }}",
+            type_to_c(ok),
+            type_to_c(err)
+        ),
         Type::Tuple(inner) => {
             let name = tuple_typedef_name(inner);
             format!(
@@ -92,11 +101,35 @@ fn resolve_type(ty: &Type, ctx: &Ctx) -> Type {
     ty.clone()
 }
 
+fn result_typedef_name(ok_ty: &Type, err_ty: &Type) -> String {
+    let ok_part = match ok_ty {
+        Type::Str => "str".to_string(),
+        Type::I32 => "i32".to_string(),
+        Type::I64 => "i64".to_string(),
+        Type::U32 => "u32".to_string(),
+        Type::U64 => "u64".to_string(),
+        Type::Ptr(_) => "ptr".to_string(),
+        _ => "T".to_string(),
+    };
+    let err_part = match err_ty {
+        Type::I32 => "i32".to_string(),
+        Type::I64 => "i64".to_string(),
+        _ => "E".to_string(),
+    };
+    format!("ql_result_{}_{}", ok_part, err_part)
+}
+
 fn type_to_c_with_typedef(ty: &Type, ctx: &Ctx) -> String {
     let ty = resolve_type(ty, ctx);
     if let Type::Tuple(inner) = &ty {
         let name = tuple_typedef_name(inner);
         if ctx.tuple_typedefs.contains_key(&name) {
+            return name;
+        }
+    }
+    if let Type::Result(ok, err) = &ty {
+        let name = result_typedef_name(ok, err);
+        if ctx.result_typedefs.contains_key(&name) {
             return name;
         }
     }
@@ -133,6 +166,7 @@ fn type_to_printf(ty: &Type) -> &'static str {
         Type::I8 | Type::I16 => "%d",
         Type::Ptr(_) => "%p",
         Type::Tuple(_) => "%p",
+        Type::Result(_, _) => "%p",
     }
 }
 
@@ -184,6 +218,19 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
             Some(Type::Tuple(tys))
         }
         Expr::Cast { target_ty, .. } => Some(target_ty.clone()),
+        Expr::Ok(inner) => {
+            if let Some(Type::Result(ok_ty, err_ty)) = &ctx.return_type {
+                return Some(Type::Result(ok_ty.clone(), err_ty.clone()));
+            }
+            expr_type(inner, ctx).map(|t| Type::Result(Box::new(t), Box::new(Type::Void)))
+        }
+        Expr::Err(inner) => {
+            if let Some(Type::Result(ok_ty, err_ty)) = &ctx.return_type {
+                return Some(Type::Result(ok_ty.clone(), err_ty.clone()));
+            }
+            expr_type(inner, ctx).map(|t| Type::Result(Box::new(Type::Void), Box::new(t)))
+        }
+        Expr::Move(inner) => expr_type(inner, ctx),
         Expr::Binary { op, left, right } => {
             let lt = expr_type(left, ctx)?;
             let rt = expr_type(right, ctx)?;
@@ -229,6 +276,13 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <math.h>\n");
     out.push_str("#ifdef _WIN32\n#include <direct.h>\n#define getcwd _getcwd\n#else\n#include <unistd.h>\n#endif\n");
 
+    if program_uses_module(&program.program, "time") {
+        out.push_str("#include <time.h>\n");
+    }
+    if program_uses_module(&program.program, "simd") {
+        out.push_str("#include <xmmintrin.h>\n");
+    }
+
     // Emit str runtime if str module is used
     if program_uses_module(&program.program, "str") {
         out.push_str(STR_RUNTIME);
@@ -259,8 +313,8 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     if program_uses_module(&program.program, "ast") {
         out.push_str(AST_RUNTIME);
     }
-
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut result_typedefs_set: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &program.program.items {
         if let TopLevelItem::Fn(f) = item {
             if let Some(Type::Tuple(inner)) = &f.return_type {
@@ -279,7 +333,60 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
                     ));
                 }
             }
+            if let Some(Type::Result(ok, err)) = &f.return_type {
+                let name = result_typedef_name(ok, err);
+                if !result_typedefs_set.contains(&name) {
+                    result_typedefs_set.insert(name.clone());
+                    let ok_c = type_to_c(ok);
+                    let err_c = type_to_c(err);
+                    out.push_str(&format!(
+                        "typedef struct {{ int is_ok; union {{ {} val; {} err; }} u; }} {};\n",
+                        ok_c, err_c, name
+                    ));
+                }
+            }
         }
+        if let TopLevelItem::Mod(m) = item {
+            for sub in &m.items {
+                if let TopLevelItem::Fn(f) = sub {
+                    if let Some(Type::Result(ok, err)) = &f.return_type {
+                        let name = result_typedef_name(ok, err);
+                        if !result_typedefs_set.contains(&name) {
+                            result_typedefs_set.insert(name.clone());
+                            let ok_c = type_to_c(ok);
+                            let err_c = type_to_c(err);
+                            out.push_str(&format!(
+                                "typedef struct {{ int is_ok; union {{ {} val; {} err; }} u; }} {};\n",
+                                ok_c, err_c, name
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        if let TopLevelItem::Extern(e) = item {
+            if let Some(Type::Result(ok, err)) = &e.return_type {
+                let name = result_typedef_name(ok, err);
+                if !result_typedefs_set.contains(&name) {
+                    result_typedefs_set.insert(name.clone());
+                    let ok_c = type_to_c(ok);
+                    let err_c = type_to_c(err);
+                    out.push_str(&format!(
+                        "typedef struct {{ int is_ok; union {{ {} val; {} err; }} u; }} {};\n",
+                        ok_c, err_c, name
+                    ));
+                }
+            }
+        }
+    }
+
+    // Emit checked arithmetic runtime if math module is used (after typedefs)
+    if program_uses_module(&program.program, "math") {
+        out.push_str(CHECKED_ARITH_RUNTIME);
+    }
+    // Emit time runtime if time module is used
+    if program_uses_module(&program.program, "time") {
+        out.push_str(TIME_RUNTIME);
     }
 
     let mut ctx = Ctx::default();
@@ -296,6 +403,41 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
                     .collect();
                 ctx.tuple_typedefs
                     .insert(name.clone(), format!("struct {{ {}; }}", parts.join("; ")));
+            }
+            if let Some(Type::Result(ok, err)) = &f.return_type {
+                let name = result_typedef_name(ok, err);
+                let ok_c = type_to_c(ok);
+                let err_c = type_to_c(err);
+                ctx.result_typedefs.insert(
+                    name,
+                    format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                );
+            }
+        }
+        if let TopLevelItem::Mod(m) = item {
+            for sub in &m.items {
+                if let TopLevelItem::Fn(f) = sub {
+                    if let Some(Type::Result(ok, err)) = &f.return_type {
+                        let name = result_typedef_name(ok, err);
+                        let ok_c = type_to_c(ok);
+                        let err_c = type_to_c(err);
+                        ctx.result_typedefs.insert(
+                            name,
+                            format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                        );
+                    }
+                }
+            }
+        }
+        if let TopLevelItem::Extern(e) = item {
+            if let Some(Type::Result(ok, err)) = &e.return_type {
+                let name = result_typedef_name(ok, err);
+                let ok_c = type_to_c(ok);
+                let err_c = type_to_c(err);
+                ctx.result_typedefs.insert(
+                    name,
+                    format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                );
             }
         }
     }
@@ -336,6 +478,70 @@ static char* ql_str_concat(const char* a, const char* b) {
     strcat(r, b);
     return r;
 }
+"#;
+
+const CHECKED_ARITH_RUNTIME: &str = r#"
+#if defined(__GNUC__) || defined(__clang__)
+static ql_result_i32_i32 ql_add_checked_i32(int32_t a, int32_t b) {
+    int32_t r;
+    if (__builtin_add_overflow(a, b, &r)) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = r }} };
+    return x;
+}
+static ql_result_i32_i32 ql_sub_checked_i32(int32_t a, int32_t b) {
+    int32_t r;
+    if (__builtin_sub_overflow(a, b, &r)) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = r }} };
+    return x;
+}
+static ql_result_i32_i32 ql_mul_checked_i32(int32_t a, int32_t b) {
+    int32_t r;
+    if (__builtin_mul_overflow(a, b, &r)) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = r }} };
+    return x;
+}
+#else
+static ql_result_i32_i32 ql_add_checked_i32(int32_t a, int32_t b) {
+    int64_t r = (int64_t)a + (int64_t)b;
+    if (r < INT32_MIN || r > INT32_MAX) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = (int32_t)r }} };
+    return x;
+}
+static ql_result_i32_i32 ql_sub_checked_i32(int32_t a, int32_t b) {
+    int64_t r = (int64_t)a - (int64_t)b;
+    if (r < INT32_MIN || r > INT32_MAX) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = (int32_t)r }} };
+    return x;
+}
+static ql_result_i32_i32 ql_mul_checked_i32(int32_t a, int32_t b) {
+    int64_t r = (int64_t)a * (int64_t)b;
+    if (r < INT32_MIN || r > INT32_MAX) {
+        ql_result_i32_i32 x = { 0, {{ .err = 0 }} };
+        return x;
+    }
+    ql_result_i32_i32 x = { 1, {{ .val = (int32_t)r }} };
+    return x;
+}
+#endif
+"#;
+
+const TIME_RUNTIME: &str = r#"
+static int64_t ql_time_now(void) { return (int64_t)time(0); }
 "#;
 
 const VEC_RUNTIME: &str = r#"
@@ -725,6 +931,7 @@ fn emit_top_level_with_prefix(
                 "ql_ast_expr_left",
                 "ql_ast_expr_right",
                 "ql_ast_expr_args",
+                "ql_time_now",
             ];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
@@ -732,7 +939,7 @@ fn emit_top_level_with_prefix(
             let ret = e
                 .return_type
                 .as_ref()
-                .map(type_to_c)
+                .map(|t| type_to_c_with_typedef(t, ctx))
                 .unwrap_or_else(|| "void".to_string());
             out.push_str(&format!("extern {} {}(", ret, e.name));
             for (i, p) in e.params.iter().enumerate() {
@@ -811,7 +1018,12 @@ fn emit_union(out: &mut String, u: &UnionDef) -> Result<()> {
 fn emit_struct(out: &mut String, s: &StructDef) -> Result<()> {
     out.push_str("typedef struct {\n");
     for f in &s.fields {
-        out.push_str(&format!("    {} {};\n", type_to_c(&f.ty), f.name));
+        let c_ty = type_to_c(&f.ty);
+        if let Some(bits) = f.bits {
+            out.push_str(&format!("    {} {} : {};\n", c_ty, f.name, bits));
+        } else {
+            out.push_str(&format!("    {} {};\n", c_ty, f.name));
+        }
     }
     out.push_str("} ");
     out.push_str(&s.name);
@@ -889,6 +1101,8 @@ fn emit_fn_named(out: &mut String, f: &FnDef, ctx: &mut Ctx, name: &str) -> Resu
     fn_ctx.program = ctx.program.clone();
     fn_ctx.symbol_table = ctx.symbol_table.clone();
     fn_ctx.tuple_typedefs = ctx.tuple_typedefs.clone();
+    fn_ctx.result_typedefs = ctx.result_typedefs.clone();
+    fn_ctx.return_type = f.return_type.clone();
     for p in &f.params {
         fn_ctx.vars.insert(p.name.clone(), p.name.clone());
         fn_ctx.var_types.insert(p.name.clone(), p.ty.clone());
@@ -1061,6 +1275,15 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
                 ));
             }
         }
+        Stmt::InlineC { code } => {
+            let trimmed = code.trim();
+            out.push_str("    ");
+            out.push_str(trimmed);
+            if !trimmed.is_empty() && !trimmed.ends_with(';') && !trimmed.ends_with('}') {
+                out.push_str(";");
+            }
+            out.push_str("\n");
+        }
         Stmt::ExprStmt(e) => {
             out.push_str("    ");
             emit_expr(out, e, ctx)?;
@@ -1085,23 +1308,57 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
             }
         }
         Stmt::Choose { expr, arms } => {
-            out.push_str("    {\n    int _choose_val = (int)(");
-            emit_expr(out, expr, ctx)?;
-            out.push_str(");\n");
-            for (i, arm) in arms.iter().enumerate() {
-                let prefix = if i == 0 { "    if " } else { "    else if " };
-                let cond = match &arm.pattern {
-                    ChoosePattern::UnitVariant(_v) => format!("_choose_val == {}", i),
-                    ChoosePattern::TupleVariant(_, _) => format!("_choose_val == {}", i),
-                    ChoosePattern::Ident(_) => "1".to_string(),
-                };
-                out.push_str(&format!("{}({}) {{\n", prefix, cond));
-                for s in &arm.body {
-                    emit_stmt(out, s, ctx)?;
+            if let Some(Type::Result(ok_ty, err_ty)) = expr_type(expr, ctx) {
+                let name = result_typedef_name(&ok_ty, &err_ty);
+                out.push_str(&format!("    {{\n    {} _choose_r = ", name));
+                emit_expr(out, expr, ctx)?;
+                out.push_str(";\n");
+                for (i, arm) in arms.iter().enumerate() {
+                    let prefix = if i == 0 { "    if " } else { "    else if " };
+                    let (cond, bind_decl) = match &arm.pattern {
+                        ChoosePattern::TupleVariant(v, bindings) if v == "Ok" && bindings.len() == 1 => {
+                            let b = &bindings[0];
+                            let decl = decl_to_c_with_ctx(&ok_ty, b, ctx);
+                            ("_choose_r.is_ok".to_string(), Some((b.clone(), decl, "_choose_r.u.val", *ok_ty.clone())))
+                        }
+                        ChoosePattern::TupleVariant(v, bindings) if v == "Err" && bindings.len() == 1 => {
+                            let b = &bindings[0];
+                            let decl = decl_to_c_with_ctx(&err_ty, b, ctx);
+                            ("!_choose_r.is_ok".to_string(), Some((b.clone(), decl, "_choose_r.u.err", *err_ty.clone())))
+                        }
+                        _ => (format!("_choose_r.is_ok == {}", if i == 0 { 1 } else { 0 }), None),
+                    };
+                    out.push_str(&format!("{}({}) {{\n", prefix, cond));
+                    if let Some((var, decl, extract, bind_ty)) = bind_decl {
+                        out.push_str(&format!("    {} = {};\n", decl, extract));
+                        ctx.vars.insert(var.clone(), var.clone());
+                        ctx.var_types.insert(var.clone(), bind_ty);
+                    }
+                    for s in &arm.body {
+                        emit_stmt(out, s, ctx)?;
+                    }
+                    out.push_str("    }\n");
+                }
+                out.push_str("    }\n");
+            } else {
+                out.push_str("    {\n    int _choose_val = (int)(");
+                emit_expr(out, expr, ctx)?;
+                out.push_str(");\n");
+                for (i, arm) in arms.iter().enumerate() {
+                    let prefix = if i == 0 { "    if " } else { "    else if " };
+                    let cond = match &arm.pattern {
+                        ChoosePattern::UnitVariant(_v) => format!("_choose_val == {}", i),
+                        ChoosePattern::TupleVariant(_, _) => format!("_choose_val == {}", i),
+                        ChoosePattern::Ident(_) => "1".to_string(),
+                    };
+                    out.push_str(&format!("{}({}) {{\n", prefix, cond));
+                    for s in &arm.body {
+                        emit_stmt(out, s, ctx)?;
+                    }
+                    out.push_str("    }\n");
                 }
                 out.push_str("    }\n");
             }
-            out.push_str("    }\n");
         }
     }
     Ok(())
@@ -1536,6 +1793,31 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             emit_expr(out, operand, ctx)?;
             out.push_str("))");
         }
+        Expr::Ok(inner) => {
+            if let Some(Type::Result(ok_ty, err_ty)) = &ctx.return_type {
+                let name = result_typedef_name(ok_ty, err_ty);
+                out.push_str(&format!("(({}) {{ .is_ok = 1, .u = {{ .val = ", name));
+                emit_expr(out, inner, ctx)?;
+                out.push_str(" } } })");
+            } else {
+                out.push_str("(");
+                emit_expr(out, inner, ctx)?;
+                out.push_str(")");
+            }
+        }
+        Expr::Err(inner) => {
+            if let Some(Type::Result(ok_ty, err_ty)) = &ctx.return_type {
+                let name = result_typedef_name(ok_ty, err_ty);
+                out.push_str(&format!("(({}) {{ .is_ok = 0, .u = {{ .err = ", name));
+                emit_expr(out, inner, ctx)?;
+                out.push_str(" } } })");
+            } else {
+                out.push_str("(");
+                emit_expr(out, inner, ctx)?;
+                out.push_str(")");
+            }
+        }
+        Expr::Move(inner) => emit_expr(out, inner, ctx)?,
         Expr::New { class, args } => {
             out.push_str(&format!(
                 "(({{ {}* _p = ({}*)malloc(sizeof({})); ",

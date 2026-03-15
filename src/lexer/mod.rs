@@ -70,6 +70,8 @@ pub enum Token {
     Hazard,
     #[token("machine")]
     Machine,
+    #[token("cblock")]
+    Cblock,
     #[token("import")]
     Import,
     #[token("bring")]
@@ -86,6 +88,8 @@ pub enum Token {
     Defer,
     #[token("choose")]
     Choose,
+    #[token("move")]
+    Move,
     #[token("extern")]
     Extern,
     #[token("pub")]
