@@ -1,7 +1,5 @@
 # Language Reference
 
-See the [README](../README.md#language-reference) for full syntax.
-
 ## Key concepts
 
 - **Variables**: `make` (immutable), `make shift` (mutable)
@@ -12,6 +10,20 @@ See the [README](../README.md#language-reference) for full syntax.
 - **Cast**: `expr as type` (e.g. `x as usize`)
 - **String interpolation**: `` `Hello, ${name}!` `` — backtick strings with `${expr}`
 - **C FFI**: `extern craft name(args) -> ret;`
+
+## Example
+
+```q
+craft add(a: i32, b: i32) -> i32 {
+    send a + b;
+}
+
+craft main() -> void {
+    make x: i32 = add(1, 2);
+    print(`Result: ${x}`);
+    send;
+}
+```
 
 ## Standard Library
 

@@ -9,6 +9,15 @@ quinus init
 quinus run
 ```
 
+Your entry point is `src/main.q`:
+
+```q
+craft main() -> void {
+    print(42);
+    send;
+}
+```
+
 ## Installation
 
 ```bash

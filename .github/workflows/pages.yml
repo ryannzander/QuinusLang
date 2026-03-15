@@ -18,8 +18,10 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install MkDocs
-        run: pip install mkdocs-material
+      - name: Install MkDocs and QuinusLang lexer
+        run: |
+          pip install mkdocs-material
+          pip install ./pygments_quinus
 
       - name: Deploy
         run: mkdocs gh-deploy --force

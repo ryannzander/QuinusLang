@@ -15,3 +15,7 @@ Cargo.lock
 .cursor/
 # Package manager
 packages/
+# MkDocs build output
+site/
+# Python package build
+*.egg-info/
