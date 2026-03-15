@@ -558,7 +558,7 @@ fn emit_builtin_call<'ctx>(
             };
             let init = ctx.context.const_string(fmt.as_bytes(), true);
             let fmt_global = ctx.module.add_global(
-                init.get_type().into(),
+                init.get_type(),
                 None,
                 &format!("fmt_{}", STRING_COUNTER.fetch_add(1, Ordering::Relaxed)),
             );
@@ -593,7 +593,7 @@ fn emit_builtin_call<'ctx>(
             let init = ctx.context.const_string(fmt.as_bytes(), true);
             let fmt_global =
                 ctx.module
-                    .add_global(init.get_type().into(), None, &format!("fmt_{}", n));
+                    .add_global(init.get_type(), None, &format!("fmt_{}", n));
             fmt_global.set_constant(true);
             fmt_global.set_initializer(&init);
             let fmt_ptr =
@@ -626,7 +626,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let name = format!("str_{}", n);
             let init = ctx.context.const_string(s_nul.as_bytes(), true);
-            let global = ctx.module.add_global(init.get_type().into(), None, &name);
+            let global = ctx.module.add_global(init.get_type(), None, &name);
             global.set_constant(true);
             global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
             global.set_initializer(&init);
