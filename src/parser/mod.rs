@@ -33,6 +33,14 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
             stream.consume();
             Ok(TopLevelItem::Struct(parse_struct_def(stream)?))
         }
+        Some(Token::State) => {
+            stream.consume();
+            Ok(TopLevelItem::Enum(parse_enum_def(stream)?))
+        }
+        Some(Token::Fusion) => {
+            stream.consume();
+            Ok(TopLevelItem::Union(parse_union_def(stream)?))
+        }
         Some(Token::Class) => {
             stream.consume();
             Ok(TopLevelItem::Class(parse_class_def(stream)?))
@@ -48,7 +56,7 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected craft, form, class, realm, or import".to_string(),
+            message: "Expected craft, form, state, fusion, class, realm, or import".to_string(),
         }),
     }
 }
@@ -73,6 +81,40 @@ fn parse_fn_def(stream: &mut TokenStream) -> Result<FnDef> {
         return_type,
         body,
     })
+}
+
+fn parse_enum_def(stream: &mut TokenStream) -> Result<EnumDef> {
+    let name = expect_ident(stream)?;
+    stream.expect("{")?;
+    let mut variants = Vec::new();
+    while stream.peek() != Some(&Token::RBrace) {
+        variants.push(expect_ident(stream)?);
+        if stream.peek() == Some(&Token::Comma) {
+            stream.consume();
+        }
+    }
+    stream.expect("}")?;
+    Ok(EnumDef { name, variants })
+}
+
+fn parse_union_def(stream: &mut TokenStream) -> Result<UnionDef> {
+    let name = expect_ident(stream)?;
+    stream.expect("{")?;
+    let mut fields = Vec::new();
+    while stream.peek() != Some(&Token::RBrace) {
+        let field_name = expect_ident(stream)?;
+        stream.expect(":")?;
+        let ty = parse_type(stream)?;
+        fields.push(FieldDef {
+            name: field_name,
+            ty,
+        });
+        if stream.peek() == Some(&Token::Comma) {
+            stream.consume();
+        }
+    }
+    stream.expect("}")?;
+    Ok(UnionDef { name, fields })
 }
 
 fn parse_struct_def(stream: &mut TokenStream) -> Result<StructDef> {

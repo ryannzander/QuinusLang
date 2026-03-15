@@ -22,6 +22,8 @@ pub struct Scope {
     pub funcs: HashMap<String, FuncSig>,
     pub structs: HashMap<String, StructDef>,
     pub classes: HashMap<String, ClassDef>,
+    pub enums: HashMap<String, EnumDef>,
+    pub unions: HashMap<String, UnionDef>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +75,12 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
         TopLevelItem::Struct(s) => {
             scope.structs.insert(s.name.clone(), s.clone());
         }
+        TopLevelItem::Enum(e) => {
+            scope.enums.insert(e.name.clone(), e.clone());
+        }
+        TopLevelItem::Union(u) => {
+            scope.unions.insert(u.name.clone(), u.clone());
+        }
         TopLevelItem::Class(c) => {
             scope.classes.insert(c.name.clone(), c.clone());
         }
@@ -100,7 +108,7 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
             }
             symbol_table.scopes.pop();
         }
-        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Import(_) => {}
+        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) => {}
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
                 check_top_level(symbol_table, sub)?;
@@ -113,6 +121,11 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
 fn is_assignable(from: &Type, to: &Type) -> bool {
     if from == to {
         return true;
+    }
+    if let (Type::Named(from_name), Type::Named(to_name)) = (from, to) {
+        if from_name == to_name {
+            return true;
+        }
     }
     match (from, to) {
         (Type::Int, Type::U32 | Type::U64 | Type::I32 | Type::I64 | Type::Usize) => true,
@@ -253,6 +266,11 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                 }
                 if scope.funcs.contains_key(name) {
                     return Ok(Type::Void); // Function reference (used in calls)
+                }
+                for (enum_name, e) in &scope.enums {
+                    if e.variants.contains(name) {
+                        return Ok(Type::Named(enum_name.clone()));
+                    }
                 }
             }
             Err(Error::Semantic {

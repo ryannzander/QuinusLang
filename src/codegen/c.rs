@@ -88,6 +88,8 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
         TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
         TopLevelItem::Struct(s) => emit_struct(out, s)?,
         TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
+        TopLevelItem::Enum(e) => emit_enum(out, e)?,
+        TopLevelItem::Union(u) => emit_union(out, u)?,
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
                 emit_top_level(out, sub, ctx)?;
@@ -95,6 +97,28 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
         }
         TopLevelItem::Import(_) => {}
     }
+    Ok(())
+}
+
+fn emit_enum(out: &mut String, e: &EnumDef) -> Result<()> {
+    out.push_str(&format!("typedef enum {{\n"));
+    for (i, v) in e.variants.iter().enumerate() {
+        out.push_str(&format!("    {} = {}", v, i));
+        if i < e.variants.len() - 1 {
+            out.push_str(",");
+        }
+        out.push_str("\n");
+    }
+    out.push_str(&format!("}} {};\n\n", e.name));
+    Ok(())
+}
+
+fn emit_union(out: &mut String, u: &UnionDef) -> Result<()> {
+    out.push_str(&format!("typedef union {{\n"));
+    for f in &u.fields {
+        out.push_str(&format!("    {} {};\n", type_to_c(&f.ty), f.name));
+    }
+    out.push_str(&format!("}} {};\n\n", u.name));
     Ok(())
 }
 

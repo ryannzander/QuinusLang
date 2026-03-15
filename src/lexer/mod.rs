@@ -26,6 +26,10 @@ pub enum Token {
     Shift,
     #[token("form")]
     Form,
+    #[token("state")]
+    State,
+    #[token("fusion")]
+    Fusion,
     #[token("class")]
     Class,
     #[token("extends")]

@@ -12,8 +12,22 @@ pub enum TopLevelItem {
     Fn(FnDef),
     Struct(StructDef),
     Class(ClassDef),
+    Enum(EnumDef),
+    Union(UnionDef),
     Mod(ModDef),
     Import(Import),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnumDef {
+    pub name: String,
+    pub variants: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnionDef {
+    pub name: String,
+    pub fields: Vec<FieldDef>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

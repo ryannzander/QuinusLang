@@ -58,6 +58,7 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut CodegenContex
     match item {
         TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
         TopLevelItem::Struct(_) => {}
+        TopLevelItem::Enum(_) | TopLevelItem::Union(_) => {}
         TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
