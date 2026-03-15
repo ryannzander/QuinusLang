@@ -12,6 +12,11 @@ All notable changes to QuinusLang will be documented in this file.
 - Git package fetch: dependencies with `git = "url"` are cloned before build
 - Formatter: support for For, Foreach, Defer, Choose, Hazard, TryCatch, InlineAsm, Assign
 - `quinus check [path]` — parse + semantic only, no codegen
+- Phase 2.4: Improved semantic errors with "Did you mean?" hints
+- stdlib/str.q: trim, concat
+- `quinus publish` — validate and create Git tag
+- REPL: type inference display on success
+- `quinus lsp` — Language Server Protocol for IDE support
 
 ## [0.2.0] - 2025-03-14
 
