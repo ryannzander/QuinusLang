@@ -1,8 +1,47 @@
 //! Semantic analysis for QuinusLang
 
 use crate::ast::*;
-use crate::error::{Error, Result};
+use crate::error::{semantic_err, semantic_err_hint, Result};
 use std::collections::{HashMap, HashSet};
+
+fn find_similar(name: &str, symbol_table: &SymbolTable) -> Option<String> {
+    let mut candidates: Vec<&str> = Vec::new();
+    for scope in &symbol_table.scopes {
+        for k in scope.vars.keys() {
+            candidates.push(k);
+        }
+        for k in scope.funcs.keys() {
+            candidates.push(k);
+        }
+    }
+    let mut best: Option<(&str, usize)> = None;
+    for c in candidates {
+        let d = edit_distance(name, c);
+        if d <= 3 && (best.is_none() || d < best.unwrap().1) {
+            best = Some((c, d));
+        }
+    }
+    best.map(|(s, _)| format!("Did you mean `{}`?", s))
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut dp = vec![vec![0; b.len() + 1]; a.len() + 1];
+    for i in 0..=a.len() {
+        dp[i][0] = i;
+    }
+    for j in 0..=b.len() {
+        dp[0][j] = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            dp[i][j] = (dp[i - 1][j] + 1).min(dp[i][j - 1] + 1).min(dp[i - 1][j - 1] + cost);
+        }
+    }
+    dp[a.len()][b.len()]
+}
 
 #[derive(Debug, Clone)]
 pub struct AnnotatedProgram {
@@ -168,18 +207,14 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
         TopLevelItem::Const(c) => {
             let init_ty = check_expr(symbol_table, &c.init)?;
             if !is_assignable(&init_ty, &c.ty) {
-                return Err(Error::Semantic {
-                    message: format!("Cannot assign {} to constant {}", init_ty, c.ty),
-                });
+                return Err(semantic_err(format!("Cannot assign {} to constant {}", init_ty, c.ty)));
             }
         }
         TopLevelItem::Static(s) => {
             if let Some(init) = &s.init {
                 let init_ty = check_expr(symbol_table, init)?;
                 if !is_assignable(&init_ty, &s.ty) {
-                    return Err(Error::Semantic {
-                        message: format!("Cannot assign {} to static {}", init_ty, s.ty),
-                    });
+                    return Err(semantic_err(format!("Cannot assign {} to static {}", init_ty, s.ty)));
                 }
             }
         }
@@ -233,9 +268,7 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             let var_ty = ty.clone().unwrap_or_else(|| init_ty.clone());
             if let Some(decl_ty) = ty {
                 if !is_assignable(&init_ty, &decl_ty) {
-                    return Err(Error::Semantic {
-                        message: format!("Cannot assign {} to {}", init_ty, decl_ty),
-                    });
+                    return Err(semantic_err(format!("Cannot assign {} to {}", init_ty, decl_ty)));
                 }
             }
             let scope = symbol_table.scopes.last_mut().unwrap();
@@ -249,15 +282,11 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             let elem_tys = match &init_ty {
                 Type::Tuple(inner) => inner,
                 _ => {
-                    return Err(Error::Semantic {
-                        message: format!("Tuple destructuring requires tuple type, got {}", init_ty),
-                    });
+                    return Err(semantic_err(format!("Tuple destructuring requires tuple type, got {}", init_ty)));
                 }
             };
             if names.len() != elem_tys.len() {
-                return Err(Error::Semantic {
-                    message: format!("Tuple has {} elements but {} variables", elem_tys.len(), names.len()),
-                });
+                return Err(semantic_err(format!("Tuple has {} elements but {} variables", elem_tys.len(), names.len())));
             }
             let scope = symbol_table.scopes.last_mut().unwrap();
             for (name, ty) in names.iter().zip(elem_tys.iter()) {
@@ -281,22 +310,21 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                         }
                     }
                     if !found {
-                        return Err(Error::Semantic {
-                            message: format!("Undefined variable: {}", name),
+                        let hint = find_similar(name, symbol_table);
+                        return Err(if let Some(h) = hint {
+                            semantic_err_hint(format!("Undefined variable: {}", name), h)
+                        } else {
+                            semantic_err(format!("Undefined variable: {}", name))
                         });
                     }
                     if !is_mutable {
-                        return Err(Error::Semantic {
-                            message: format!("Cannot assign to immutable variable: {}", name),
-                        });
+                        return Err(semantic_err(format!("Cannot assign to immutable variable: {}", name)));
                     }
                 }
                 AssignTarget::Deref(operand) => {
                     let ty = check_expr(symbol_table, operand)?;
                     if !matches!(ty, Type::Ptr(_)) {
-                        return Err(Error::Semantic {
-                            message: "Cannot assign through non-pointer".to_string(),
-                        });
+                        return Err(semantic_err("Cannot assign through non-pointer"));
                     }
                 }
                 _ => {}
@@ -398,6 +426,11 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
     Ok(())
 }
 
+/// Get the type of an expression, if type-checking succeeds.
+pub fn type_of_expr(symbol_table: &SymbolTable, expr: &Expr) -> Option<Type> {
+    check_expr(symbol_table, expr).ok()
+}
+
 fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
     match expr {
         Expr::Literal(l) => Ok(match l {
@@ -426,8 +459,10 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     }
                 }
             }
-            Err(Error::Semantic {
-                message: format!("Undefined variable: {}", name),
+            Err(if let Some(h) = find_similar(name, symbol_table) {
+                semantic_err_hint(format!("Undefined variable: {}", name), h)
+            } else {
+                semantic_err(format!("Undefined variable: {}", name))
             })
         }
         Expr::Binary { op, left, right } => {
@@ -439,9 +474,7 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                         return Ok(Type::Str);
                     }
                     if lt != rt {
-                        return Err(Error::Semantic {
-                            message: "Type mismatch in arithmetic".to_string(),
-                        });
+                        return Err(semantic_err("Type mismatch in arithmetic"));
                     }
                     Ok(lt)
                 }
@@ -459,9 +492,7 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             let inner = check_expr(symbol_table, operand)?;
             match inner {
                 Type::Ptr(t) => Ok(*t),
-                _ => Err(Error::Semantic {
-                    message: "Cannot dereference non-pointer".to_string(),
-                }),
+                _ => Err(semantic_err("Cannot dereference non-pointer")),
             }
         }
         Expr::Unary { op, operand } => {
@@ -475,21 +506,21 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             if let Expr::Ident(name) = callee.as_ref() {
                 if name == "len" {
                     if args.len() != 1 {
-                        return Err(Error::Semantic { message: "len() takes exactly 1 argument".to_string() });
+                        return Err(semantic_err("len() takes exactly 1 argument"));
                     }
                     let arg_ty = check_expr(symbol_table, &args[0])?;
                     if !matches!(arg_ty, Type::Array(_) | Type::ArraySized(_, _)) {
-                        return Err(Error::Semantic { message: "len() requires an array argument".to_string() });
+                        return Err(semantic_err("len() requires an array argument"));
                     }
                     return Ok(Type::Usize);
                 }
                 if name == "strlen" {
                     if args.len() != 1 {
-                        return Err(Error::Semantic { message: "strlen() takes exactly 1 argument".to_string() });
+                        return Err(semantic_err("strlen() takes exactly 1 argument"));
                     }
                     let arg_ty = check_expr(symbol_table, &args[0])?;
                     if arg_ty != Type::Str {
-                        return Err(Error::Semantic { message: "strlen() requires a string argument".to_string() });
+                        return Err(semantic_err("strlen() requires a string argument"));
                     }
                     return Ok(Type::Usize);
                 }
@@ -501,17 +532,17 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                 }
                 if name == "assert" {
                     if args.len() != 1 {
-                        return Err(Error::Semantic { message: "assert() takes exactly 1 argument".to_string() });
+                        return Err(semantic_err("assert() takes exactly 1 argument"));
                     }
                     let arg_ty = check_expr(symbol_table, &args[0])?;
                     if arg_ty != Type::Bool {
-                        return Err(Error::Semantic { message: "assert() requires a bool argument".to_string() });
+                        return Err(semantic_err("assert() requires a bool argument"));
                     }
                     return Ok(Type::Void);
                 }
                 if name == "read" {
                     if !args.is_empty() {
-                        return Err(Error::Semantic { message: "read() takes no arguments".to_string() });
+                        return Err(semantic_err("read() takes no arguments"));
                     }
                     return Ok(Type::I32);
                 }
@@ -563,18 +594,18 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             }
             match base_ty {
                 Type::Array(inner) | Type::ArraySized(inner, _) => Ok(Type::Array(inner)),
-                _ => Err(Error::Semantic { message: "Slice requires array type".to_string() }),
+                _ => Err(semantic_err("Slice requires array type")),
             }
         }
         Expr::ArrayInit(elems) => {
             if elems.is_empty() {
-                return Err(Error::Semantic { message: "Array initializer cannot be empty".to_string() });
+                return Err(semantic_err("Array initializer cannot be empty"));
             }
             let first_ty = check_expr(symbol_table, &elems[0])?;
             for e in elems.iter().skip(1) {
                 let t = check_expr(symbol_table, e)?;
                 if !is_assignable(&t, &first_ty) && !is_assignable(&first_ty, &t) {
-                    return Err(Error::Semantic { message: "Array elements must have compatible types".to_string() });
+                    return Err(semantic_err("Array elements must have compatible types"));
                 }
             }
             Ok(Type::ArraySized(Box::new(first_ty), elems.len() as u32))
@@ -613,9 +644,7 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     return Ok(Type::Named(class.clone()));
                 }
             }
-            Err(Error::Semantic {
-                message: format!("Unknown class: {}", class),
-            })
+            Err(semantic_err(format!("Unknown class: {}", class)))
         }
     }
 }
