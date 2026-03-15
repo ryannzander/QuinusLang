@@ -117,6 +117,7 @@ pub enum Type {
     Str,
     Void,
     Array(Box<Type>),
+    ArraySized(Box<Type>, u32),
     Named(String),
     // Spec type names
     U8, U16, U32, U64,
@@ -135,6 +136,7 @@ impl fmt::Display for Type {
             Type::Str => write!(f, "str"),
             Type::Void => write!(f, "void"),
             Type::Array(inner) => write!(f, "[{}]", inner),
+            Type::ArraySized(inner, n) => write!(f, "[{}; {}]", inner, n),
             Type::Named(name) => write!(f, "{}", name),
             Type::U8 => write!(f, "u8"),
             Type::U16 => write!(f, "u16"),
@@ -189,6 +191,7 @@ pub enum Expr {
     Index { base: Box<Expr>, index: Box<Expr> },
     Field { base: Box<Expr>, field: String },
     New { class: String, args: Vec<Expr> },
+    ArrayInit(Vec<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

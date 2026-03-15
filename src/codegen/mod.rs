@@ -437,6 +437,11 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
             emit_expr(out, operand, ctx)?;
             out.push_str("    mov rax, [rax]\n");
         }
+        Expr::ArrayInit(elems) => {
+            if let Some(first) = elems.first() {
+                emit_expr(out, first, ctx)?;
+            }
+        }
         Expr::New { class, args } => {
             let size = 8 + 16; // vtable ptr + 2 fields for Point
             out.push_str(&format!("    mov ecx, {}\n", size));

@@ -19,6 +19,7 @@ fn type_to_c(ty: &Type) -> String {
         Type::Str => "char*".to_string(),
         Type::Void => "void".to_string(),
         Type::Array(_) => "long*".to_string(),
+        Type::ArraySized(inner, _) => type_to_c(inner).trim_end_matches('*').to_string(),
         Type::Named(name) => match name.as_str() {
             "Point" => "Point*".to_string(),
             _ => "void*".to_string(),
@@ -38,6 +39,13 @@ fn type_to_c(ty: &Type) -> String {
     }
 }
 
+fn decl_to_c(ty: &Type, name: &str) -> String {
+    match ty {
+        Type::ArraySized(inner, n) => format!("{} {}[{}]", type_to_c(inner).trim_end_matches('*'), name, n),
+        _ => format!("{} {}", type_to_c(ty), name),
+    }
+}
+
 fn type_to_printf(ty: &Type) -> &'static str {
     match ty {
         Type::Int | Type::I32 | Type::I64 => "%ld",
@@ -46,7 +54,7 @@ fn type_to_printf(ty: &Type) -> &'static str {
         Type::Bool => "%d",
         Type::Str => "%s",
         Type::Void => "%s",
-        Type::Array(_) | Type::Named(_) => "%p",
+        Type::Array(_) | Type::ArraySized(_, _) | Type::Named(_) => "%p",
         Type::I8 | Type::I16 => "%d",
         Type::Ptr(_) => "%p",
     }
@@ -86,12 +94,12 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
 fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Result<()> {
     match item {
         TopLevelItem::Const(c) => {
-            out.push_str(&format!("static const {} {} = ", type_to_c(&c.ty), c.name));
+            out.push_str(&format!("static const {} = ", decl_to_c(&c.ty, &c.name)));
             emit_expr(out, &c.init, ctx)?;
             out.push_str(";\n\n");
         }
         TopLevelItem::Static(s) => {
-            out.push_str(&format!("static {} {}", type_to_c(&s.ty), s.name));
+            out.push_str(&format!("static {} ", decl_to_c(&s.ty, &s.name)));
             if let Some(init) = &s.init {
                 out.push_str(" = ");
                 emit_expr(out, init, ctx)?;
@@ -205,6 +213,7 @@ fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
     let mut fn_ctx = Ctx::default();
     for p in &f.params {
         fn_ctx.vars.insert(p.name.clone(), p.name.clone());
+        fn_ctx.var_types.insert(p.name.clone(), p.ty.clone());
     }
     for stmt in &f.body {
         emit_stmt(out, stmt, &mut fn_ctx)?;
@@ -216,14 +225,11 @@ fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
 fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, ty, init, mutable: _ } => {
-            let cty = ty.as_ref().map(type_to_c).unwrap_or_else(|| "long".to_string());
+            let decl_ty = ty.clone().unwrap_or(Type::Int);
             ctx.vars.insert(name.clone(), name.clone());
-            if let Some(t) = ty.as_ref() {
-                ctx.var_types.insert(name.clone(), t.clone());
-            } else {
-                ctx.var_types.insert(name.clone(), Type::Int);
-            }
-            out.push_str(&format!("    {} {} = ", cty, name));
+            ctx.var_types.insert(name.clone(), decl_ty.clone());
+            let decl = decl_to_c(&decl_ty, name);
+            out.push_str(&format!("    {} = ", decl));
             emit_expr(out, init, ctx)?;
             out.push_str(";\n");
         }
@@ -313,7 +319,11 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
         }
         Stmt::InlineAsm { instructions } => {
             for instr in instructions {
-                out.push_str(&format!("    __asm__ __volatile__(\"{}\");\n", instr.replace('"', "\\\"")));
+                let escaped = instr.replace('\\', "\\\\").replace('"', "\\\"");
+                out.push_str(&format!(
+                    "    #if defined(__GNUC__) || defined(__clang__)\n    __asm__ __volatile__(\"{}\");\n    #else\n    /* MSVC x64: inline asm not supported - use MinGW/Clang for machine blocks */\n    #endif\n",
+                    escaped
+                ));
             }
         }
         Stmt::ExprStmt(e) => {
@@ -341,14 +351,11 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
 fn emit_for_init(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, ty, init, mutable: _ } => {
-            let cty = ty.as_ref().map(type_to_c).unwrap_or_else(|| "long".to_string());
+            let decl_ty = ty.clone().unwrap_or(Type::Int);
             ctx.vars.insert(name.clone(), name.clone());
-            if let Some(t) = ty.as_ref() {
-                ctx.var_types.insert(name.clone(), t.clone());
-            } else {
-                ctx.var_types.insert(name.clone(), Type::Int);
-            }
-            out.push_str(&format!("{} {} = ", cty, name));
+            ctx.var_types.insert(name.clone(), decl_ty.clone());
+            let decl = decl_to_c(&decl_ty, name);
+            out.push_str(&format!("{} = ", decl));
             emit_expr(out, init, ctx)?;
         }
         _ => {}
@@ -430,8 +437,13 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str(")");
         }
         Expr::Call { callee, args } => {
-            let is_print = matches!(callee.as_ref(), Expr::Ident(n) if n == "print");
-            if is_print {
+            let callee_name = callee.as_ref();
+            let is_print = matches!(callee_name, Expr::Ident(n) if n == "print");
+            let is_writeln = matches!(callee_name, Expr::Ident(n) if n == "writeln");
+            let is_write = matches!(callee_name, Expr::Ident(n) if n == "write");
+            let is_read = matches!(callee_name, Expr::Ident(n) if n == "read");
+            let is_len = matches!(callee_name, Expr::Ident(n) if n == "len");
+            if is_print || is_writeln {
                 let mut fmt_parts = Vec::new();
                 for arg in args {
                     let fmt = expr_type(arg, ctx)
@@ -441,12 +453,52 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                     fmt_parts.push(fmt);
                 }
                 let fmt_str = fmt_parts.join(" ");
-                out.push_str(&format!("printf(\"{}\\n\"", fmt_str));
+                let suffix = if is_writeln || is_print { "\\n\"" } else { "\"" };
+                out.push_str(&format!("printf(\"{}{}", fmt_str, suffix));
                 for arg in args {
                     out.push_str(", ");
                     emit_expr(out, arg, ctx)?;
                 }
                 out.push_str(")");
+            } else if is_write {
+                let mut fmt_parts = Vec::new();
+                for arg in args {
+                    let fmt = expr_type(arg, ctx)
+                        .as_ref()
+                        .map(type_to_printf)
+                        .unwrap_or("%ld");
+                    fmt_parts.push(fmt);
+                }
+                let fmt_str = fmt_parts.join(" ");
+                out.push_str(&format!("printf(\"{}\"", fmt_str));
+                for arg in args {
+                    out.push_str(", ");
+                    emit_expr(out, arg, ctx)?;
+                }
+                out.push_str(")");
+            } else if is_read {
+                out.push_str("({ int _r; scanf(\"%d\", &_r); (int32_t)_r; })");
+            } else if is_len {
+                if let Some(arg) = args.first() {
+                    if let Some(ty) = expr_type(arg, ctx) {
+                        match ty {
+                            Type::ArraySized(_, n) => out.push_str(&n.to_string()),
+                            _ => {
+                                out.push_str("(sizeof(");
+                                emit_expr(out, arg, ctx)?;
+                                out.push_str(") / sizeof((");
+                                emit_expr(out, arg, ctx)?;
+                                out.push_str(")[0]))");
+                            }
+                        }
+                    } else {
+                        out.push_str("(sizeof(");
+                        emit_expr(out, arg, ctx)?;
+                        out.push_str(") / sizeof((");
+                        emit_expr(out, arg, ctx)?;
+                        out.push_str(")[0]))");
+                    }
+                }
             } else if let Expr::Ident(name) = callee.as_ref() {
                 out.push_str(name);
                 out.push_str("(");
@@ -486,6 +538,16 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
         Expr::Deref(operand) => {
             out.push_str("*");
             emit_expr(out, operand, ctx)?;
+        }
+        Expr::ArrayInit(elems) => {
+            out.push_str("{ ");
+            for (i, e) in elems.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                emit_expr(out, e, ctx)?;
+            }
+            out.push_str(" }");
         }
         Expr::New { class, args } => {
             out.push_str(&format!(

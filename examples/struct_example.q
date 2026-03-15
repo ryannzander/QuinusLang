@@ -1,6 +1,6 @@
 form Point {
     x: int,
-    y: int
+    y: int,
 }
 
 craft main() -> void {

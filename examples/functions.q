@@ -1,5 +1,5 @@
 craft add(a: int, b: int) -> int {
-    send a + b;
+    send (a + b);
 }
 
 craft main() -> void {

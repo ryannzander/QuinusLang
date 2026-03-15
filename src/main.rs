@@ -1,7 +1,7 @@
 //! QuinusLang compiler CLI
 
 use clap::{Parser, Subcommand};
-use quinuslang::{analyze, codegen, parse, package};
+use quinuslang::{analyze, codegen, fmt, parse, parse_with_imports, package};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -72,7 +72,9 @@ fn main() -> anyhow::Result<()> {
 
 fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
     let (source, entry_path) = find_entry(path)?;
-    let program = parse(&source)?;
+    let base_dir = entry_path.parent().unwrap_or(path);
+    let packages = resolve_build_packages(base_dir);
+    let program = parse_with_imports(&source, base_dir, &packages)?;
     let annotated = analyze(&program)?;
     let c_code = codegen::c::generate(&annotated)?;
 
@@ -244,8 +246,51 @@ fn cmd_update() -> anyhow::Result<()> {
 }
 
 fn cmd_fmt(path: &PathBuf) -> anyhow::Result<()> {
-    println!("Format: not yet implemented for {}", path.display());
+    let paths: Vec<PathBuf> = if path.is_dir() {
+        walkdir::WalkDir::new(path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "q"))
+            .map(|e| e.path().to_path_buf())
+            .collect()
+    } else if path.extension().map_or(false, |e| e == "q") {
+        vec![path.clone()]
+    } else {
+        anyhow::bail!("No .q files found at {}", path.display());
+    };
+    for p in paths {
+        let source = std::fs::read_to_string(&p)?;
+        match parse(&source) {
+            Ok(program) => {
+                let formatted = fmt::format_program(&program);
+                if formatted != source {
+                    std::fs::write(&p, formatted)?;
+                    println!("Formatted {}", p.display());
+                }
+            }
+            Err(e) => eprintln!("Skip {}: {}", p.display(), e),
+        }
+    }
     Ok(())
+}
+
+fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> {
+    let manifest_path = base_dir.join("quinus.toml");
+    if !manifest_path.exists() {
+        return vec![];
+    }
+    let manifest = match package::manifest::parse_manifest(&manifest_path) {
+        Ok(m) => m,
+        Err(_) => return vec![],
+    };
+    let resolved = match package::resolve::resolve_dependencies(&manifest) {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
+    resolved
+        .into_iter()
+        .map(|p| (p.name, base_dir.join(p.path)))
+        .collect()
 }
 
 fn find_entry(path: &PathBuf) -> anyhow::Result<(String, PathBuf)> {

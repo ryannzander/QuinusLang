@@ -3,6 +3,7 @@
 use crate::ast::*;
 use crate::error::{Error, Result};
 use crate::lexer::{Token, TokenStream};
+use std::path::Path;
 
 pub fn parse(source: &str) -> Result<Program> {
     let mut stream = crate::lexer::tokenize(source)?;
@@ -11,6 +12,96 @@ pub fn parse(source: &str) -> Result<Program> {
 
 pub fn parse_from_stream(stream: &mut TokenStream) -> Result<Program> {
     parse_program(stream)
+}
+
+/// Resolve imports and return a flattened program. base_dir is the directory
+/// containing the entry file. packages is optional map of package name -> path for deps.
+pub fn parse_with_imports(
+    source: &str,
+    base_dir: &Path,
+    packages: &[(String, std::path::PathBuf)],
+) -> Result<Program> {
+    let program = parse(source)?;
+    resolve_imports(program, base_dir, packages)
+}
+
+fn resolve_imports(
+    program: Program,
+    base_dir: &Path,
+    packages: &[(String, std::path::PathBuf)],
+) -> Result<Program> {
+    let mut items = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for item in program.items {
+        match &item {
+            TopLevelItem::Import(imp) => {
+                let path_str = imp.path.join(".");
+                if seen.contains(&path_str) {
+                    continue;
+                }
+                seen.insert(path_str.clone());
+                let file_path = resolve_import_path(base_dir, packages, &imp.path)?;
+                let source = std::fs::read_to_string(&file_path).map_err(|e| Error::Package {
+                    message: format!("Failed to read {}: {}", file_path.display(), e),
+                })?;
+                let sub_dir = file_path.parent().unwrap_or(base_dir);
+                let sub_program = parse_with_imports(&source, sub_dir, packages)?;
+                for sub in sub_program.items {
+                    if !matches!(&sub, TopLevelItem::Import(_)) {
+                        items.push(sub);
+                    }
+                }
+            }
+            _ => items.push(item),
+        }
+    }
+    Ok(Program { items })
+}
+
+fn resolve_import_path(
+    base_dir: &Path,
+    packages: &[(String, std::path::PathBuf)],
+    path: &[String],
+) -> Result<std::path::PathBuf> {
+    if let Some(first) = path.first() {
+        for (pkg_name, pkg_path) in packages {
+            if pkg_name == first {
+                let rest: std::path::PathBuf = path.iter().skip(1).collect();
+                let sub_path = if rest.as_os_str().is_empty() {
+                    std::path::PathBuf::from("src/main.q")
+                } else {
+                    rest.with_extension("q")
+                };
+                let candidates = [
+                    pkg_path.join(&sub_path),
+                    pkg_path.join("src").join(sub_path.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
+                ];
+                for p in &candidates {
+                    if p.exists() {
+                        return Ok(p.clone());
+                    }
+                }
+            }
+        }
+    }
+    let rel: std::path::PathBuf = path.iter().collect();
+    let ext = rel.with_extension("q");
+    let candidates = [
+        base_dir.join(&ext),
+        base_dir.join("src").join(&ext),
+        base_dir.join(rel.join("mod.q")),
+        base_dir.join("stdlib").join(&ext),
+        base_dir.join("stdlib").join(rel.join("mod.q")),
+    ];
+    for p in &candidates {
+        if p.exists() {
+            return Ok(p.clone());
+        }
+    }
+    let path_str = path.join(".");
+    Err(Error::Package {
+        message: format!("Module not found: {} (tried {:?})", path_str, candidates),
+    })
 }
 
 fn parse_program(stream: &mut TokenStream) -> Result<Program> {
@@ -355,8 +446,15 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
         }
         Some((Token::LBracket, _, _)) => {
             let inner = parse_type(stream)?;
-            stream.expect("]")?;
-            Ok(Type::Array(Box::new(inner)))
+            if stream.peek() == Some(&Token::Semicolon) {
+                stream.consume();
+                let n = expect_int_literal(stream)?;
+                stream.expect("]")?;
+                Ok(Type::ArraySized(Box::new(inner), n as u32))
+            } else {
+                stream.expect("]")?;
+                Ok(Type::Array(Box::new(inner)))
+            }
         }
         _ => Err(Error::Parse {
             line,
@@ -792,6 +890,17 @@ fn parse_primary(stream: &mut TokenStream) -> Result<Expr> {
             stream.expect(")")?;
             Ok(expr)
         }
+        Some((Token::LBrace, _, _)) => {
+            let mut elems = Vec::new();
+            while stream.peek() != Some(&Token::RBrace) {
+                elems.push(parse_expr(stream)?);
+                if stream.peek() == Some(&Token::Comma) {
+                    stream.consume();
+                }
+            }
+            stream.expect("}")?;
+            Ok(Expr::ArrayInit(elems))
+        }
         _ => Err(Error::Parse {
             line,
             col,
@@ -828,6 +937,18 @@ fn expect_ident(stream: &mut TokenStream) -> Result<String> {
             line,
             col,
             message: "Expected identifier".to_string(),
+        }),
+    }
+}
+
+fn expect_int_literal(stream: &mut TokenStream) -> Result<i64> {
+    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+    match stream.consume() {
+        Some((Token::Int(n), _, _)) => Ok(n),
+        _ => Err(Error::Parse {
+            line,
+            col,
+            message: "Expected integer literal for array size".to_string(),
         }),
     }
 }

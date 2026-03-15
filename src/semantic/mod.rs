@@ -36,14 +36,13 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
     let mut symbol_table = SymbolTable::default();
     symbol_table.scopes.push(Scope::default());
 
-    // Register builtin: print (accepts any args, returns void)
-    symbol_table.scopes.last_mut().unwrap().funcs.insert(
-        "print".to_string(),
-        FuncSig {
-            params: vec![],
-            return_type: Some(Type::Void),
-        },
-    );
+    // Register builtins
+    let scope = symbol_table.scopes.last_mut().unwrap();
+    scope.funcs.insert("print".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
+    scope.funcs.insert("write".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
+    scope.funcs.insert("writeln".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
+    scope.funcs.insert("read".to_string(), FuncSig { params: vec![], return_type: Some(Type::I32) });
+    scope.funcs.insert("len".to_string(), FuncSig { params: vec![Type::Array(Box::new(Type::Int))], return_type: Some(Type::Usize) });
 
     for item in &program.items {
         register_top_level(&mut symbol_table, item)?;
@@ -150,6 +149,9 @@ fn is_assignable(from: &Type, to: &Type) -> bool {
         if from_name == to_name {
             return true;
         }
+    }
+    if let (Type::ArraySized(from_inner, from_n), Type::ArraySized(to_inner, to_n)) = (from, to) {
+        return from_n == to_n && is_assignable(from_inner, to_inner);
     }
     match (from, to) {
         (Type::Int, Type::U32 | Type::U64 | Type::I32 | Type::I64 | Type::Usize) => true,
@@ -360,22 +362,58 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             }
         }
         Expr::Call { callee, args } => {
-            for arg in args {
-                check_expr(symbol_table, arg)?;
-            }
             if let Expr::Ident(name) = callee.as_ref() {
+                if name == "len" {
+                    if args.len() != 1 {
+                        return Err(Error::Semantic { message: "len() takes exactly 1 argument".to_string() });
+                    }
+                    let arg_ty = check_expr(symbol_table, &args[0])?;
+                    if !matches!(arg_ty, Type::Array(_) | Type::ArraySized(_, _)) {
+                        return Err(Error::Semantic { message: "len() requires an array argument".to_string() });
+                    }
+                    return Ok(Type::Usize);
+                }
+                if name == "read" {
+                    if !args.is_empty() {
+                        return Err(Error::Semantic { message: "read() takes no arguments".to_string() });
+                    }
+                    return Ok(Type::I32);
+                }
+                for arg in args {
+                    check_expr(symbol_table, arg)?;
+                }
                 for scope in symbol_table.scopes.iter().rev() {
                     if let Some(sig) = scope.funcs.get(name) {
                         return Ok(sig.return_type.clone().unwrap_or(Type::Void));
                     }
                 }
+            } else {
+                for arg in args {
+                    check_expr(symbol_table, arg)?;
+                }
             }
             Ok(Type::Void)
         }
         Expr::Index { base, index } => {
-            let _ = check_expr(symbol_table, base)?;
-            check_expr(symbol_table, index)?;
-            Ok(Type::Int) // Simplified - array element type
+            let base_ty = check_expr(symbol_table, base)?;
+            let _ = check_expr(symbol_table, index)?;
+            match base_ty {
+                Type::Array(inner) | Type::ArraySized(inner, _) => Ok(*inner),
+                _ => Ok(Type::Int),
+            }
+        }
+        Expr::ArrayInit(elems) => {
+            if elems.is_empty() {
+                return Err(Error::Semantic { message: "Array initializer cannot be empty".to_string() });
+            }
+            let first_ty = check_expr(symbol_table, &elems[0])?;
+            for e in elems.iter().skip(1) {
+                let t = check_expr(symbol_table, e)?;
+                if !is_assignable(&t, &first_ty) && !is_assignable(&first_ty, &t) {
+                    return Err(Error::Semantic { message: "Array elements must have compatible types".to_string() });
+                }
+            }
+            Ok(Type::ArraySized(Box::new(first_ty), elems.len() as u32))
         }
         Expr::Field { base, field: _ } => {
             let _ = check_expr(symbol_table, base)?;
