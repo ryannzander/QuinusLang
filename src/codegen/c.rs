@@ -486,6 +486,8 @@ static char* ql_str_sub(const char* s, size_t start, size_t end) {
     r[n] = 0;
     return r;
 }
+static void* ql_usize_to_ptr(size_t u) { return (void*)(uintptr_t)u; }
+static size_t ql_ptr_to_usize(void* p) { return (size_t)(uintptr_t)p; }
 "#;
 
 const AST_RUNTIME: &str = r#"
@@ -570,6 +572,20 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Enum(e) => emit_enum(out, e)?,
         TopLevelItem::Union(u) => emit_union(out, u)?,
         TopLevelItem::Mod(m) => {
+            let prefix = Some(m.name.as_str());
+            for sub in &m.items {
+                if let TopLevelItem::Fn(f) = sub {
+                    let name = prefix.map(|p| format!("{}_{}", p, f.name)).unwrap_or_else(|| f.name.clone());
+                    let ret = f.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
+                    out.push_str(&format!("static {} {}(", ret, name));
+                    for (i, p) in f.params.iter().enumerate() {
+                        if i > 0 { out.push_str(", "); }
+                        out.push_str(&format!("{} {}", type_to_c(&p.ty), p.name));
+                    }
+                    out.push_str(");\n");
+                }
+            }
+            out.push_str("\n");
             for sub in &m.items {
                 emit_top_level_with_prefix(out, sub, ctx, Some(&m.name))?;
             }
@@ -577,7 +593,7 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
-            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "realloc", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat", "ql_vec_ptr_new", "ql_vec_ptr_push", "ql_vec_ptr_get", "ql_vec_ptr_len", "ql_vec_ptr_clear", "ql_vec_ptr_free", "ql_vec_u8_new", "ql_vec_u8_push", "ql_vec_u8_append", "ql_vec_u8_len", "ql_vec_u8_to_str", "ql_vec_u8_clear", "ql_vec_u8_free", "ql_map_str_ptr_new", "ql_map_str_ptr_put", "ql_map_str_ptr_get", "ql_map_str_ptr_has", "ql_map_str_ptr_len", "ql_map_str_ptr_free", "snprintf", "ql_fmt_sprintf_s", "ql_fmt_sprintf_ii", "ql_fmt_sprintf_si", "ql_fmt_sprintf_ss", "ql_fmt_alloc_i", "ql_fmt_alloc_s", "ql_fmt_alloc_si", "ql_token_create", "ql_token_ty", "ql_token_line", "ql_token_col", "ql_token_str", "ql_token_int", "ql_token_free", "ql_str_at", "ql_str_sub",
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "realloc", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat", "ql_vec_ptr_new", "ql_vec_ptr_push", "ql_vec_ptr_get", "ql_vec_ptr_len", "ql_vec_ptr_clear", "ql_vec_ptr_free", "ql_vec_u8_new", "ql_vec_u8_push", "ql_vec_u8_append", "ql_vec_u8_len", "ql_vec_u8_to_str", "ql_vec_u8_clear", "ql_vec_u8_free", "ql_map_str_ptr_new", "ql_map_str_ptr_put", "ql_map_str_ptr_get", "ql_map_str_ptr_has", "ql_map_str_ptr_len", "ql_map_str_ptr_free", "snprintf", "ql_fmt_sprintf_s", "ql_fmt_sprintf_ii", "ql_fmt_sprintf_si", "ql_fmt_sprintf_ss", "ql_fmt_alloc_i", "ql_fmt_alloc_s", "ql_fmt_alloc_si", "ql_token_create", "ql_token_ty", "ql_token_line", "ql_token_col", "ql_token_str", "ql_token_int", "ql_token_free", "ql_str_at", "ql_str_sub", "ql_usize_to_ptr", "ql_ptr_to_usize",
             "ql_ast_expr_alloc", "ql_ast_expr_set_tag", "ql_ast_expr_set_int", "ql_ast_expr_set_str", "ql_ast_expr_set_left", "ql_ast_expr_set_right",
             "ql_ast_expr_tag", "ql_ast_expr_int", "ql_ast_expr_str", "ql_ast_expr_left", "ql_ast_expr_right"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {

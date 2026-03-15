@@ -49,19 +49,14 @@ The bootstrap compiler produces valid C (e.g. `#include <stdio.h>\nint main(void
 
 ## What Needs to Be Done Next
 
-### Immediate: Expand Parser
+### Done: Parser Expansion (binary, precedence, parentheses)
 
-The parser only handles a single INT or IDENT. Next steps:
-
-1. **Binary expressions** – Parse `1 + 2`, `x * 3` (PLUS, MINUS, STAR, SLASH)
-2. **Precedence** – Add expression precedence (e.g. `*` before `+`)
-3. **Parentheses** – `(1 + 2) * 3`
-
-### Then: Expand AST & Codegen
-
-- Add `ast_helpers.new_expr_binary(left, op, right)` and wire it into the parser
-- Ensure `codegen.emit_expr` handles EXPR_BINARY (already implemented)
-- Ensure `semantic.check_expr` handles EXPR_BINARY (already implemented)
+- **Binary expressions** – Parse `1 + 2`, `x * 3` (PLUS, MINUS, STAR, SLASH)
+- **Precedence** – `*` and `/` bind tighter than `+` and `-`
+- **Parentheses** – `(1 + 2) * 3`
+- Added `ast_helpers.new_expr_binary(left, op, right)`
+- Added `ql_usize_to_ptr` / `ql_ptr_to_usize` for parse result indexing
+- Rust codegen: forward declarations for recursive module functions
 
 ### Medium-Term: Functions & Statements
 
