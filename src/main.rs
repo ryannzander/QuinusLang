@@ -98,14 +98,15 @@ fn main() -> anyhow::Result<()> {
 
 fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result<()> {
     let (source, _entry_path) = find_entry(path)?;
-    let base = if path.is_file() {
-        path.parent().unwrap_or(path).to_path_buf()
+    let (base, base_dir) = if path.is_file() {
+        let parent = path.parent().unwrap_or(path).to_path_buf();
+        let project_root = parent.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| parent.clone());
+        (parent, project_root)
     } else {
-        path.clone()
+        (path.clone(), path.clone())
     };
-    let base_dir = base.as_path();
-    let packages = resolve_build_packages(base_dir);
-    let program = parse_with_imports(&source, base_dir, &packages)?;
+    let packages = resolve_build_packages(base_dir.as_path());
+    let program = parse_with_imports(&source, base_dir.as_path(), &packages)?;
     let annotated = analyze(&program)?;
     let c_code = codegen::c::generate(&annotated)?;
 

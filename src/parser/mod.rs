@@ -83,8 +83,16 @@ fn resolve_imports(
     base_dir: &Path,
     packages: &[(String, std::path::PathBuf)],
 ) -> Result<Program> {
+    resolve_imports_with_seen(program, base_dir, packages, &mut std::collections::HashSet::new())
+}
+
+fn resolve_imports_with_seen(
+    program: Program,
+    base_dir: &Path,
+    packages: &[(String, std::path::PathBuf)],
+    seen: &mut std::collections::HashSet<String>,
+) -> Result<Program> {
     let mut items = Vec::new();
-    let mut seen = std::collections::HashSet::new();
     for item in program.items {
         match &item {
             TopLevelItem::Import(imp) => {
@@ -97,8 +105,14 @@ fn resolve_imports(
                 let source = std::fs::read_to_string(&file_path).map_err(|e| Error::Package {
                     message: format!("Failed to read {}: {}", file_path.display(), e),
                 })?;
-                let sub_dir = file_path.parent().unwrap_or(base_dir);
-                let sub_program = parse_with_imports(&source, sub_dir, packages)?;
+                // Use base_dir (project root) for nested imports so "compiler.tokens" resolves
+                // when importing from compiler/ast.q. Pass same seen to avoid duplicate modules.
+                let sub_program = resolve_imports_with_seen(
+                    parse(&source)?,
+                    base_dir,
+                    packages,
+                    seen,
+                )?;
                 for sub in sub_program.items {
                     if !matches!(&sub, TopLevelItem::Import(_)) {
                         items.push(sub);

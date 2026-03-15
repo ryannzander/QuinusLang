@@ -207,6 +207,32 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     if program_uses_module(&program.program, "str") {
         out.push_str(STR_RUNTIME);
     }
+    // Emit vec runtime if vec module is used
+    if program_uses_module(&program.program, "vec") {
+        out.push_str(VEC_RUNTIME);
+    }
+    // Emit lex runtime if lexer module is used (for compiler bootstrap)
+    if program_uses_module(&program.program, "lexer") {
+        if !program_uses_module(&program.program, "vec") {
+            out.push_str(VEC_RUNTIME);
+        }
+        out.push_str(LEX_RUNTIME);
+    }
+    // Emit fmt runtime if fmt module is used
+    if program_uses_module(&program.program, "fmt") {
+        out.push_str(FMT_RUNTIME);
+    }
+    // Emit map runtime if map module is used (depends on vec)
+    if program_uses_module(&program.program, "map") {
+        if !program_uses_module(&program.program, "vec") {
+            out.push_str(VEC_RUNTIME);
+        }
+        out.push_str(MAP_RUNTIME);
+    }
+    // Emit AST runtime if ast module is used (for compiler bootstrap)
+    if program_uses_module(&program.program, "ast") {
+        out.push_str(AST_RUNTIME);
+    }
 
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &program.program.items {
@@ -238,8 +264,17 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
             }
         }
     }
+    // First pass: emit modules (so their functions are defined before main)
     for item in &program.program.items {
-        emit_top_level(&mut out, item, &mut ctx)?;
+        if matches!(item, TopLevelItem::Mod(_)) {
+            emit_top_level(&mut out, item, &mut ctx)?;
+        }
+    }
+    // Second pass: emit top-level items except modules
+    for item in &program.program.items {
+        if !matches!(item, TopLevelItem::Mod(_)) {
+            emit_top_level(&mut out, item, &mut ctx)?;
+        }
     }
     Ok(out)
 }
@@ -266,6 +301,203 @@ static char* ql_str_concat(const char* a, const char* b) {
     strcat(r, b);
     return r;
 }
+"#;
+
+const VEC_RUNTIME: &str = r#"
+typedef struct { void** data; size_t len; size_t cap; } ql_vec_ptr_t;
+typedef struct { char* data; size_t len; size_t cap; } ql_vec_u8_t;
+static void* ql_vec_ptr_new(void) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)malloc(sizeof(ql_vec_ptr_t));
+    v->data = 0; v->len = 0; v->cap = 0;
+    return v;
+}
+static void ql_vec_ptr_push(void* vp, void* ptr) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    if (v->len >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 16;
+        v->data = (void**)realloc(v->data, ncap * sizeof(void*));
+        v->cap = ncap;
+    }
+    v->data[v->len++] = ptr;
+}
+static void* ql_vec_ptr_get(void* vp, size_t i) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    return (i < v->len) ? v->data[i] : 0;
+}
+static size_t ql_vec_ptr_len(void* vp) { return ((ql_vec_ptr_t*)vp)->len; }
+static void ql_vec_ptr_clear(void* vp) { ((ql_vec_ptr_t*)vp)->len = 0; }
+static void ql_vec_ptr_free(void* vp) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    free(v->data);
+    free(v);
+}
+static void* ql_vec_u8_new(void) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)malloc(sizeof(ql_vec_u8_t));
+    v->data = 0; v->len = 0; v->cap = 0;
+    return v;
+}
+static void ql_vec_u8_push(void* vp, unsigned char b) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    if (v->len >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 64;
+        v->data = (char*)realloc(v->data, ncap);
+        v->cap = ncap;
+    }
+    v->data[v->len++] = (char)b;
+}
+static void ql_vec_u8_append(void* vp, const char* s) {
+    if (!s) return;
+    size_t n = strlen(s);
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    while (v->len + n >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 64;
+        if (ncap < v->len + n + 1) ncap = v->len + n + 1;
+        v->data = (char*)realloc(v->data, ncap);
+        v->cap = ncap;
+    }
+    memcpy(v->data + v->len, s, n);
+    v->len += n;
+}
+static size_t ql_vec_u8_len(void* vp) { return ((ql_vec_u8_t*)vp)->len; }
+static char* ql_vec_u8_to_str(void* vp) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    char* r = (char*)malloc(v->len + 1);
+    memcpy(r, v->data, v->len);
+    r[v->len] = 0;
+    return r;
+}
+static void ql_vec_u8_clear(void* vp) { ((ql_vec_u8_t*)vp)->len = 0; }
+static void ql_vec_u8_free(void* vp) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    free(v->data);
+    free(v);
+}
+"#;
+
+const MAP_RUNTIME: &str = r#"
+typedef struct { char* key; void* value; } ql_map_pair_t;
+static void* ql_map_str_ptr_new(void) { return ql_vec_ptr_new(); }
+static void ql_map_str_ptr_put(void* mp, const char* key, void* value) {
+    void** vp = (void**)mp;
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p && strcmp(p->key, key) == 0) {
+            free(p->key);
+            p->value = value;
+            return;
+        }
+    }
+    ql_map_pair_t* p = (ql_map_pair_t*)malloc(sizeof(ql_map_pair_t));
+    p->key = key ? strdup(key) : 0;
+    p->value = value;
+    ql_vec_ptr_push(mp, p);
+}
+static void* ql_map_str_ptr_get(void* mp, const char* key) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)mp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p && p->key && key && strcmp(p->key, key) == 0)
+            return p->value;
+    }
+    return 0;
+}
+static int ql_map_str_ptr_has(void* mp, const char* key) {
+    return ql_map_str_ptr_get(mp, key) != 0;
+}
+static size_t ql_map_str_ptr_len(void* mp) {
+    return ql_vec_ptr_len(mp);
+}
+static void ql_map_str_ptr_free(void* mp) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)mp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p) { free(p->key); free(p); }
+    }
+    ql_vec_ptr_free(mp);
+}
+"#;
+
+const FMT_RUNTIME: &str = r#"
+static int ql_fmt_sprintf_s(char* buf, size_t size, const char* fmt, const char* s) {
+    return snprintf(buf, size, fmt, s ? s : "");
+}
+static int ql_fmt_sprintf_ii(char* buf, size_t size, const char* fmt, long a, long b) {
+    return snprintf(buf, size, fmt, a, b);
+}
+static int ql_fmt_sprintf_si(char* buf, size_t size, const char* fmt, const char* s, long a) {
+    return snprintf(buf, size, fmt, s ? s : "", a);
+}
+static int ql_fmt_sprintf_ss(char* buf, size_t size, const char* fmt, const char* a, const char* b) {
+    return snprintf(buf, size, fmt, a ? a : "", b ? b : "");
+}
+static char* ql_fmt_alloc_i(const char* fmt, long a) {
+    char buf[64];
+    int n = snprintf(buf, sizeof(buf), fmt, a);
+    char* r = (char*)malloc((size_t)n + 1);
+    memcpy(r, buf, (size_t)n + 1);
+    return r;
+}
+static char* ql_fmt_alloc_s(const char* fmt, const char* s) {
+    size_t n = strlen(s ? s : "") + 64;
+    char* r = (char*)malloc(n);
+    snprintf(r, n, fmt, s ? s : "");
+    return r;
+}
+static char* ql_fmt_alloc_si(const char* fmt, const char* s, long a) {
+    size_t n = strlen(s ? s : "") + 64;
+    char* r = (char*)malloc(n);
+    snprintf(r, n, fmt, s ? s : "", a);
+    return r;
+}
+"#;
+
+const LEX_RUNTIME: &str = r#"
+typedef struct { int ty; size_t line; size_t col; char* str_val; long int_val; } ql_token_t;
+static void* ql_token_create(int ty, size_t line, size_t col, const char* str_val, long int_val) {
+    ql_token_t* t = (ql_token_t*)malloc(sizeof(ql_token_t));
+    t->ty = ty; t->line = line; t->col = col;
+    t->str_val = str_val ? strdup(str_val) : 0;
+    t->int_val = int_val;
+    return t;
+}
+static int ql_token_ty(void* t) { return ((ql_token_t*)t)->ty; }
+static size_t ql_token_line(void* t) { return ((ql_token_t*)t)->line; }
+static size_t ql_token_col(void* t) { return ((ql_token_t*)t)->col; }
+static char* ql_token_str(void* t) { return ((ql_token_t*)t)->str_val; }
+static long ql_token_int(void* t) { return ((ql_token_t*)t)->int_val; }
+static void ql_token_free(void* t) {
+    ql_token_t* tok = (ql_token_t*)t;
+    free(tok->str_val);
+    free(tok);
+}
+static int ql_str_at(const char* s, size_t i) {
+    if (!s || i >= strlen(s)) return -1;
+    return (unsigned char)s[i];
+}
+static char* ql_str_sub(const char* s, size_t start, size_t end) {
+    if (!s || start >= end || end > strlen(s)) return strdup("");
+    size_t n = end - start;
+    char* r = (char*)malloc(n + 1);
+    memcpy(r, s + start, n);
+    r[n] = 0;
+    return r;
+}
+"#;
+
+const AST_RUNTIME: &str = r#"
+typedef struct { int tag; long int_val; char* str_val; void* left; void* right; void* args; } ast_Expr_t;
+static void* ql_ast_expr_alloc(void) {
+    return malloc(sizeof(ast_Expr_t));
+}
+static void ql_ast_expr_set_tag(void* p, int tag) { ((ast_Expr_t*)p)->tag = tag; }
+static void ql_ast_expr_set_int(void* p, long val) { ((ast_Expr_t*)p)->int_val = val; }
+static void ql_ast_expr_set_str(void* p, char* s) { ((ast_Expr_t*)p)->str_val = s; }
+static void ql_ast_expr_set_left(void* p, void* left) { ((ast_Expr_t*)p)->left = left; }
+static void ql_ast_expr_set_right(void* p, void* right) { ((ast_Expr_t*)p)->right = right; }
 "#;
 
 fn program_uses_module(program: &crate::ast::Program, name: &str) -> bool {
@@ -310,12 +542,14 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
 fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx, mod_prefix: Option<&str>) -> Result<()> {
     match item {
         TopLevelItem::Const(c) => {
-            out.push_str(&format!("static const {} = ", decl_to_c(&c.ty, &c.name)));
+            let c_name = mod_prefix.map(|p| format!("{}_{}", p, c.name)).unwrap_or_else(|| c.name.clone());
+            out.push_str(&format!("static const {} = ", decl_to_c(&c.ty, &c_name)));
             emit_expr(out, &c.init, ctx)?;
             out.push_str(";\n\n");
         }
         TopLevelItem::Static(s) => {
-            out.push_str(&format!("static {} ", decl_to_c(&s.ty, &s.name)));
+            let s_name = mod_prefix.map(|p| format!("{}_{}", p, s.name)).unwrap_or_else(|| s.name.clone());
+            out.push_str(&format!("static {} ", decl_to_c(&s.ty, &s_name)));
             if let Some(init) = &s.init {
                 out.push_str(" = ");
                 emit_expr(out, init, ctx)?;
@@ -338,7 +572,8 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
-            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat"];
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "realloc", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat", "ql_vec_ptr_new", "ql_vec_ptr_push", "ql_vec_ptr_get", "ql_vec_ptr_len", "ql_vec_ptr_clear", "ql_vec_ptr_free", "ql_vec_u8_new", "ql_vec_u8_push", "ql_vec_u8_append", "ql_vec_u8_len", "ql_vec_u8_to_str", "ql_vec_u8_clear", "ql_vec_u8_free", "ql_map_str_ptr_new", "ql_map_str_ptr_put", "ql_map_str_ptr_get", "ql_map_str_ptr_has", "ql_map_str_ptr_len", "ql_map_str_ptr_free", "snprintf", "ql_fmt_sprintf_s", "ql_fmt_sprintf_ii", "ql_fmt_sprintf_si", "ql_fmt_sprintf_ss", "ql_fmt_alloc_i", "ql_fmt_alloc_s", "ql_fmt_alloc_si", "ql_token_create", "ql_token_ty", "ql_token_line", "ql_token_col", "ql_token_str", "ql_token_int", "ql_token_free", "ql_str_at", "ql_str_sub",
+            "ql_ast_expr_alloc", "ql_ast_expr_set_tag", "ql_ast_expr_set_int", "ql_ast_expr_set_str", "ql_ast_expr_set_left", "ql_ast_expr_set_right"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
             }
@@ -972,6 +1207,15 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str("])");
         }
         Expr::Field { base, field } => {
+            if let Expr::Ident(mod_name) = base.as_ref() {
+                if let Some(ref st) = ctx.symbol_table {
+                    let is_module = st.scopes.iter().any(|s| s.modules.contains(mod_name));
+                    if is_module {
+                        out.push_str(&format!("{}_{}", mod_name, field));
+                        return Ok(());
+                    }
+                }
+            }
             emit_expr(out, base, ctx)?;
             out.push_str(&format!("->{}", field));
         }

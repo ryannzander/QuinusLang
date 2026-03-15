@@ -473,10 +473,29 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     if op == &BinOp::Add && lt == Type::Str && rt == Type::Str {
                         return Ok(Type::Str);
                     }
-                    if lt != rt {
+                    // Allow int/usize mix for index arithmetic (usize wins)
+                    // Allow int/i32/i64 mix (prefer the explicit type)
+                    let unified = if (lt == Type::Usize && matches!(rt, Type::Int | Type::I32 | Type::I64))
+                        || (rt == Type::Usize && matches!(lt, Type::Int | Type::I32 | Type::I64))
+                    {
+                        Type::Usize
+                    } else if (matches!(lt, Type::Int | Type::I32 | Type::I64)
+                        && matches!(rt, Type::Int | Type::I32 | Type::I64))
+                    {
+                        // Prefer i64 > i32 > int for result
+                        if lt == Type::I64 || rt == Type::I64 {
+                            Type::I64
+                        } else if lt == Type::I32 || rt == Type::I32 {
+                            Type::I32
+                        } else {
+                            Type::Int
+                        }
+                    } else if lt != rt {
                         return Err(semantic_err("Type mismatch in arithmetic"));
-                    }
-                    Ok(lt)
+                    } else {
+                        lt.clone()
+                    };
+                    Ok(unified)
                 }
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => {
                     Ok(Type::Bool)
