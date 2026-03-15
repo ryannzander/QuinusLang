@@ -375,6 +375,12 @@ fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> 
         Ok(m) => m,
         Err(_) => return vec![],
     };
+    let packages_dir = base_dir.join("packages");
+    for (name, dep) in &manifest.dependencies {
+        if let Err(e) = package::fetch::fetch_package(name, dep, &packages_dir) {
+            eprintln!("Warning: failed to fetch {}: {}", name, e);
+        }
+    }
     let resolved = match package::resolve::resolve_dependencies(&manifest) {
         Ok(r) => r,
         Err(_) => return vec![],
