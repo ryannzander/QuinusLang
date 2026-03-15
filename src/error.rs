@@ -95,3 +95,21 @@ pub fn semantic_err_span_hint(
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+impl From<inkwell::builder::BuilderError> for Error {
+    fn from(e: inkwell::builder::BuilderError) -> Self {
+        semantic_err(e.to_string())
+    }
+}
+
+impl From<inkwell::support::LLVMString> for Error {
+    fn from(e: inkwell::support::LLVMString) -> Self {
+        semantic_err(e.to_string())
+    }
+}
+
+impl From<String> for Error {
+    fn from(e: String) -> Self {
+        semantic_err(e)
+    }
+}

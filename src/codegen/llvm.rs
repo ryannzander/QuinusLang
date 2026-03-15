@@ -7,9 +7,11 @@ use crate::semantic::AnnotatedProgram;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::targets::{FileType, InitializationConfig, Target};
-use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue};
+use inkwell::targets::{
+    CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
+};
+use inkwell::types::{BasicMetadataTypeEnum, BasicType};
+use inkwell::values::{BasicValue, BasicValueEnum};
 use inkwell::OptimizationLevel;
 use std::collections::HashMap;
 use std::path::Path;
@@ -31,7 +33,7 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
         builder: &builder,
         vars: HashMap::new(),
         var_types: HashMap::new(),
-        symbol_table: program.symbol_table.clone(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
     };
 
     // Emit user functions
@@ -56,15 +58,16 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
 
     // Verify and write object file
     module.verify()?;
-    let target = Target::from_triple(&Target::get_default_triple())?;
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple)?;
     let target_machine = target
         .create_target_machine(
-            &Target::get_default_triple(),
+            &triple,
             "generic",
             "",
             OptimizationLevel::Default,
-            inkwell::targets::RelocMode::Default,
-            inkwell::targets::CodeModel::Default,
+            RelocMode::Default,
+            CodeModel::Default,
         )
         .ok_or_else(|| crate::error::semantic_err("Failed to create target machine"))?;
 
@@ -88,7 +91,7 @@ pub fn compile_to_ir(program: &AnnotatedProgram, ir_path: &Path) -> Result<()> {
         builder: &builder,
         vars: HashMap::new(),
         var_types: HashMap::new(),
-        symbol_table: program.symbol_table.clone(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
     };
 
     for item in &program.program.items {
@@ -132,7 +135,7 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
         builder: &builder,
         vars: HashMap::new(),
         var_types: HashMap::new(),
-        symbol_table: program.symbol_table.clone(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
     };
 
     for item in &program.program.items {
@@ -563,7 +566,7 @@ fn emit_builtin_call<'ctx>(
                 &format!("fmt_{}", STRING_COUNTER.fetch_add(1, Ordering::Relaxed)),
             );
             fmt_global.set_constant(true);
-            fmt_global.set_initializer(&ctx.context.const_string(fmt_cstr.as_bytes(), true));
+            fmt_global.set_initializer(&ctx.context.const_string(fmt.as_bytes(), true));
             let fmt_ptr = fmt_global.as_pointer_value();
 
             let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum> = vec![fmt_ptr.into()];
@@ -626,7 +629,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 &name,
             );
             global.set_constant(true);
-            global.set_unnamed_address(inkwell::module::UnnamedAddress::Global);
+            global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
             global.set_initializer(&ctx.context.const_string(s_nul.as_bytes(), true));
             let ptr = ctx.builder.build_pointer_cast(
                 global.as_pointer_value(),
@@ -852,11 +855,11 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                     .collect::<Vec<_>>(),
                 "call",
             )?;
-            if call.get_type().is_void_type() {
-                Ok(ctx.context.i64_type().const_zero().into())
-            } else {
-                Ok(call.try_as_basic_value().left().unwrap().into())
-            }
+            Ok(call
+                .try_as_basic_value()
+                .basic()
+                .map(|v| v.into())
+                .unwrap_or_else(|| ctx.context.i64_type().const_zero().into()))
         }
         _ => Err(crate::error::semantic_err(format!(
             "LLVM backend: unsupported expression {:?}",
