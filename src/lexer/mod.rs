@@ -8,22 +8,24 @@ use std::fmt;
 #[logos(skip r"[ \t\r\n]+")]
 #[logos(skip r"//[^\n]*")]
 pub enum Token {
-    #[token("if")]
-    If,
-    #[token("else")]
-    Else,
+    #[token("check")]
+    Check,
+    #[token("otherwise")]
+    Otherwise,
     #[token("for")]
     For,
-    #[token("while")]
-    While,
-    #[token("func")]
-    Func,
-    #[token("return")]
-    Return,
-    #[token("var")]
-    Var,
-    #[token("struct")]
-    Struct,
+    #[token("loopwhile")]
+    Loopwhile,
+    #[token("craft")]
+    Craft,
+    #[token("send")]
+    Send,
+    #[token("make")]
+    Make,
+    #[token("shift")]
+    Shift,
+    #[token("form")]
+    Form,
     #[token("class")]
     Class,
     #[token("extends")]
@@ -40,8 +42,8 @@ pub enum Token {
     Impl,
     #[token("implements")]
     Implements,
-    #[token("mod")]
-    Mod,
+    #[token("realm")]
+    Realm,
     #[token("import")]
     Import,
     #[token("try")]

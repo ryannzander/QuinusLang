@@ -3,9 +3,9 @@ use quinuslang::{analyze, parse};
 #[test]
 fn test_full_pipeline_hello() {
     let source = r#"
-func main() -> void {
-    var x: int = 42;
-    return;
+craft main() -> void {
+    make shift x: int = 42;
+    send;
 }
 "#;
     let program = parse(source).unwrap();
@@ -16,12 +16,12 @@ func main() -> void {
 #[test]
 fn test_full_pipeline_functions() {
     let source = r#"
-func add(a: int, b: int) -> int {
-    return a + b;
+craft add(a: int, b: int) -> int {
+    send a + b;
 }
-func main() -> void {
-    var x: int = add(1, 2);
-    return;
+craft main() -> void {
+    make shift x: int = add(1, 2);
+    send;
 }
 "#;
     let program = parse(source).unwrap();

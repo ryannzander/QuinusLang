@@ -14,3 +14,4 @@ clap = { version = "4", features = ["derive"] }
 thiserror = "1.0"
 anyhow = "1.0"
 logos = "0.14"
+cc = "1.0"

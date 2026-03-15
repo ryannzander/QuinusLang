@@ -33,6 +33,15 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
     let mut symbol_table = SymbolTable::default();
     symbol_table.scopes.push(Scope::default());
 
+    // Register builtin: print (accepts any args, returns void)
+    symbol_table.scopes.last_mut().unwrap().funcs.insert(
+        "print".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::Void),
+        },
+    );
+
     for item in &program.items {
         register_top_level(&mut symbol_table, item)?;
     }

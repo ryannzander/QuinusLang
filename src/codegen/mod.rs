@@ -1,4 +1,6 @@
-//! Code generator - emits x86/x64 assembly (NASM format)
+//! Code generator - assembly and C backends
+
+pub mod c;
 
 use crate::ast::*;
 use crate::error::Result;

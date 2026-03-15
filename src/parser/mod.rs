@@ -25,11 +25,11 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
 
     match stream.peek() {
-        Some(Token::Func) => {
+        Some(Token::Craft) => {
             stream.consume();
             Ok(TopLevelItem::Fn(parse_fn_def(stream)?))
         }
-        Some(Token::Struct) => {
+        Some(Token::Form) => {
             stream.consume();
             Ok(TopLevelItem::Struct(parse_struct_def(stream)?))
         }
@@ -37,7 +37,7 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
             stream.consume();
             Ok(TopLevelItem::Class(parse_class_def(stream)?))
         }
-        Some(Token::Mod) => {
+        Some(Token::Realm) => {
             stream.consume();
             Ok(TopLevelItem::Mod(parse_mod_def(stream)?))
         }
@@ -48,7 +48,7 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected func, struct, class, mod, or import".to_string(),
+            message: "Expected craft, form, class, realm, or import".to_string(),
         }),
     }
 }
@@ -133,7 +133,7 @@ fn parse_class_def(stream: &mut TokenStream) -> Result<ClassDef> {
             let body = parse_block(stream)?;
             stream.expect("}")?;
             init = Some(InitDef { params, body });
-        } else if stream.peek() == Some(&Token::Func) {
+        } else if stream.peek() == Some(&Token::Craft) {
             stream.consume();
             methods.push(parse_method_def(stream)?);
         } else if matches!(stream.peek(), Some(Token::Ident(_))) {
@@ -264,7 +264,7 @@ fn parse_block(stream: &mut TokenStream) -> Result<Vec<Stmt>> {
 
 fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
     match stream.peek() {
-        Some(Token::If) => {
+        Some(Token::Check) => {
             stream.consume();
             stream.expect("(")?;
             let cond = parse_expr(stream)?;
@@ -272,7 +272,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             stream.expect("{")?;
             let then_body = parse_block(stream)?;
             stream.expect("}")?;
-            let else_body = if stream.peek() == Some(&Token::Else) {
+            let else_body = if stream.peek() == Some(&Token::Otherwise) {
                 stream.consume();
                 stream.expect("{")?;
                 let body = parse_block(stream)?;
@@ -318,7 +318,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 body,
             })
         }
-        Some(Token::While) => {
+        Some(Token::Loopwhile) => {
             stream.consume();
             stream.expect("(")?;
             let cond = parse_expr(stream)?;
@@ -328,7 +328,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             stream.expect("}")?;
             Ok(Stmt::While { cond, body })
         }
-        Some(Token::Return) => {
+        Some(Token::Send) => {
             stream.consume();
             let expr = if stream.peek() != Some(&Token::Semicolon) {
                 Some(parse_expr(stream)?)
@@ -356,8 +356,11 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 catch_body,
             })
         }
-        Some(Token::Var) => {
+        Some(Token::Make) => {
             stream.consume();
+            if stream.peek() == Some(&Token::Shift) {
+                stream.consume();
+            }
             let name = expect_ident(stream)?;
             let ty = if stream.peek() == Some(&Token::Colon) {
                 stream.consume();

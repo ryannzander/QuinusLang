@@ -1,9 +1,9 @@
-struct Point {
+form Point {
     x: int,
     y: int
 }
 
-func main() -> void {
-    var x: int = 0;
-    return;
+craft main() -> void {
+    make shift x: int = 0;
+    send;
 }

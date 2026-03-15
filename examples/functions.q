@@ -1,8 +1,9 @@
-func add(a: int, b: int) -> int {
-    return a + b;
+craft add(a: int, b: int) -> int {
+    send a + b;
 }
 
-func main() -> void {
-    var x: int = add(1, 2);
-    return;
+craft main() -> void {
+    make shift x: int = add(1, 2);
+    print(x);
+    send;
 }

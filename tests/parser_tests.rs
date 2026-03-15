@@ -3,9 +3,9 @@ use quinuslang::parse;
 #[test]
 fn test_parse_simple_fn() {
     let source = r#"
-func main() -> void {
-    var x: int = 42;
-    return;
+craft main() -> void {
+    make shift x: int = 42;
+    send;
 }
 "#;
     let program = parse(source).unwrap();

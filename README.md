@@ -14,7 +14,7 @@ cargo build
 # Create a new package
 quinus init
 
-# Compile a program
+# Compile to .exe (requires NASM + MinGW GCC)
 quinus build
 quinus build path/to/file.q
 
@@ -96,4 +96,7 @@ var p: Point = new Point(1, 2);
 ## Requirements
 
 - Rust (for building the compiler)
-- NASM or MSVC (for assembling output)
+- **NASM**: https://nasm.us/
+- **MinGW GCC** or **MSVC** (for linking)
+
+`quinus build` compiles to machine code: .q → assembly → NASM → .obj → link → .exe

@@ -3,6 +3,7 @@
 use clap::{Parser, Subcommand};
 use quinuslang::{analyze, codegen, parse, package};
 use std::path::PathBuf;
+use std::process::Command;
 
 #[derive(Parser)]
 #[command(name = "quinus")]
@@ -14,7 +15,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Compile a QuinusLang source file
+    /// Compile a QuinusLang source file to executable
     Build {
         #[arg(default_value = ".")]
         path: PathBuf,
@@ -73,7 +74,7 @@ fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
     let (source, entry_path) = find_entry(path)?;
     let program = parse(&source)?;
     let annotated = analyze(&program)?;
-    let asm = codegen::generate(&annotated)?;
+    let c_code = codegen::c::generate(&annotated)?;
 
     let base = if entry_path.is_file() {
         entry_path.parent().unwrap_or(path)
@@ -82,17 +83,73 @@ fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
     };
     let out_dir = base.join("build");
     std::fs::create_dir_all(&out_dir)?;
-    let asm_path = out_dir.join("output.asm");
-    std::fs::write(&asm_path, asm)?;
+    let c_path = out_dir.join("output.c");
+    std::fs::write(&c_path, c_code)?;
 
-    println!("Compiled to {}", asm_path.display());
-    Ok(())
+    let exe_path = out_dir.join("output.exe");
+
+    let targets: Vec<&str> = if std::env::consts::OS == "windows" {
+        vec!["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu"]
+    } else {
+        vec!["x86_64-unknown-linux-gnu"]
+    };
+
+    std::env::set_var("OPT_LEVEL", "0");
+    std::env::set_var("OUT_DIR", &out_dir);
+    std::env::set_var("PROFILE", "debug");
+    std::env::set_var("DEBUG", "true");
+
+    for target in targets {
+        std::env::set_var("TARGET", target);
+        std::env::set_var("HOST", target);
+
+        let compiler = match cc::Build::new()
+            .file(&c_path)
+            .cpp(false)
+            .try_get_compiler()
+        {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        let mut cmd = compiler.to_command();
+        cmd.arg(&c_path);
+        if compiler.is_like_msvc() {
+            cmd.arg(format!("/Fe:{}", exe_path.display()));
+        } else {
+            cmd.arg("-o");
+            cmd.arg(&exe_path);
+        }
+
+        if cmd.status().map(|s| s.success()).unwrap_or(false) {
+            println!("Compiled to {}", exe_path.display());
+            return Ok(());
+        }
+    }
+
+    anyhow::bail!(
+        "C compiler failed. Install MinGW (winget install mingw), MSVC Build Tools, or Clang.\n\
+         C source: {}",
+        c_path.display()
+    )
 }
 
 fn cmd_run(path: &PathBuf) -> anyhow::Result<()> {
     cmd_build(path)?;
-    // Would invoke assembler + linker here
-    println!("Run: assemble and link target/output.asm to produce executable");
+    let base = path.canonicalize().unwrap_or_else(|_| path.clone());
+    let base = if base.is_file() {
+        base.parent().unwrap_or(&base).to_path_buf()
+    } else {
+        base
+    };
+    let exe_path = base.join("build").join("output.exe");
+    if exe_path.exists() {
+        let status = Command::new(&exe_path).status()?;
+        std::process::exit(status.code().unwrap_or(1));
+    } else {
+        println!("Executable not found. Build may have produced assembly only.");
+        println!("Install NASM and MinGW GCC to produce .exe files.");
+    }
     Ok(())
 }
 
@@ -124,9 +181,9 @@ entry = "src/main.q"
     let src_dir = path.join("src");
     std::fs::create_dir_all(&src_dir)?;
     let main_path = src_dir.join("main.q");
-    let main_content = r#"func main() -> void {
-    var x: int = 42;
-    return;
+    let main_content = r#"craft main() -> void {
+    make shift x: int = 42;
+    send;
 }
 "#;
     std::fs::write(&main_path, main_content)?;

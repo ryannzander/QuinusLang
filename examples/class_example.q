@@ -8,7 +8,7 @@ class Point {
     }
 }
 
-func main() -> void {
-    var p: Point = new Point(1, 2);
-    return;
+craft main() -> void {
+    make shift p: Point = new Point(1, 2);
+    send;
 }

@@ -1,11 +1,11 @@
-func main() -> void {
-    var x: int = 5;
-    if (x > 0) {
-        var y: int = 1;
+craft main() -> void {
+    make shift x: int = 5;
+    check (x > 0) {
+        make shift y: int = 1;
     }
-    var i: int = 0;
-    while (i < 10) {
+    make shift i: int = 0;
+    loopwhile (i < 10) {
         i = i + 1;
     }
-    return;
+    send;
 }
