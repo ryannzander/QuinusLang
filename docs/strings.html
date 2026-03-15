@@ -86,6 +86,15 @@ check (error) {
 
     <h2>Print Formatting</h2>
     <p><code>print</code>, <code>write</code>, and <code>writeln</code> accept multiple arguments. Each is printed with an appropriate format (integer, float, string, etc.) based on its type.</p>
+
+    <h2>File I/O (stdlib fs)</h2>
+    <p>For reading and writing files, use the <code>fs</code> module:</p>
+    <pre><code>bring "fs";
+
+make f = fs.open_file("file.txt", "r");
+make content = fs.read_all(f);
+fs.close(f);</code></pre>
+    <p>See <a href="modules.html">Modules</a> for the full standard library.</p>
   </main>
 </body>
 </html>

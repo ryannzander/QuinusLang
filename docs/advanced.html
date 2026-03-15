@@ -30,6 +30,28 @@
   <main class="container">
     <h1>Advanced Features</h1>
 
+    <h2>C FFI (extern)</h2>
+    <p>Call C library functions with <code>extern craft</code> declarations:</p>
+    <pre><code>extern craft fopen(path: str, mode: str) -> link void;
+extern craft fclose(stream: link void) -> i32;
+extern craft malloc(size: usize) -> link void;
+extern craft free(ptr: link void) -> void;
+
+craft main() -> void {
+    make f = fopen("data.txt", "r");
+    // ... use f ...
+    fclose(f);
+    send;
+}</code></pre>
+    <p>Extern functions are passed through to the emitted C. Standard libc functions (fopen, malloc, etc.) are available without explicit declarations.</p>
+
+    <h2>Cast Expression</h2>
+    <p>Convert between types with <code>expr as type</code>:</p>
+    <pre><code>make x: i64 = 100;
+make n: usize = x as usize;
+make f: f64 = 3.14;
+make i: i32 = f as i32;</code></pre>
+
     <h2>Type Aliases</h2>
     <p>Create type aliases with <code>alias</code> for readability:</p>
     <pre><code>alias Id = u64;
@@ -41,13 +63,14 @@ make buf: Buffer = { 0 };</code></pre>
 
     <h2>Defer Blocks</h2>
     <p>Run cleanup code when leaving the current scope with <code>defer</code>:</p>
-    <pre><code>{
-    make shift f = open_file("data.txt");
-    defer {
-        close(f);
-    }
+    <pre><code>bring "fs";
+
+{
+    make f = fs.open_file("data.txt", "r");
+    check (f == 0) { send; }
+    defer { fs.close(f); }
     // ... use f ...
-}  // close(f) runs here</code></pre>
+}  // fs.close(f) runs here</code></pre>
 
     <h2>Range Iteration</h2>
     <p>Iterate over numeric ranges with <code>foreach ... in start..end</code>:</p>

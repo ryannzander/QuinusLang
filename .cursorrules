@@ -1,0 +1,48 @@
+# QuinusLang Project Rules
+
+## Git Workflow
+
+- **Before finishing a feature**: Update documentation (SPEC.md, docs/*.html, CHANGELOG.md) and commit.
+- **Commit conventions**: Use [Conventional Commits](https://www.conventionalcommits.org/):
+  - `feat:` new feature
+  - `fix:` bug fix
+  - `docs:` documentation only
+  - `test:` tests
+  - `refactor:` code change
+  - Scope optional: `feat(parser): add X`
+- **Commit message**: First line summary, then blank line, then bullet list of changes.
+- **Push**: After committing, run `git push origin master` (or current branch).
+- **Do NOT edit** plan files (e.g. `.cursor/plans/*.plan.md`) when implementing.
+
+## Windows / PowerShell
+
+- Use `;` not `&&` for command chaining: `cd path; cargo build`
+- Paths with spaces need quotes: `cd "path with spaces"`
+
+## Common Errors to Avoid
+
+### Codegen
+- **fn_ctx must inherit symbol_table**: When creating `fn_ctx` in `emit_fn_named`, copy `ctx.symbol_table` and `ctx.tuple_typedefs` so expr_type and type_to_c_with_typedef work inside function bodies.
+- **Module call args**: Use `for (i, arg) in args.iter().enumerate()` with `if i > 0 { out.push_str(", "); }` — do NOT add comma before first argument.
+- **Tuple typedefs for MSVC**: Anonymous structs in return/init cause C2440. Emit typedefs for tuple return types and use the typedef name in compound literals.
+- **Stdlib externs**: Skip emitting `extern` for fopen, fclose, fread, fwrite, malloc, free, fseek, ftell, system — they're in libc headers.
+- **SEEK_SET/SEEK_END**: Don't redefine; use literal `0` and `2` or prefixed names (e.g. FS_SEEK_SET) to avoid conflict with stdio.h macros.
+
+### Parser / Lexer
+- **"open" is a keyword**: Use `open_file` not `open` for stdlib to avoid token collision.
+- **Cast parsing**: `expr as type` — parse in postfix loop when seeing `Ident("as")` then `parse_type`.
+
+### Semantic
+- **Register modules**: Add `scope.modules.insert(m.name)` and `mod_functions` when processing Mod so `fs.open` resolves.
+- **Aliases in scope**: Add `scope.aliases` and register `TopLevelItem::Alias` for type resolution in codegen.
+
+### Documentation
+- **HTML docs**: Update `docs/*.html` (modules, advanced, types, strings, index) when adding features — not just language.md and SPEC.md.
+- **ARCHITECTURE.md**: Describes C backend, not NASM.
+
+## Project Structure
+
+- `src/` — Compiler (lexer, parser, semantic, codegen/c.rs, codegen/mod.rs, fmt)
+- `stdlib/` — fs.q, os.q, io.q
+- `docs/` — HTML pages + mkdocs (language.md, cli.md)
+- `tests/` — Integration tests

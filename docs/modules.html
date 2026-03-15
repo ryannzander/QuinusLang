@@ -70,6 +70,25 @@ foo = "0.1"
 bar = { git = "https://github.com/user/bar" }</code></pre>
     <p>Then <code>bring "foo"</code> resolves to the package. Package resolution uses the paths from <code>quinus add</code> and the lockfile.</p>
 
+    <h2>Standard Library</h2>
+    <p>QuinusLang includes built-in modules in <code>stdlib/</code>:</p>
+    <table>
+      <tr><th>Module</th><th>Contents</th></tr>
+      <tr><td><code>fs</code></td><td>File I/O: <code>open_file</code>, <code>close</code>, <code>read_all</code>, <code>exists</code>, <code>write_all</code></td></tr>
+      <tr><td><code>os</code></td><td>Process execution: <code>run(cmd)</code></td></tr>
+      <tr><td><code>io</code></td><td><code>println</code> wrapper</td></tr>
+    </table>
+    <pre><code>bring "fs";
+
+craft main() -> void {
+    make f = fs.open_file("file.txt", "r");
+    check (f == 0) { send; }
+    make content = fs.read_all(f);
+    fs.close(f);
+    print(content);
+    send;
+}</code></pre>
+
     <h2>Visibility: open</h2>
     <p>The <code>open</code> modifier marks functions and structs as public (exported). Without it, symbols are module-private where applicable.</p>
   </main>
