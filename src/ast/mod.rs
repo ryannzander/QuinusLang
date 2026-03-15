@@ -87,6 +87,11 @@ pub enum Type {
     Void,
     Array(Box<Type>),
     Named(String),
+    // Spec type names
+    U8, U16, U32, U64,
+    I8, I16, I32, I64,
+    Usize,
+    F32, F64,
 }
 
 impl fmt::Display for Type {
@@ -99,6 +104,17 @@ impl fmt::Display for Type {
             Type::Void => write!(f, "void"),
             Type::Array(inner) => write!(f, "[{}]", inner),
             Type::Named(name) => write!(f, "{}", name),
+            Type::U8 => write!(f, "u8"),
+            Type::U16 => write!(f, "u16"),
+            Type::U32 => write!(f, "u32"),
+            Type::U64 => write!(f, "u64"),
+            Type::I8 => write!(f, "i8"),
+            Type::I16 => write!(f, "i16"),
+            Type::I32 => write!(f, "i32"),
+            Type::I64 => write!(f, "i64"),
+            Type::Usize => write!(f, "usize"),
+            Type::F32 => write!(f, "f32"),
+            Type::F64 => write!(f, "f64"),
         }
     }
 }

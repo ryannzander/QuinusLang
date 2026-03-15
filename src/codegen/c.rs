@@ -23,18 +23,30 @@ fn type_to_c(ty: &Type) -> &'static str {
             "Point" => "Point*",
             _ => "void*",
         },
+        Type::U8 => "uint8_t",
+        Type::U16 => "uint16_t",
+        Type::U32 => "uint32_t",
+        Type::U64 => "uint64_t",
+        Type::I8 => "int8_t",
+        Type::I16 => "int16_t",
+        Type::I32 => "int32_t",
+        Type::I64 => "int64_t",
+        Type::Usize => "size_t",
+        Type::F32 => "float",
+        Type::F64 => "double",
     }
 }
 
 fn type_to_printf(ty: &Type) -> &'static str {
     match ty {
-        Type::Int => "%ld",
-        Type::Float => "%f",
+        Type::Int | Type::I32 | Type::I64 => "%ld",
+        Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::Usize => "%lu",
+        Type::Float | Type::F32 | Type::F64 => "%f",
         Type::Bool => "%d",
         Type::Str => "%s",
         Type::Void => "%s",
-        Type::Array(_) => "%p",
-        Type::Named(_) => "%p",
+        Type::Array(_) | Type::Named(_) => "%p",
+        Type::I8 | Type::I16 => "%d",
     }
 }
 
@@ -54,6 +66,7 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
 pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     let mut out = String::new();
     out.push_str("#include <stdlib.h>\n");
+    out.push_str("#include <stdint.h>\n");
     out.push_str("#include <stdio.h>\n");
 
     let mut ctx = Ctx::default();

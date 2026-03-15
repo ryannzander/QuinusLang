@@ -227,19 +227,25 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
     match stream.consume() {
         Some((Token::Ident(s), _, _)) => {
-            if s == "int" {
-                Ok(Type::Int)
-            } else if s == "float" {
-                Ok(Type::Float)
-            } else if s == "bool" {
-                Ok(Type::Bool)
-            } else if s == "str" {
-                Ok(Type::Str)
-            } else if s == "void" {
-                Ok(Type::Void)
-            } else {
-                Ok(Type::Named(s))
-            }
+            Ok(match s.as_str() {
+                "int" => Type::Int,
+                "float" => Type::Float,
+                "bool" => Type::Bool,
+                "str" => Type::Str,
+                "void" => Type::Void,
+                "u8" => Type::U8,
+                "u16" => Type::U16,
+                "u32" => Type::U32,
+                "u64" => Type::U64,
+                "i8" => Type::I8,
+                "i16" => Type::I16,
+                "i32" => Type::I32,
+                "i64" => Type::I64,
+                "usize" => Type::Usize,
+                "f32" => Type::F32,
+                "f64" => Type::F64,
+                _ => Type::Named(s),
+            })
         }
         Some((Token::LBracket, _, _)) => {
             let inner = parse_type(stream)?;

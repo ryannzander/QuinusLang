@@ -110,11 +110,30 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
     Ok(())
 }
 
+fn is_assignable(from: &Type, to: &Type) -> bool {
+    if from == to {
+        return true;
+    }
+    match (from, to) {
+        (Type::Int, Type::U32 | Type::U64 | Type::I32 | Type::I64 | Type::Usize) => true,
+        (Type::Int, Type::Float | Type::F32 | Type::F64) => true,
+        (Type::Float, Type::F32 | Type::F64) => true,
+        _ => false,
+    }
+}
+
 fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, ty, init, mutable } => {
             let init_ty = check_expr(symbol_table, init)?;
-            let var_ty = ty.clone().unwrap_or(init_ty);
+            let var_ty = ty.clone().unwrap_or_else(|| init_ty.clone());
+            if let Some(decl_ty) = ty {
+                if !is_assignable(&init_ty, &decl_ty) {
+                    return Err(Error::Semantic {
+                        message: format!("Cannot assign {} to {}", init_ty, decl_ty),
+                    });
+                }
+            }
             let scope = symbol_table.scopes.last_mut().unwrap();
             scope.vars.insert(name.clone(), var_ty);
             if *mutable {
@@ -255,11 +274,17 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             }
         }
         Expr::Call { callee, args } => {
-            let _ = check_expr(symbol_table, callee)?;
             for arg in args {
                 check_expr(symbol_table, arg)?;
             }
-            Ok(Type::Void) // Simplified
+            if let Expr::Ident(name) = callee.as_ref() {
+                for scope in symbol_table.scopes.iter().rev() {
+                    if let Some(sig) = scope.funcs.get(name) {
+                        return Ok(sig.return_type.clone().unwrap_or(Type::Void));
+                    }
+                }
+            }
+            Ok(Type::Void)
         }
         Expr::Index { base, index } => {
             let _ = check_expr(symbol_table, base)?;
