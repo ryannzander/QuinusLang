@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Language Basics - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -35,27 +36,27 @@
 
     <h2>Variables</h2>
     <p>Variables are declared with <code>make</code> (immutable) or <code>make shift</code> (mutable):</p>
-    <pre><code>make x: i32 = 42;        // Immutable — cannot be reassigned
+    <pre><code class="language-quinuslang">make x: i32 = 42;        // Immutable — cannot be reassigned
 make shift y: i32 = 10;  // Mutable — can be reassigned</code></pre>
     <p>The type can be omitted if the compiler can infer it from the initializer:</p>
-    <pre><code>make x = 42;           // Inferred as int
+    <pre><code class="language-quinuslang">make x = 42;           // Inferred as int
 make shift s = "hi";   // Inferred as str</code></pre>
 
     <h2>Identifiers</h2>
     <p>Identifiers must start with a letter or underscore, followed by letters, digits, or underscores:</p>
-    <pre><code>foo
+    <pre><code class="language-quinuslang">foo
 _bar
 x42
 myVariable</code></pre>
 
     <h2>Comments</h2>
     <p>Single-line comments start with <code>//</code>:</p>
-    <pre><code>// This is a comment
+    <pre><code class="language-quinuslang">// This is a comment
 make x = 42;  // Inline comment</code></pre>
 
     <h2>Statements and Semicolons</h2>
     <p>Statements end with a semicolon:</p>
-    <pre><code>make shift x: i32 = 1;
+    <pre><code class="language-quinuslang">make shift x: i32 = 1;
 x = x + 1;
 print(x);</code></pre>
 
@@ -69,7 +70,7 @@ print(x);</code></pre>
     </table>
 
     <h2>Literals</h2>
-    <pre><code>42          // Integer
+    <pre><code class="language-quinuslang">42          // Integer
 3.14        // Float
 true        // Boolean
 false       // Boolean
@@ -101,5 +102,8 @@ false       // Boolean
       <tr><td>Inline assembly</td><td><code>machine</code></td></tr>
     </table>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

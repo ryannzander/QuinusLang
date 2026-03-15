@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Type System - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -45,42 +46,45 @@
 
     <h2>Pointer Types</h2>
     <p>Use <code>link T</code> for a pointer to type <code>T</code>:</p>
-    <pre><code>make shift p: link i32 = mark x;
+    <pre><code class="language-quinuslang">make shift p: link i32 = mark x;
 make shift s: link str = mark my_string;</code></pre>
     <p>See <a href="pointers.html">Pointers</a> for details.</p>
 
     <h2>Array Types</h2>
     <p><strong>Fixed-size:</strong> <code>[T; N]</code> — array of N elements of type T</p>
-    <pre><code>make shift arr: [i32; 5] = { 1, 2, 3, 4, 5 };</code></pre>
+    <pre><code class="language-quinuslang">make shift arr: [i32; 5] = { 1, 2, 3, 4, 5 };</code></pre>
     <p><strong>Unsized:</strong> <code>[T]</code> — used for slice results and generic array references</p>
     <p>See <a href="arrays.html">Arrays</a> for details.</p>
 
     <h2>Named Types</h2>
     <p>Struct, enum, and union names become types:</p>
-    <pre><code>form Point { x: i32, y: i32 }
+    <pre><code class="language-quinuslang">form Point { x: i32, y: i32 }
 make shift p: Point = ...;</code></pre>
 
     <h2>Type Inference</h2>
     <p>Variable types can often be inferred from the initializer:</p>
-    <pre><code>make x = 42;        // i32 or int
+    <pre><code class="language-quinuslang">make x = 42;        // i32 or int
 make f = 3.14;      // f64
 make b = true;      // bool
 make s = "hi";      // str</code></pre>
 
     <h2>Type Aliases</h2>
     <p>Create type aliases with <code>alias</code>:</p>
-    <pre><code>alias Id = u64;
+    <pre><code class="language-quinuslang">alias Id = u64;
 alias Buffer = [u8; 256];
 make x: Id = 42;</code></pre>
 
     <h2>Explicit Casts</h2>
     <p>Convert between types with <code>expr as type</code>:</p>
-    <pre><code>make x: i64 = 100;
+    <pre><code class="language-quinuslang">make x: i64 = 100;
 make n: usize = x as usize;
 make i: i32 = 3.14 as i32;</code></pre>
 
     <h2>Type Compatibility</h2>
     <p>Some implicit conversions are allowed (e.g., <code>int</code> to <code>i32</code>, <code>int</code> to <code>f64</code>). Array initializers must match the declared element type or be assignable.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

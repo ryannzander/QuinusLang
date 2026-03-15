@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CLI Reference - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -76,5 +77,8 @@
     <h2>Environment</h2>
     <p>The compiler uses the system C compiler (GCC, Clang, or MSVC) as found by the <code>cc</code> crate. Ensure a C compiler is installed and on your PATH.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

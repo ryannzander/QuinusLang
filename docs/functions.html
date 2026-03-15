@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Functions - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -32,11 +33,11 @@
 
     <h2>Defining Functions</h2>
     <p>Functions are declared with <code>craft</code>, followed by the name, parameters, optional return type, and body:</p>
-    <pre><code>craft add(a: i32, b: i32) -> i32 {
+    <pre><code class="language-quinuslang">craft add(a: i32, b: i32) -> i32 {
     send a + b;
 }</code></pre>
     <p>If the function returns nothing (void), the return type can be omitted or specified as <code>void</code>:</p>
-    <pre><code>craft greet() -> void {
+    <pre><code class="language-quinuslang">craft greet() -> void {
     print("Hello!");
     send;
 }
@@ -47,7 +48,7 @@ craft no_return() {
 
     <h2>Parameters</h2>
     <p>Parameters are comma-separated, each with a name and type:</p>
-    <pre><code>craft foo(x: i32, y: f64, name: str) -> void {
+    <pre><code class="language-quinuslang">craft foo(x: i32, y: f64, name: str) -> void {
     // ...
     send;
 }</code></pre>
@@ -55,7 +56,7 @@ craft no_return() {
 
     <h2>Returning Values</h2>
     <p>Use <code>send</code> to return. With no expression, it returns void. With an expression, it returns that value:</p>
-    <pre><code>craft get_zero() -> i32 {
+    <pre><code class="language-quinuslang">craft get_zero() -> i32 {
     send 0;
 }
 
@@ -64,20 +65,20 @@ craft get_sum(a: i32, b: i32) -> i32 {
 }</code></pre>
 
     <h2>Calling Functions</h2>
-    <pre><code>make shift result: i32 = add(1, 2);
+    <pre><code class="language-quinuslang">make shift result: i32 = add(1, 2);
 print(add(10, 20));
 greet();</code></pre>
 
     <h2>Entry Point</h2>
     <p>Every executable program must define a <code>main</code> function with signature <code>craft main() -> void</code>:</p>
-    <pre><code>craft main() -> void {
+    <pre><code class="language-quinuslang">craft main() -> void {
     print("Program started");
     send;
 }</code></pre>
 
     <h2>Recursion</h2>
     <p>Functions can call themselves:</p>
-    <pre><code>craft factorial(n: i32) -> i32 {
+    <pre><code class="language-quinuslang">craft factorial(n: i32) -> i32 {
     check (n <= 1) {
         send 1;
     }
@@ -87,5 +88,8 @@ greet();</code></pre>
     <h2>Forward Declarations</h2>
     <p>Functions must be defined before use in the same file. For mutual recursion or cross-file calls, define the function in the order it's needed or use modules.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

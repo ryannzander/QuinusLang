@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pointers - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -65,5 +66,8 @@ reach p = 99;                       // Write</code></pre>
     <h2>C Mapping</h2>
     <p><code>link T</code> compiles to <code>T*</code> in C. <code>mark x</code> becomes <code>&amp;x</code>, and <code>reach p</code> becomes <code>*p</code>.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

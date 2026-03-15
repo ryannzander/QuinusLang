@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Getting Started - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -44,19 +45,19 @@
 
     <h2>Building the Compiler</h2>
     <p>Clone the repository and build:</p>
-    <pre><code>git clone https://github.com/ryannzander/QuinusLang.git
+    <pre><code class="language-bash">git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
 cargo build --release</code></pre>
     <p>The compiler binary will be at <code>target/release/quinus.exe</code> (Windows) or <code>target/release/quinus</code> (Unix).</p>
 
     <h2>Installing Globally</h2>
     <p>To use <code>quinus</code> from any directory, install it into your Cargo bin directory:</p>
-    <pre><code>cargo install --path .</code></pre>
+    <pre><code class="language-bash">cargo install --path .</code></pre>
     <p>This installs to <code>~/.cargo/bin/quinus</code>, which is on your PATH if you have Rust installed.</p>
 
     <h2>Creating Your First Project</h2>
     <p>Create a new QuinusLang project:</p>
-    <pre><code>mkdir my-app
+    <pre><code class="language-bash">mkdir my-app
 cd my-app
 quinus init</code></pre>
     <p>This creates:</p>
@@ -67,17 +68,17 @@ quinus init</code></pre>
 
     <h2>Writing Your First Program</h2>
     <p>Edit <code>src/main.q</code>:</p>
-    <pre><code>craft main() -> void {
+    <pre><code class="language-quinuslang">craft main() -> void {
     print("Hello, World!");
     send;
 }</code></pre>
 
     <h2>Building and Running</h2>
-    <pre><code>quinus build    # Compile to build/output.exe
+    <pre><code class="language-bash">quinus build    # Compile to build/output.exe
 quinus run      # Build and run</code></pre>
 
     <h2>Project Layout</h2>
-    <pre><code>my-project/
+    <pre><code class="language-text">my-project/
 ├── quinus.toml      # Manifest (name, version, entry point)
 ├── src/
 │   └── main.q       # Entry point (required)
@@ -88,7 +89,7 @@ quinus run      # Build and run</code></pre>
 
     <h2>quinus.toml</h2>
     <p>The manifest file configures your project:</p>
-    <pre><code>[package]
+    <pre><code class="language-toml">[package]
 name = "my-app"
 version = "0.1.0"
 
@@ -101,8 +102,13 @@ entry = "src/main.q"</code></pre>
 
     <h2>Building a Single File</h2>
     <p>You can also compile a single <code>.q</code> file without a project:</p>
-    <pre><code>quinus build path/to/file.q</code></pre>
+    <pre><code class="language-bash">quinus build path/to/file.q</code></pre>
     <p>The executable will be placed in <code>path/to/build/output.exe</code>.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-toml.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Strings & Builtins - QuinusLang</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -32,24 +33,24 @@
 
     <h2>String Type</h2>
     <p>The <code>str</code> type represents null-terminated character strings (C <code>char*</code>):</p>
-    <pre><code>make shift s: str = "hello";
+    <pre><code class="language-quinuslang">make shift s: str = "hello";
 make shift greeting: str = "Hello, World!";</code></pre>
 
     <h2>String Literals</h2>
     <p>Use double quotes. Escape sequences: <code>\\</code> <code>\"</code> <code>\n</code> <code>\t</code> <code>\r</code></p>
-    <pre><code>"plain"
+    <pre><code class="language-quinuslang">"plain"
 "with \"quotes\""
 "line1\nline2"</code></pre>
 
     <h2>String Concatenation</h2>
     <p>Use <code>+</code> to concatenate strings. The result is a newly allocated string:</p>
-    <pre><code>make shift a: str = "Hello";
+    <pre><code class="language-quinuslang">make shift a: str = "Hello";
 make shift b: str = " World";
 make shift c: str = a + b;  // "Hello World"</code></pre>
 
     <h2>String Interpolation</h2>
     <p>Use backtick strings with <code>${expr}</code> to interpolate values. Works with <code>print</code>, <code>write</code>, and <code>writeln</code>:</p>
-    <pre><code>make name: str = "world";
+    <pre><code class="language-quinuslang">make name: str = "world";
 print(`Hello, ${name}!`);
 make x: i32 = 42;
 print(`x = ${x}`);</code></pre>
@@ -63,7 +64,7 @@ print(`x = ${x}`);</code></pre>
       <tr><td><code>writeln(...)</code></td><td>Print arguments to stdout with newline</td></tr>
       <tr><td><code>read()</code></td><td>Read an integer from stdin</td></tr>
     </table>
-    <pre><code>print(42);
+    <pre><code class="language-quinuslang">print(42);
 print("hello");
 write("no newline ");
 writeln("newline");
@@ -87,7 +88,7 @@ make shift x: i32 = read();</code></pre>
       <tr><td><code>panic()</code></td><td>Abort the program with a message</td></tr>
       <tr><td><code>assert(cond)</code></td><td>Abort if condition is false</td></tr>
     </table>
-    <pre><code>assert(x > 0);
+    <pre><code class="language-quinuslang">assert(x > 0);
 check (error) {
     panic();
 }</code></pre>
@@ -97,12 +98,15 @@ check (error) {
 
     <h2>File I/O (stdlib fs)</h2>
     <p>For reading and writing files, use the <code>fs</code> module:</p>
-    <pre><code>bring "fs";
+    <pre><code class="language-quinuslang">bring "fs";
 
 make f = fs.open_file("file.txt", "r");
 make content = fs.read_all(f);
 fs.close(f);</code></pre>
     <p>See <a href="modules.html">Modules</a> for the full standard library.</p>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>

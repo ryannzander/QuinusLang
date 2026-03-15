@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuinusLang Documentation</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
 </head>
 <body>
   <nav>
@@ -41,7 +42,7 @@
     </ul>
 
     <h2>Quick Example</h2>
-    <pre><code>craft main() -> void {
+    <pre><code class="language-quinuslang">craft main() -> void {
     make shift x: i32 = 42;
     print(x);
     print("Hello, QuinusLang!");
@@ -66,5 +67,8 @@
       <li><a href="https://github.com/ryannzander/QuinusLang/blob/master/CONTRIBUTING.md">Contributing</a> — Build, test, PR process</li>
     </ul>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="prism-quinuslang.js"></script>
+  <script>Prism.highlightAll();</script>
 </body>
 </html>
