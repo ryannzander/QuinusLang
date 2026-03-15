@@ -109,7 +109,12 @@ fn emit_class(out: &mut String, c: &ClassDef, ctx: &mut CodegenContext) -> Resul
     Ok(())
 }
 
-fn emit_method(out: &mut String, class_name: &str, m: &MethodDef, _ctx: &mut CodegenContext) -> Result<()> {
+fn emit_method(
+    out: &mut String,
+    class_name: &str,
+    m: &MethodDef,
+    _ctx: &mut CodegenContext,
+) -> Result<()> {
     let mut method_ctx = CodegenContext::default();
     method_ctx.add_param("this");
     for p in &m.params {
@@ -238,7 +243,11 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
                 }
             }
         }
-        Stmt::If { cond, then_body, else_body } => {
+        Stmt::If {
+            cond,
+            then_body,
+            else_body,
+        } => {
             let then_label = new_label();
             let end_label = new_label();
             emit_expr(out, cond, ctx)?;
@@ -256,7 +265,12 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
             }
             out.push_str(&format!("{}:\n", end_label));
         }
-        Stmt::For { init, cond, step, body } => {
+        Stmt::For {
+            init,
+            cond,
+            step,
+            body,
+        } => {
             let loop_label = new_label();
             let end_label = new_label();
             if let Some(i) = init {

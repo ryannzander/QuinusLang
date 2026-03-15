@@ -1,7 +1,7 @@
 //! Semantic analysis for QuinusLang
 
 use crate::ast::*;
-use crate::error::{semantic_err, semantic_err_hint, Result};
+use crate::error::{semantic_err, semantic_err_hint, semantic_err_span, Result};
 use std::collections::{HashMap, HashSet};
 
 fn find_similar(name: &str, symbol_table: &SymbolTable) -> Option<String> {
@@ -37,7 +37,9 @@ fn edit_distance(a: &str, b: &str) -> usize {
     for i in 1..=a.len() {
         for j in 1..=b.len() {
             let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
-            dp[i][j] = (dp[i - 1][j] + 1).min(dp[i][j - 1] + 1).min(dp[i - 1][j - 1] + cost);
+            dp[i][j] = (dp[i - 1][j] + 1)
+                .min(dp[i][j - 1] + 1)
+                .min(dp[i - 1][j - 1] + cost);
         }
     }
     dp[a.len()][b.len()]
@@ -81,15 +83,78 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
 
     // Register builtins
     let scope = symbol_table.scopes.last_mut().unwrap();
-    scope.funcs.insert("print".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
-    scope.funcs.insert("write".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
-    scope.funcs.insert("writeln".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
-    scope.funcs.insert("read".to_string(), FuncSig { params: vec![], return_type: Some(Type::I32), c_name: None });
-    scope.funcs.insert("len".to_string(), FuncSig { params: vec![Type::Array(Box::new(Type::Int))], return_type: Some(Type::Usize), c_name: None });
-    scope.funcs.insert("strlen".to_string(), FuncSig { params: vec![Type::Str], return_type: Some(Type::Usize), c_name: None });
-    scope.funcs.insert("panic".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
-    scope.funcs.insert("assert".to_string(), FuncSig { params: vec![Type::Bool], return_type: Some(Type::Void), c_name: None });
-    scope.funcs.insert("__ql_null_at".to_string(), FuncSig { params: vec![Type::Ptr(Box::new(Type::Void)), Type::Usize], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert(
+        "print".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "write".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "writeln".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "read".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::I32),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "len".to_string(),
+        FuncSig {
+            params: vec![Type::Array(Box::new(Type::Int))],
+            return_type: Some(Type::Usize),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "strlen".to_string(),
+        FuncSig {
+            params: vec![Type::Str],
+            return_type: Some(Type::Usize),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "panic".to_string(),
+        FuncSig {
+            params: vec![],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "assert".to_string(),
+        FuncSig {
+            params: vec![Type::Bool],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
+    scope.funcs.insert(
+        "__ql_null_at".to_string(),
+        FuncSig {
+            params: vec![Type::Ptr(Box::new(Type::Void)), Type::Usize],
+            return_type: Some(Type::Void),
+            c_name: None,
+        },
+    );
 
     for item in &program.items {
         register_top_level(&mut symbol_table, item)?;
@@ -109,7 +174,11 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
     register_top_level_with_prefix(symbol_table, item, None)
 }
 
-fn register_top_level_with_prefix(symbol_table: &mut SymbolTable, item: &TopLevelItem, mod_prefix: Option<&str>) -> Result<()> {
+fn register_top_level_with_prefix(
+    symbol_table: &mut SymbolTable,
+    item: &TopLevelItem,
+    mod_prefix: Option<&str>,
+) -> Result<()> {
     let scope = symbol_table.scopes.last_mut().unwrap();
     match item {
         TopLevelItem::Fn(f) => {
@@ -207,18 +276,32 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
         TopLevelItem::Const(c) => {
             let init_ty = check_expr(symbol_table, &c.init)?;
             if !is_assignable(&init_ty, &c.ty) {
-                return Err(semantic_err(format!("Cannot assign {} to constant {}", init_ty, c.ty)));
+                return Err(semantic_err_span(
+                    format!("Cannot assign {} to constant {}", init_ty, c.ty),
+                    c.span.line,
+                    c.span.col,
+                ));
             }
         }
         TopLevelItem::Static(s) => {
             if let Some(init) = &s.init {
                 let init_ty = check_expr(symbol_table, init)?;
                 if !is_assignable(&init_ty, &s.ty) {
-                    return Err(semantic_err(format!("Cannot assign {} to static {}", init_ty, s.ty)));
+                    return Err(semantic_err_span(
+                        format!("Cannot assign {} to static {}", init_ty, s.ty),
+                        s.span.line,
+                        s.span.col,
+                    ));
                 }
             }
         }
-        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) | TopLevelItem::Alias(_) | TopLevelItem::Extern(_) => {}
+        TopLevelItem::Struct(_)
+        | TopLevelItem::Class(_)
+        | TopLevelItem::Enum(_)
+        | TopLevelItem::Union(_)
+        | TopLevelItem::Import(_)
+        | TopLevelItem::Alias(_)
+        | TopLevelItem::Extern(_) => {}
         TopLevelItem::Impl(impl_def) => {
             symbol_table.scopes.push(Scope::default());
             for m in &impl_def.methods {
@@ -263,12 +346,20 @@ fn is_assignable(from: &Type, to: &Type) -> bool {
 
 fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
     match stmt {
-        Stmt::VarDecl { name, ty, init, mutable } => {
+        Stmt::VarDecl {
+            name,
+            ty,
+            init,
+            mutable,
+        } => {
             let init_ty = check_expr(symbol_table, init)?;
             let var_ty = ty.clone().unwrap_or_else(|| init_ty.clone());
             if let Some(decl_ty) = ty {
                 if !is_assignable(&init_ty, &decl_ty) {
-                    return Err(semantic_err(format!("Cannot assign {} to {}", init_ty, decl_ty)));
+                    return Err(semantic_err(format!(
+                        "Cannot assign {} to {}",
+                        init_ty, decl_ty
+                    )));
                 }
             }
             let scope = symbol_table.scopes.last_mut().unwrap();
@@ -277,16 +368,27 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 scope.mutable_vars.insert(name.clone());
             }
         }
-        Stmt::VarDeclTuple { names, init, mutable } => {
+        Stmt::VarDeclTuple {
+            names,
+            init,
+            mutable,
+        } => {
             let init_ty = check_expr(symbol_table, init)?;
             let elem_tys = match &init_ty {
                 Type::Tuple(inner) => inner,
                 _ => {
-                    return Err(semantic_err(format!("Tuple destructuring requires tuple type, got {}", init_ty)));
+                    return Err(semantic_err(format!(
+                        "Tuple destructuring requires tuple type, got {}",
+                        init_ty
+                    )));
                 }
             };
             if names.len() != elem_tys.len() {
-                return Err(semantic_err(format!("Tuple has {} elements but {} variables", elem_tys.len(), names.len())));
+                return Err(semantic_err(format!(
+                    "Tuple has {} elements but {} variables",
+                    elem_tys.len(),
+                    names.len()
+                )));
             }
             let scope = symbol_table.scopes.last_mut().unwrap();
             for (name, ty) in names.iter().zip(elem_tys.iter()) {
@@ -318,7 +420,10 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                         });
                     }
                     if !is_mutable {
-                        return Err(semantic_err(format!("Cannot assign to immutable variable: {}", name)));
+                        return Err(semantic_err(format!(
+                            "Cannot assign to immutable variable: {}",
+                            name
+                        )));
                     }
                 }
                 AssignTarget::Deref(operand) => {
@@ -330,7 +435,11 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 _ => {}
             }
         }
-        Stmt::If { cond, then_body, else_body } => {
+        Stmt::If {
+            cond,
+            then_body,
+            else_body,
+        } => {
             check_expr(symbol_table, cond)?;
             symbol_table.scopes.push(Scope::default());
             for s in then_body {
@@ -345,7 +454,12 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 symbol_table.scopes.pop();
             }
         }
-        Stmt::For { init, cond, step, body } => {
+        Stmt::For {
+            init,
+            cond,
+            step,
+            body,
+        } => {
             symbol_table.scopes.push(Scope::default());
             if let Some(i) = init {
                 check_stmt(symbol_table, i)?;
@@ -373,9 +487,19 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             let iter_ty = check_expr(symbol_table, iter)?;
             symbol_table.scopes.push(Scope::default());
             if let Type::Array(elem) = &iter_ty {
-                symbol_table.scopes.last_mut().unwrap().vars.insert(var.clone(), *elem.clone());
+                symbol_table
+                    .scopes
+                    .last_mut()
+                    .unwrap()
+                    .vars
+                    .insert(var.clone(), *elem.clone());
             } else {
-                symbol_table.scopes.last_mut().unwrap().vars.insert(var.clone(), Type::Int);
+                symbol_table
+                    .scopes
+                    .last_mut()
+                    .unwrap()
+                    .vars
+                    .insert(var.clone(), Type::Int);
             }
             for s in body {
                 check_stmt(symbol_table, s)?;
@@ -410,7 +534,11 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 }
             }
         }
-        Stmt::TryCatch { try_body, catch_body, .. } => {
+        Stmt::TryCatch {
+            try_body,
+            catch_body,
+            ..
+        } => {
             symbol_table.scopes.push(Scope::default());
             for s in try_body {
                 check_stmt(symbol_table, s)?;
@@ -475,7 +603,8 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     }
                     // Allow int/usize mix for index arithmetic (usize wins)
                     // Allow int/i32/i64 mix (prefer the explicit type)
-                    let unified = if (lt == Type::Usize && matches!(rt, Type::Int | Type::I32 | Type::I64))
+                    let unified = if (lt == Type::Usize
+                        && matches!(rt, Type::Int | Type::I32 | Type::I64))
                         || (rt == Type::Usize && matches!(lt, Type::Int | Type::I32 | Type::I64))
                     {
                         Type::Usize

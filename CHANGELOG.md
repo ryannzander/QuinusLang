@@ -7,6 +7,30 @@ All notable changes to QuinusLang will be documented in this file.
 ### Added
 
 - String interpolation: `` `Hello, ${name}!` `` — backtick strings with `${expr}` for print/write/writeln
+
+## [0.1.1] - 2025-03-14
+
+### Added
+
+- Automated GitHub Releases: push tag `vX.Y.Z` to trigger release workflow
+- Semantic error spans: `semantic_err_span` with line/col for Const/Static type errors
+- LSP: real hover (identifier type lookup), diagnostics on save
+- CI: `cargo fmt --check` and `cargo clippy`
+- Watch debounce (300ms) to avoid redundant rebuilds
+- Error-case tests: type mismatch, wrong arg count, const type
+- Formatter round-trip tests: defer, foreach
+- Stdlib tests: fs, math modules
+
+### Changed
+
+- Fixed outdated cmd_run message (C backend, not NASM)
+- Fixed README: `quinus publish` description
+- LSP version from Cargo.toml
+- REPL type display uses Display instead of Debug
+
+### Removed
+
+- (none)
 - stdlib/math.q: abs_i32, abs_f64, min_i32, max_i32, min_f64, max_f64, sqrt_f64
 - stdlib/os.q: os.getenv(name), os.cwd() for environment and current directory
 - Git package fetch: dependencies with `git = "url"` are cloned before build

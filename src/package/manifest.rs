@@ -52,10 +52,9 @@ impl Default for Manifest {
 }
 
 pub fn parse_manifest(path: &Path) -> Result<Manifest> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| Error::Package {
-            message: format!("Failed to read manifest: {}", e),
-        })?;
+    let content = std::fs::read_to_string(path).map_err(|e| Error::Package {
+        message: format!("Failed to read manifest: {}", e),
+    })?;
 
     let mut manifest = Manifest::default();
 
@@ -116,12 +115,10 @@ pub fn parse_manifest(path: &Path) -> Result<Manifest> {
                     if value.contains("git") {
                         let url = extract_string(value, "git").unwrap_or_default();
                         let rev = extract_string(value, "rev");
-                        Dependency::Git {
-                            url,
-                            rev,
-                        }
+                        Dependency::Git { url, rev }
                     } else {
-                        let version = extract_string(value, "version").unwrap_or_else(|| value.to_string());
+                        let version =
+                            extract_string(value, "version").unwrap_or_else(|| value.to_string());
                         Dependency::Registry { version }
                     }
                 } else {

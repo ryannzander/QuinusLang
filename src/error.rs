@@ -5,10 +5,18 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Lexer error at {line}:{col}: {message}")]
-    Lexer { line: usize, col: usize, message: String },
+    Lexer {
+        line: usize,
+        col: usize,
+        message: String,
+    },
 
     #[error("Parse error at {line}:{col}: {message}")]
-    Parse { line: usize, col: usize, message: String },
+    Parse {
+        line: usize,
+        col: usize,
+        message: String,
+    },
 
     #[error("{0}")]
     Semantic(Box<SemanticError>),
@@ -59,6 +67,29 @@ pub fn semantic_err_hint(message: impl Into<String>, hint: impl Into<String>) ->
         message: message.into(),
         line: None,
         col: None,
+        hint: Some(hint.into()),
+    }))
+}
+
+pub fn semantic_err_span(message: impl Into<String>, line: usize, col: usize) -> Error {
+    Error::Semantic(Box::new(SemanticError {
+        message: message.into(),
+        line: Some(line),
+        col: Some(col),
+        hint: None,
+    }))
+}
+
+pub fn semantic_err_span_hint(
+    message: impl Into<String>,
+    hint: impl Into<String>,
+    line: usize,
+    col: usize,
+) -> Error {
+    Error::Semantic(Box::new(SemanticError {
+        message: message.into(),
+        line: Some(line),
+        col: Some(col),
         hint: Some(hint.into()),
     }))
 }

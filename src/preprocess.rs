@@ -12,7 +12,9 @@ fn resolve_bring_path(base_dir: &Path, path: &[String]) -> Result<PathBuf> {
     let ext = rel.with_extension("q");
     let candidates = [
         base_dir.join(&ext),
-        base_dir.join("src").join(ext.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
+        base_dir
+            .join("src")
+            .join(ext.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
         base_dir.join("stdlib").join(&ext),
         base_dir.join(rel.join("mod.q")),
         base_dir.join("stdlib").join(rel.join("mod.q")),
@@ -69,7 +71,10 @@ fn content_without_brings(source: &str) -> String {
     let mut i = 0;
     while i < source.len() {
         let line_start = i;
-        let line_end = source[i..].find('\n').map(|p| i + p).unwrap_or(source.len());
+        let line_end = source[i..]
+            .find('\n')
+            .map(|p| i + p)
+            .unwrap_or(source.len());
         let line = source[line_start..line_end].trim();
         i = if line_end < source.len() {
             line_end + 1

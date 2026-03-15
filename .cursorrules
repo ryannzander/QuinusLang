@@ -11,6 +11,15 @@ When bumping the version (e.g. 0.1.0 → 0.1.1), update **all** of these:
 
 Then rebuild installer and zip: `.\build-installer.ps1` and `.\make-portable.ps1`
 
+## Automated Releases
+
+GitHub Actions creates releases automatically when you push a version tag:
+
+1. `git tag v0.1.2`
+2. `git push origin v0.1.2`
+
+The workflow (`.github/workflows/release.yml`) patches version from the tag, builds, creates the installer and portable zip, and uploads both to the GitHub Release. No manual version bump in Cargo.toml/installer.iss needed before tagging — the workflow updates them from the tag.
+
 ## Git Workflow
 
 - **Before finishing a feature**: Update documentation (SPEC.md, docs/*.html, CHANGELOG.md) and commit.

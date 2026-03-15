@@ -98,7 +98,7 @@ craft main() -> void {
 | `quinus add <pkg> --git <url>` | Add package from Git |
 | `quinus remove <pkg>` | Remove dependency |
 | `quinus update` | Update dependencies |
-| `quinus publish` | Publish to registry (not implemented) |
+| `quinus publish` | Validate manifest and create Git tag |
 
 ---
 

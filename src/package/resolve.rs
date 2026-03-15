@@ -1,7 +1,7 @@
 //! Dependency resolution
 
-use crate::package::manifest::{Dependency, Manifest};
 use crate::error::Result;
+use crate::package::manifest::{Dependency, Manifest};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

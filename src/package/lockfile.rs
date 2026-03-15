@@ -19,10 +19,9 @@ pub fn parse_lockfile(path: &Path) -> Result<Lockfile> {
     if !path.exists() {
         return Ok(Lockfile::default());
     }
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| Error::Package {
-            message: format!("Failed to read lockfile: {}", e),
-        })?;
+    let content = std::fs::read_to_string(path).map_err(|e| Error::Package {
+        message: format!("Failed to read lockfile: {}", e),
+    })?;
 
     let mut lockfile = Lockfile::default();
     let mut current = None;

@@ -1,11 +1,15 @@
 //! Parser for QuinusLang
 
-use crate::ast::{EnumVariant, *};
+use crate::ast::{EnumVariant, Span, *};
 use crate::error::{Error, Result};
 use crate::lexer::{Token, TokenStream};
 use std::path::Path;
 
-fn parse_interpolate_content(content: &str, line: usize, col: usize) -> Result<Vec<InterpolatePart>> {
+fn parse_interpolate_content(
+    content: &str,
+    line: usize,
+    col: usize,
+) -> Result<Vec<InterpolatePart>> {
     let mut parts = Vec::new();
     let mut i = 0;
     let content_bytes = content.as_bytes();
@@ -83,7 +87,12 @@ fn resolve_imports(
     base_dir: &Path,
     packages: &[(String, std::path::PathBuf)],
 ) -> Result<Program> {
-    resolve_imports_with_seen(program, base_dir, packages, &mut std::collections::HashSet::new())
+    resolve_imports_with_seen(
+        program,
+        base_dir,
+        packages,
+        &mut std::collections::HashSet::new(),
+    )
 }
 
 fn resolve_imports_with_seen(
@@ -107,12 +116,8 @@ fn resolve_imports_with_seen(
                 })?;
                 // Use base_dir (project root) for nested imports so "compiler.tokens" resolves
                 // when importing from compiler/ast.q. Pass same seen to avoid duplicate modules.
-                let sub_program = resolve_imports_with_seen(
-                    parse(&source)?,
-                    base_dir,
-                    packages,
-                    seen,
-                )?;
+                let sub_program =
+                    resolve_imports_with_seen(parse(&source)?, base_dir, packages, seen)?;
                 for sub in sub_program.items {
                     if !matches!(&sub, TopLevelItem::Import(_)) {
                         items.push(sub);
@@ -141,7 +146,11 @@ fn resolve_import_path(
                 };
                 let candidates = [
                     pkg_path.join(&sub_path),
-                    pkg_path.join("src").join(sub_path.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
+                    pkg_path.join("src").join(
+                        sub_path
+                            .file_name()
+                            .unwrap_or(std::ffi::OsStr::new("main.q")),
+                    ),
                 ];
                 for p in &candidates {
                     if p.exists() {
@@ -266,6 +275,8 @@ fn parse_fn_def(stream: &mut TokenStream) -> Result<FnDef> {
 }
 
 fn parse_fn_def_with_open(stream: &mut TokenStream, open: bool) -> Result<FnDef> {
+    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+    let span = Span { line, col };
     let name = expect_ident(stream)?;
     stream.expect("(")?;
     let params = parse_params(stream)?;
@@ -285,20 +296,30 @@ fn parse_fn_def_with_open(stream: &mut TokenStream, open: bool) -> Result<FnDef>
         return_type,
         body,
         open,
+        span,
     })
 }
 
 fn parse_const_def(stream: &mut TokenStream) -> Result<ConstDef> {
+    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+    let span = Span { line, col };
     let name = expect_ident(stream)?;
     stream.expect(":")?;
     let ty = parse_type(stream)?;
     stream.expect("=")?;
     let init = parse_expr(stream)?;
     stream.expect(";")?;
-    Ok(ConstDef { name, ty, init })
+    Ok(ConstDef {
+        name,
+        ty,
+        init,
+        span,
+    })
 }
 
 fn parse_static_def(stream: &mut TokenStream) -> Result<StaticDef> {
+    let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+    let span = Span { line, col };
     let name = expect_ident(stream)?;
     stream.expect(":")?;
     let ty = parse_type(stream)?;
@@ -309,7 +330,12 @@ fn parse_static_def(stream: &mut TokenStream) -> Result<StaticDef> {
         None
     };
     stream.expect(";")?;
-    Ok(StaticDef { name, ty, init })
+    Ok(StaticDef {
+        name,
+        ty,
+        init,
+        span,
+    })
 }
 
 fn parse_enum_def(stream: &mut TokenStream) -> Result<EnumDef> {
@@ -525,17 +551,28 @@ fn parse_impl_def(stream: &mut TokenStream) -> Result<ImplDef> {
             methods.push(parse_method_def(stream)?);
         } else {
             let (line, col) = stream.peek_pos().unwrap_or((1, 1));
-            return Err(Error::Parse { line, col, message: "Expected craft in impl block".to_string() });
+            return Err(Error::Parse {
+                line,
+                col,
+                message: "Expected craft in impl block".to_string(),
+            });
         }
     }
     stream.expect("}")?;
-    Ok(ImplDef { struct_name, methods })
+    Ok(ImplDef {
+        struct_name,
+        methods,
+    })
 }
 
 fn parse_extern_def(stream: &mut TokenStream) -> Result<ExternDef> {
     if stream.peek() != Some(&Token::Craft) {
         let (line, col) = stream.peek_pos().unwrap_or((1, 1));
-        return Err(Error::Parse { line, col, message: "Expected craft after extern".to_string() });
+        return Err(Error::Parse {
+            line,
+            col,
+            message: "Expected craft after extern".to_string(),
+        });
     }
     stream.consume();
     let name = expect_ident(stream)?;
@@ -607,27 +644,25 @@ fn parse_type(stream: &mut TokenStream) -> Result<Type> {
         return Ok(first);
     }
     match stream.consume() {
-        Some((Token::Ident(s), _, _)) => {
-            Ok(match s.as_str() {
-                "int" => Type::Int,
-                "float" => Type::Float,
-                "bool" => Type::Bool,
-                "str" => Type::Str,
-                "void" => Type::Void,
-                "u8" => Type::U8,
-                "u16" => Type::U16,
-                "u32" => Type::U32,
-                "u64" => Type::U64,
-                "i8" => Type::I8,
-                "i16" => Type::I16,
-                "i32" => Type::I32,
-                "i64" => Type::I64,
-                "usize" => Type::Usize,
-                "f32" => Type::F32,
-                "f64" => Type::F64,
-                _ => Type::Named(s),
-            })
-        }
+        Some((Token::Ident(s), _, _)) => Ok(match s.as_str() {
+            "int" => Type::Int,
+            "float" => Type::Float,
+            "bool" => Type::Bool,
+            "str" => Type::Str,
+            "void" => Type::Void,
+            "u8" => Type::U8,
+            "u16" => Type::U16,
+            "u32" => Type::U32,
+            "u64" => Type::U64,
+            "i8" => Type::I8,
+            "i16" => Type::I16,
+            "i32" => Type::I32,
+            "i64" => Type::I64,
+            "usize" => Type::Usize,
+            "f32" => Type::F32,
+            "f64" => Type::F64,
+            _ => Type::Named(s),
+        }),
         Some((Token::LBracket, _, _)) => {
             let inner = parse_type(stream)?;
             if stream.peek() == Some(&Token::Semicolon) {
@@ -827,7 +862,11 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 let pattern = parse_choose_pattern(stream)?;
                 if stream.peek() != Some(&Token::FatArrow) {
                     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
-                    return Err(Error::Parse { line, col, message: "Expected =>".to_string() });
+                    return Err(Error::Parse {
+                        line,
+                        col,
+                        message: "Expected =>".to_string(),
+                    });
                 }
                 stream.consume();
                 let arm_body = if stream.peek() == Some(&Token::LBrace) {
@@ -841,10 +880,16 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 if stream.peek() == Some(&Token::Comma) {
                     stream.consume();
                 }
-                arms.push(ChooseArm { pattern, body: arm_body });
+                arms.push(ChooseArm {
+                    pattern,
+                    body: arm_body,
+                });
             }
             stream.expect("}")?;
-            Ok(Stmt::Choose { expr: Box::new(expr), arms })
+            Ok(Stmt::Choose {
+                expr: Box::new(expr),
+                arms,
+            })
         }
         Some(Token::Make) => {
             stream.consume();
@@ -867,7 +912,11 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 stream.expect("=")?;
                 let init = parse_expr(stream)?;
                 stream.expect(";")?;
-                Ok(Stmt::VarDeclTuple { names, init, mutable })
+                Ok(Stmt::VarDeclTuple {
+                    names,
+                    init,
+                    mutable,
+                })
             } else {
                 let name = expect_ident(stream)?;
                 let ty = if stream.peek() == Some(&Token::Colon) {
@@ -1211,14 +1260,8 @@ fn parse_primary(stream: &mut TokenStream) -> Result<Expr> {
 fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget> {
     match expr {
         Expr::Ident(name) => Ok(AssignTarget::Ident(name)),
-        Expr::Field { base, field } => Ok(AssignTarget::Field {
-            base,
-            field,
-        }),
-        Expr::Index { base, index } => Ok(AssignTarget::Index {
-            base,
-            index,
-        }),
+        Expr::Field { base, field } => Ok(AssignTarget::Field { base, field }),
+        Expr::Index { base, index } => Ok(AssignTarget::Index { base, index }),
         Expr::Deref(operand) => Ok(AssignTarget::Deref(operand)),
         _ => Err(Error::Parse {
             line: 1,

@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Set version from tag
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Version: $version"
+
+      - name: Update version in Cargo.toml
+        shell: pwsh
+        run: |
+          (Get-Content Cargo.toml) -replace 'version = "[^"]+"', "version = `"$env:VERSION`"" | Set-Content Cargo.toml
+
+      - name: Update version in installer.iss
+        shell: pwsh
+        run: |
+          (Get-Content installer.iss) -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$env:VERSION`"" | Set-Content installer.iss
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Create installer
+        shell: pwsh
+        run: .\build-installer.ps1
+
+      - name: Create portable zip
+        shell: pwsh
+        run: .\make-portable.ps1
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer_output/QuinusLang-Setup-*.exe
+            QuinusLang-portable.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

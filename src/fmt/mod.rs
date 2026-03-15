@@ -102,7 +102,12 @@ fn format_fn(out: &mut String, f: &FnDef, _open: bool) {
 fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
     let pad = "    ".repeat(indent);
     match stmt {
-        Stmt::VarDecl { name, ty, init, mutable } => {
+        Stmt::VarDecl {
+            name,
+            ty,
+            init,
+            mutable,
+        } => {
             let _ = write!(out, "{}make ", pad);
             if *mutable {
                 out.push_str("shift ");
@@ -115,7 +120,11 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             format_expr(out, init);
             let _ = writeln!(out, ";");
         }
-        Stmt::VarDeclTuple { names, init, mutable } => {
+        Stmt::VarDeclTuple {
+            names,
+            init,
+            mutable,
+        } => {
             let _ = write!(out, "{}make ", pad);
             if *mutable {
                 out.push_str("shift ");
@@ -144,7 +153,11 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             format_expr(out, e);
             let _ = writeln!(out, ";");
         }
-        Stmt::If { cond, then_body, else_body } => {
+        Stmt::If {
+            cond,
+            then_body,
+            else_body,
+        } => {
             let _ = write!(out, "{}check (", pad);
             format_expr(out, cond);
             let _ = writeln!(out, ") {{");
@@ -176,7 +189,12 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
         Stmt::Continue => {
             let _ = writeln!(out, "{}skip;", pad);
         }
-        Stmt::For { init, cond, step, body } => {
+        Stmt::For {
+            init,
+            cond,
+            step,
+            body,
+        } => {
             let _ = write!(out, "{}for (", pad);
             if let Some(i) = init {
                 format_stmt(out, i, 0);
@@ -190,8 +208,7 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             out.push_str("; ");
             if let Some(s) = step {
                 format_stmt(out, s, 0);
-                out.pop();
-                out.pop();
+                // Keep semicolon for step (parser expects it)
             }
             let _ = writeln!(out, ") {{");
             for s in body {
@@ -223,9 +240,9 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             let _ = writeln!(out, "{}}}", pad);
         }
         Stmt::Choose { expr, arms } => {
-            let _ = write!(out, "{}choose ", pad);
+            let _ = write!(out, "{}choose (", pad);
             format_expr(out, expr);
-            let _ = writeln!(out, " {{");
+            let _ = writeln!(out, ") {{");
             for arm in arms {
                 let _ = write!(out, "{}    ", pad);
                 match &arm.pattern {
@@ -239,13 +256,21 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
                         let _ = write!(out, "{} => ", n);
                     }
                 }
-                for s in &arm.body {
-                    format_stmt(out, s, indent + 2);
+                if arm.body.is_empty() {
+                    let _ = write!(out, "{{}}");
+                } else {
+                    for s in &arm.body {
+                        format_stmt(out, s, indent + 2);
+                    }
                 }
             }
             let _ = writeln!(out, "{}}}", pad);
         }
-        Stmt::TryCatch { try_body, catch_param, catch_body } => {
+        Stmt::TryCatch {
+            try_body,
+            catch_param,
+            catch_body,
+        } => {
             let _ = writeln!(out, "{}try {{", pad);
             for s in try_body {
                 format_stmt(out, s, indent + 1);
@@ -263,7 +288,12 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
         Stmt::InlineAsm { instructions } => {
             let _ = writeln!(out, "{}machine {{", pad);
             for instr in instructions {
-                let _ = writeln!(out, "{}    \"{}\"", pad, instr.replace('\\', "\\\\").replace('"', "\\\""));
+                let _ = writeln!(
+                    out,
+                    "{}    \"{}\"",
+                    pad,
+                    instr.replace('\\', "\\\\").replace('"', "\\\"")
+                );
             }
             let _ = writeln!(out, "{}}}", pad);
         }

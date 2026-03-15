@@ -312,7 +312,6 @@ fn line_col(source: &str, index: usize) -> (usize, usize) {
     (line, col)
 }
 
-
 /// Tokenize source code into a stream of tokens.
 pub fn tokenize(source: &str) -> Result<TokenStream> {
     TokenStream::new(source)

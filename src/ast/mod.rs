@@ -2,6 +2,13 @@
 
 use std::fmt;
 
+/// Source location for error reporting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Span {
+    pub line: usize,
+    pub col: usize,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub items: Vec<TopLevelItem>,
@@ -40,6 +47,7 @@ pub struct ConstDef {
     pub name: String,
     pub ty: Type,
     pub init: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,6 +55,7 @@ pub struct StaticDef {
     pub name: String,
     pub ty: Type,
     pub init: Option<Expr>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,6 +71,7 @@ pub struct FnDef {
     pub return_type: Option<Type>,
     pub body: Vec<Stmt>,
     pub open: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -150,10 +160,17 @@ pub enum Type {
     Named(String),
     Tuple(Vec<Type>),
     // Spec type names
-    U8, U16, U32, U64,
-    I8, I16, I32, I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
     Usize,
-    F32, F64,
+    F32,
+    F64,
     Ptr(Box<Type>),
 }
 
@@ -180,29 +197,78 @@ impl fmt::Display for Type {
             Type::F32 => write!(f, "f32"),
             Type::F64 => write!(f, "f64"),
             Type::Ptr(inner) => write!(f, "link {}", inner),
-            Type::Tuple(inner) => write!(f, "({})", inner.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(", ")),
+            Type::Tuple(inner) => write!(
+                f,
+                "({})",
+                inner
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    VarDecl { name: String, ty: Option<Type>, init: Expr, mutable: bool },
-    VarDeclTuple { names: Vec<String>, init: Expr, mutable: bool },
-    Assign { target: AssignTarget, value: Expr },
-    If { cond: Expr, then_body: Vec<Stmt>, else_body: Option<Vec<Stmt>> },
-    For { init: Option<Box<Stmt>>, cond: Option<Expr>, step: Option<Box<Stmt>>, body: Vec<Stmt> },
-    While { cond: Expr, body: Vec<Stmt> },
-    Foreach { var: String, iter: Box<Expr>, body: Vec<Stmt> },
+    VarDecl {
+        name: String,
+        ty: Option<Type>,
+        init: Expr,
+        mutable: bool,
+    },
+    VarDeclTuple {
+        names: Vec<String>,
+        init: Expr,
+        mutable: bool,
+    },
+    Assign {
+        target: AssignTarget,
+        value: Expr,
+    },
+    If {
+        cond: Expr,
+        then_body: Vec<Stmt>,
+        else_body: Option<Vec<Stmt>>,
+    },
+    For {
+        init: Option<Box<Stmt>>,
+        cond: Option<Expr>,
+        step: Option<Box<Stmt>>,
+        body: Vec<Stmt>,
+    },
+    While {
+        cond: Expr,
+        body: Vec<Stmt>,
+    },
+    Foreach {
+        var: String,
+        iter: Box<Expr>,
+        body: Vec<Stmt>,
+    },
     Break,
     Continue,
-    Hazard { body: Vec<Stmt> },
-    InlineAsm { instructions: Vec<String> },
+    Hazard {
+        body: Vec<Stmt>,
+    },
+    InlineAsm {
+        instructions: Vec<String>,
+    },
     ExprStmt(Expr),
     Return(Option<Expr>),
-    TryCatch { try_body: Vec<Stmt>, catch_param: Option<String>, catch_body: Vec<Stmt> },
-    Defer { body: Vec<Stmt> },
-    Choose { expr: Box<Expr>, arms: Vec<ChooseArm> },
+    TryCatch {
+        try_body: Vec<Stmt>,
+        catch_param: Option<String>,
+        catch_body: Vec<Stmt>,
+    },
+    Defer {
+        body: Vec<Stmt>,
+    },
+    Choose {
+        expr: Box<Expr>,
+        arms: Vec<ChooseArm>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -230,32 +296,72 @@ pub enum AssignTarget {
 pub enum Expr {
     Literal(Literal),
     Ident(String),
-    Binary { op: BinOp, left: Box<Expr>, right: Box<Expr> },
-    Unary { op: UnOp, operand: Box<Expr> },
-    Call { callee: Box<Expr>, args: Vec<Expr> },
+    Binary {
+        op: BinOp,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Unary {
+        op: UnOp,
+        operand: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        args: Vec<Expr>,
+    },
     AddrOf(Box<Expr>),
     Deref(Box<Expr>),
-    Index { base: Box<Expr>, index: Box<Expr> },
-    Slice { base: Box<Expr>, start: Option<Box<Expr>>, end: Option<Box<Expr>> },
-    Field { base: Box<Expr>, field: String },
-    New { class: String, args: Vec<Expr> },
+    Index {
+        base: Box<Expr>,
+        index: Box<Expr>,
+    },
+    Slice {
+        base: Box<Expr>,
+        start: Option<Box<Expr>>,
+        end: Option<Box<Expr>>,
+    },
+    Field {
+        base: Box<Expr>,
+        field: String,
+    },
+    New {
+        class: String,
+        args: Vec<Expr>,
+    },
     ArrayInit(Vec<Expr>),
-    Range { start: Box<Expr>, end: Box<Expr> },
+    Range {
+        start: Box<Expr>,
+        end: Box<Expr>,
+    },
     Tuple(Vec<Expr>),
     Interpolate(Vec<InterpolatePart>),
-    Cast { operand: Box<Expr>, target_ty: Type },
+    Cast {
+        operand: Box<Expr>,
+        target_ty: Type,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
-    Add, Sub, Mul, Div, Mod,
-    Eq, Ne, Lt, Le, Gt, Ge,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnOp {
-    Neg, Not,
+    Neg,
+    Not,
 }
 
 #[derive(Debug, Clone, PartialEq)]

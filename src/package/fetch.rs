@@ -11,10 +11,9 @@ pub fn fetch_package(name: &str, dep: &Dependency, dest: &Path) -> Result<()> {
             // In a real implementation, would fetch from registry
             // For now, create directory structure
             let pkg_dir = dest.join(format!("{}-{}", name, version));
-            std::fs::create_dir_all(&pkg_dir)
-                .map_err(|e| Error::Package {
-                    message: format!("Failed to create package dir: {}", e),
-                })?;
+            std::fs::create_dir_all(&pkg_dir).map_err(|e| Error::Package {
+                message: format!("Failed to create package dir: {}", e),
+            })?;
             Ok(())
         }
         Dependency::Git { url, rev } => {
@@ -25,10 +24,9 @@ pub fn fetch_package(name: &str, dep: &Dependency, dest: &Path) -> Result<()> {
                 // Already cloned; could add `git fetch` + checkout for updates
                 return Ok(());
             }
-            std::fs::create_dir_all(dest)
-                .map_err(|e| Error::Package {
-                    message: format!("Failed to create packages dir: {}", e),
-                })?;
+            std::fs::create_dir_all(dest).map_err(|e| Error::Package {
+                message: format!("Failed to create packages dir: {}", e),
+            })?;
             let mut cmd = Command::new("git");
             cmd.arg("clone");
             if let Some(r) = rev {

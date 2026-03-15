@@ -1,7 +1,7 @@
 //! QuinusLang compiler CLI
 
 use clap::{Parser, Subcommand};
-use quinuslang::{analyze, codegen, fmt, parse, preprocess, package};
+use quinuslang::{analyze, codegen, fmt, package, parse, preprocess};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -35,9 +35,7 @@ enum Commands {
         release: bool,
     },
     /// Parse a file (debug)
-    Parse {
-        path: PathBuf,
-    },
+    Parse { path: PathBuf },
     /// Create a new package
     Init {
         #[arg(default_value = ".")]
@@ -50,9 +48,7 @@ enum Commands {
         git: Option<String>,
     },
     /// Remove a dependency
-    Remove {
-        name: String,
-    },
+    Remove { name: String },
     /// Publish to registry
     Publish,
     /// Update dependencies
@@ -88,7 +84,11 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Build { path, release, emit_c } => cmd_build(&path, release, emit_c),
+        Commands::Build {
+            path,
+            release,
+            emit_c,
+        } => cmd_build(&path, release, emit_c),
         Commands::Run { path, release } => cmd_run(&path, release),
         Commands::Parse { path } => cmd_parse(&path),
         Commands::Init { path } => cmd_init(&path),
@@ -157,11 +157,7 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
         std::env::set_var("TARGET", target);
         std::env::set_var("HOST", target);
 
-        let compiler = match cc::Build::new()
-            .file(&c_path)
-            .cpp(false)
-            .try_get_compiler()
-        {
+        let compiler = match cc::Build::new().file(&c_path).cpp(false).try_get_compiler() {
             Ok(c) => c,
             Err(_) => continue,
         };
@@ -213,8 +209,10 @@ fn cmd_run(path: &PathBuf, release: bool) -> anyhow::Result<()> {
         let status = Command::new(&exe_path).status()?;
         std::process::exit(status.code().unwrap_or(1));
     } else {
-        println!("Executable not found. Build may have produced assembly only.");
-        println!("Install NASM and MinGW GCC to produce .exe files.");
+        println!(
+            "Executable not found. Check that the C compiler succeeded and output.exe was created."
+        );
+        println!("If build failed, ensure a C compiler is installed (MSVC or MinGW).");
     }
     Ok(())
 }
@@ -265,8 +263,8 @@ fn cmd_preprocess(path: &PathBuf, output: Option<&PathBuf>) -> anyhow::Result<()
 }
 
 fn cmd_parse(path: &PathBuf) -> anyhow::Result<()> {
-    let source = std::fs::read_to_string(path)
-        .map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
+    let source =
+        std::fs::read_to_string(path).map_err(|e| anyhow::anyhow!("Failed to read file: {}", e))?;
     let program = parse(&source)?;
     println!("{:#?}", program);
     Ok(())
@@ -314,7 +312,10 @@ fn cmd_add(name: &str, git: Option<&str>) -> anyhow::Result<()> {
         format!("{} = \"*\"\n", name)
     };
     let new_content = if content.contains("[dependencies]") {
-        content.replace("[dependencies]", &format!("[dependencies]\n{}", dep_line.trim_end()))
+        content.replace(
+            "[dependencies]",
+            &format!("[dependencies]\n{}", dep_line.trim_end()),
+        )
     } else {
         format!("{}\n[dependencies]\n{}\n", content, dep_line)
     };
@@ -362,7 +363,13 @@ fn cmd_publish() -> anyhow::Result<()> {
 
     let tag = format!("v{}", version);
     let status = Command::new("git")
-        .args(["tag", "-a", &tag, "-m", &format!("Release {} {}", name, version)])
+        .args([
+            "tag",
+            "-a",
+            &tag,
+            "-m",
+            &format!("Release {} {}", name, version),
+        ])
         .status();
     match status {
         Ok(s) if s.success() => {
@@ -421,7 +428,10 @@ fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
     use std::time::Duration;
 
     let (tx, rx) = mpsc::channel();
-    let mut watcher = RecommendedWatcher::new(move |res| tx.send(res).unwrap(), Config::default())?;
+    let mut watcher = RecommendedWatcher::new(
+        move |res| tx.send(res).expect("watch channel disconnected"),
+        Config::default(),
+    )?;
     let watch_path = if path.is_file() {
         path.parent().unwrap_or(path).to_path_buf()
     } else {
@@ -429,15 +439,26 @@ fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
     };
     watcher.watch(&watch_path, RecursiveMode::Recursive)?;
     println!("Watching {:?} for changes...", watch_path);
+    let debounce = Duration::from_millis(300);
+    let mut last_event = std::time::Instant::now()
+        .checked_sub(Duration::from_secs(3600))
+        .unwrap_or_else(std::time::Instant::now);
+    let mut pending = false;
     loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
+        match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(Ok(_)) => {
-                if let Err(e) = cmd_build(path, false, false) {
-                    eprintln!("Build failed: {}", e);
-                }
+                pending = true;
+                last_event = std::time::Instant::now();
             }
             Ok(Err(e)) => eprintln!("Watch error: {}", e),
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if pending && std::time::Instant::now().duration_since(last_event) >= debounce {
+                    pending = false;
+                    if let Err(e) = cmd_build(path, false, false) {
+                        eprintln!("Build failed: {}", e);
+                    }
+                }
+            }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
@@ -466,32 +487,30 @@ fn cmd_repl() -> anyhow::Result<()> {
         }
         let program = format!("craft _repl() -> void {{ {} }}", line);
         match parse(&program) {
-            Ok(p) => {
-                match analyze(&p) {
-                    Ok(annotated) => {
-                        writeln!(stdout, "ok")?;
-                        if let Some(last) = p.items.first().and_then(|i| {
-                            if let quinuslang::ast::TopLevelItem::Fn(f) = i {
-                                f.body.last()
-                            } else {
-                                None
-                            }
-                        }) {
-                            let expr = match last {
-                                quinuslang::ast::Stmt::VarDecl { init, .. } => Some(init),
-                                quinuslang::ast::Stmt::ExprStmt(e) => Some(e),
-                                _ => None,
-                            };
-                            if let Some(e) = expr {
-                                if let Some(ty) = semantic_expr_type(&annotated, e) {
-                                    writeln!(stdout, "  type: {}", ty)?;
-                                }
+            Ok(p) => match analyze(&p) {
+                Ok(annotated) => {
+                    writeln!(stdout, "ok")?;
+                    if let Some(last) = p.items.first().and_then(|i| {
+                        if let quinuslang::ast::TopLevelItem::Fn(f) = i {
+                            f.body.last()
+                        } else {
+                            None
+                        }
+                    }) {
+                        let expr = match last {
+                            quinuslang::ast::Stmt::VarDecl { init, .. } => Some(init),
+                            quinuslang::ast::Stmt::ExprStmt(e) => Some(e),
+                            _ => None,
+                        };
+                        if let Some(e) = expr {
+                            if let Some(ty) = semantic_expr_type(&annotated, e) {
+                                writeln!(stdout, "  type: {}", ty)?;
                             }
                         }
                     }
-                    Err(e) => writeln!(stdout, "Error: {}", e)?,
                 }
-            }
+                Err(e) => writeln!(stdout, "Error: {}", e)?,
+            },
             Err(e) => writeln!(stdout, "Error: {}", e)?,
         }
         stdout.flush()?;
@@ -500,10 +519,10 @@ fn cmd_repl() -> anyhow::Result<()> {
 }
 
 fn cmd_lsp() -> anyhow::Result<()> {
-    use lsp_server::{Connection, Message, RequestId, Response};
+    use lsp_server::{Connection, Message, Notification, RequestId, Response};
     use lsp_types::{
-        Hover, HoverContents, InitializeParams, InitializeResult, ServerCapabilities,
-        TextDocumentSyncCapability, TextDocumentSyncKind,
+        Hover, HoverContents, InitializeParams, InitializeResult, PublishDiagnosticsParams,
+        ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
     };
 
     let (connection, io_threads) = Connection::stdio();
@@ -518,7 +537,7 @@ fn cmd_lsp() -> anyhow::Result<()> {
         capabilities: caps,
         server_info: Some(lsp_types::ServerInfo {
             name: "quinus".to_string(),
-            version: Some("0.1.0".to_string()),
+            version: Some(env!("CARGO_PKG_VERSION").to_string()),
         }),
         ..Default::default()
     };
@@ -550,7 +569,9 @@ fn cmd_lsp() -> anyhow::Result<()> {
                         let response = Response::new_ok(
                             id,
                             serde_json::to_value(Hover {
-                                contents: HoverContents::Scalar(lsp_types::MarkedString::String(content)),
+                                contents: HoverContents::Scalar(lsp_types::MarkedString::String(
+                                    content,
+                                )),
                                 range: None,
                             })?,
                         );
@@ -572,16 +593,31 @@ fn cmd_lsp() -> anyhow::Result<()> {
                     let params: lsp_types::DidChangeTextDocumentParams =
                         serde_json::from_value(n.params)?;
                     if let Some(changes) = params.content_changes.first() {
-                        documents.insert(
-                            params.text_document.uri.to_string(),
-                            changes.text.clone(),
-                        );
+                        documents
+                            .insert(params.text_document.uri.to_string(), changes.text.clone());
                     }
                 }
                 "textDocument/didClose" => {
                     let params: lsp_types::DidCloseTextDocumentParams =
                         serde_json::from_value(n.params)?;
                     documents.remove(&params.text_document.uri.to_string());
+                }
+                "textDocument/didSave" => {
+                    let params: lsp_types::DidSaveTextDocumentParams =
+                        serde_json::from_value(n.params)?;
+                    let uri = params.text_document.uri.to_string();
+                    if let Some(text) = documents.get(&uri) {
+                        let diagnostics = collect_diagnostics(text);
+                        let notification = Notification::new(
+                            "textDocument/publishDiagnostics".into(),
+                            PublishDiagnosticsParams {
+                                uri: params.text_document.uri,
+                                diagnostics,
+                                version: None,
+                            },
+                        );
+                        let _ = connection.sender.send(Message::Notification(notification));
+                    }
                 }
                 _ => {}
             },
@@ -590,6 +626,99 @@ fn cmd_lsp() -> anyhow::Result<()> {
     }
     io_threads.join()?;
     Ok(())
+}
+
+fn collect_diagnostics(text: &str) -> Vec<lsp_types::Diagnostic> {
+    let mut diagnostics = Vec::new();
+    match parse(text) {
+        Ok(program) => {
+            if let Err(e) = analyze(&program) {
+                if let quinuslang::Error::Semantic(se) = e {
+                    let range = line_col_to_range(text, se.line, se.col);
+                    diagnostics.push(lsp_types::Diagnostic {
+                        range,
+                        severity: Some(lsp_types::DiagnosticSeverity::ERROR),
+                        code: None,
+                        code_description: None,
+                        source: Some("quinus".into()),
+                        message: format!("{}", se),
+                        related_information: None,
+                        tags: None,
+                        data: None,
+                    });
+                }
+            }
+        }
+        Err(e) => {
+            let (line, col) = match &e {
+                quinuslang::Error::Lexer { line, col, .. } => (*line, *col),
+                quinuslang::Error::Parse { line, col, .. } => (*line, *col),
+                _ => (1usize, 1usize),
+            };
+            let range = line_col_to_range(text, Some(line), Some(col));
+            diagnostics.push(lsp_types::Diagnostic {
+                range,
+                severity: Some(lsp_types::DiagnosticSeverity::ERROR),
+                code: None,
+                code_description: None,
+                source: Some("quinus".into()),
+                message: format!("{}", e),
+                related_information: None,
+                tags: None,
+                data: None,
+            });
+        }
+    }
+    diagnostics
+}
+
+fn line_col_to_range(text: &str, line: Option<usize>, col: Option<usize>) -> lsp_types::Range {
+    let line = line.unwrap_or(1).saturating_sub(1);
+    let col = col.unwrap_or(1).saturating_sub(1);
+    let mut line_start = 0;
+    let mut line_len = 0;
+    for (i, l) in text.lines().enumerate() {
+        if i == line {
+            line_len = l.chars().count();
+            break;
+        }
+        line_start += l.len() + 1;
+    }
+    let col = col.min(line_len);
+    let char_offset: usize = text[line_start..]
+        .char_indices()
+        .nth(col)
+        .map(|(o, _)| o)
+        .unwrap_or(0);
+    let start_offset = line_start + char_offset;
+    let start = offset_to_position(text, start_offset);
+    let end = offset_to_position(text, start_offset + 1);
+    lsp_types::Range { start, end }
+}
+
+fn offset_to_position(text: &str, offset: usize) -> lsp_types::Position {
+    let mut line = 0;
+    let mut col = 0;
+    let mut current = 0;
+    for (i, c) in text.char_indices() {
+        if current >= offset {
+            return lsp_types::Position {
+                line: line as u32,
+                character: col as u32,
+            };
+        }
+        if c == '\n' {
+            line += 1;
+            col = 0;
+        } else {
+            col += 1;
+        }
+        current = i + 1;
+    }
+    lsp_types::Position {
+        line: line as u32,
+        character: col as u32,
+    }
 }
 
 fn position_to_offset(text: &str, pos: lsp_types::Position) -> Option<usize> {
@@ -604,16 +733,62 @@ fn position_to_offset(text: &str, pos: lsp_types::Position) -> Option<usize> {
 }
 
 fn find_hover_at_offset(
-    _annotated: &quinuslang::semantic::AnnotatedProgram,
-    _text: &str,
-    _offset: usize,
+    annotated: &quinuslang::semantic::AnnotatedProgram,
+    text: &str,
+    offset: usize,
 ) -> Option<String> {
-    Some("QuinusLang".to_string())
+    // Extract identifier at offset (alphanumeric + underscore)
+    let chars: Vec<char> = text.chars().collect();
+    if offset >= chars.len() {
+        return None;
+    }
+    let mut start = offset;
+    while start > 0
+        && (chars[start - 1].is_alphabetic()
+            || chars[start - 1] == '_'
+            || chars[start - 1].is_ascii_digit())
+    {
+        start -= 1;
+    }
+    let mut end = offset;
+    while end < chars.len()
+        && (chars[end].is_alphabetic() || chars[end] == '_' || chars[end].is_ascii_digit())
+    {
+        end += 1;
+    }
+    if start >= end {
+        return None;
+    }
+    let name: String = chars[start..end].iter().collect();
+    if name.is_empty() {
+        return None;
+    }
+    // Look up in symbol table
+    for scope in annotated.symbol_table.scopes.iter().rev() {
+        if let Some(ty) = scope.vars.get(&name) {
+            return Some(format!("{}: {}", name, ty));
+        }
+        if scope.funcs.contains_key(&name) {
+            if let Some(sig) = scope.funcs.get(&name) {
+                let params: Vec<String> = sig.params.iter().map(|t| t.to_string()).collect();
+                let ret = sig
+                    .return_type
+                    .as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "void".to_string());
+                return Some(format!("craft {}({}) -> {}", name, params.join(", "), ret));
+            }
+        }
+    }
+    None
 }
 
-fn semantic_expr_type(annotated: &quinuslang::semantic::AnnotatedProgram, expr: &quinuslang::ast::Expr) -> Option<String> {
+fn semantic_expr_type(
+    annotated: &quinuslang::semantic::AnnotatedProgram,
+    expr: &quinuslang::ast::Expr,
+) -> Option<String> {
     let ty = quinuslang::type_of_expr(&annotated.symbol_table, expr)?;
-    Some(format!("{:?}", ty))
+    Some(format!("{}", ty))
 }
 
 fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> {

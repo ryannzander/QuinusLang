@@ -93,6 +93,49 @@ craft main() -> void {
 }
 
 #[test]
+fn test_semantic_error_type_mismatch() {
+    let source = r#"
+craft main() -> void {
+    make x: i32 = "hello";
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let result = analyze(&program);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(format!("{}", err).contains("Cannot assign") || format!("{}", err).contains("assign"));
+}
+
+#[test]
+fn test_semantic_error_wrong_arg_count() {
+    let source = r#"
+craft main() -> void {
+    make n: usize = len(1, 2);
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let result = analyze(&program);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(format!("{}", err).contains("len") || format!("{}", err).contains("argument"));
+}
+
+#[test]
+fn test_semantic_error_const_type_mismatch() {
+    let source = r#"
+eternal PI: i32 = "not a number";
+craft main() -> void { send; }
+"#;
+    let program = parse(source).unwrap();
+    let result = analyze(&program);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(format!("{}", err).contains("constant") || format!("{}", err).contains("assign"));
+}
+
+#[test]
 fn test_formatter_roundtrip() {
     use quinuslang::fmt;
     let source = r#"craft main() -> void {
@@ -106,6 +149,67 @@ fn test_formatter_roundtrip() {
     let formatted = fmt::format_program(&program);
     let reparsed = parse(&formatted).unwrap();
     assert_eq!(program.items.len(), reparsed.items.len());
+}
+
+#[test]
+fn test_formatter_roundtrip_defer() {
+    use quinuslang::fmt;
+    let source = r#"craft main() -> void {
+    defer { print(1); }
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let formatted = fmt::format_program(&program);
+    let reparsed = parse(&formatted).unwrap();
+    assert_eq!(program.items.len(), reparsed.items.len());
+}
+
+#[test]
+fn test_formatter_roundtrip_foreach() {
+    use quinuslang::fmt;
+    let source = r#"craft main() -> void {
+    make shift arr: [i32; 3] = { 1, 2, 3 };
+    foreach x in arr { print(x); }
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let formatted = fmt::format_program(&program);
+    let reparsed = parse(&formatted).unwrap();
+    assert_eq!(program.items.len(), reparsed.items.len());
+}
+
+#[test]
+fn test_fs_module() {
+    let source = r#"
+bring "fs";
+craft main() -> void {
+    make f: link void = fs.open_file("test.txt", "r");
+    fs.close(f);
+    send;
+}
+"#;
+    let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("fopen") || c_code.contains("fclose"));
+}
+
+#[test]
+fn test_math_module() {
+    let source = r#"
+bring "math";
+craft main() -> void {
+    make a: i32 = math.min_i32(1, 2);
+    make b: f64 = math.sqrt_f64(4.0);
+    send;
+}
+"#;
+    let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("sqrt") || c_code.contains("fmin"));
 }
 
 #[test]
