@@ -40,6 +40,16 @@
 - **HTML docs**: Update `docs/*.html` (modules, advanced, types, strings, index) when adding features — not just language.md and SPEC.md.
 - **ARCHITECTURE.md**: Describes C backend, not NASM.
 
+## Roadmap (Think Bigger)
+
+**Plan file**: `.cursor/plans/quinuslang_next_release_078ed5ca.plan.md`
+
+- **v0.2.0** ✓ — C FFI, fs/os stdlib, tuple destructuring, type alias, cast
+- **v0.3.0** — String interpolation, improved error messages, formatter completion
+- **v0.4.0** — Git package fetch, math/str stdlib, quinus publish
+- **v0.5.0** — LSP, quinus check, REPL eval
+- **Long-term**: Generics, traits, Wasm target, self-hosting
+
 ## Project Structure
 
 - `src/` — Compiler (lexer, parser, semantic, codegen/c.rs, codegen/mod.rs, fmt)
