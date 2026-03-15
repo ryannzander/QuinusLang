@@ -1,0 +1,55 @@
+# Summary
+
+[Getting Started](index.md)
+[Installation](install.md)
+[Quick Tour](tour.md)
+[Quick Reference](quick-reference.md)
+
+# Language Reference
+
+- [Overview](language.md)
+- [Keywords](keywords.md)
+- [Types](types.md)
+- [Expressions](expressions.md)
+- [Control Flow](control-flow.md)
+- [Structs and Enums](structs-enums.md)
+- [Pointers and Memory](pointers-memory.md)
+- [Modules and FFI](modules-ffi.md)
+- [Compile Flags](compile-flags.md)
+- [String Interpolation](string-interpolation.md)
+- [Result Type](result-type.md)
+- [Pattern Matching](pattern-matching.md)
+- [Defer](defer.md)
+- [Move Semantics](move-semantics.md)
+- [Builtins](builtins.md)
+- [Numeric Literals](numeric-literals.md)
+
+# Standard Library
+
+- [Index](stdlib-index.md)
+- [fs](std-fs.md)
+- [os](std-os.md)
+- [math](std-math.md)
+- [str](std-str.md)
+- [io](std-io.md)
+- [vec](std-vec.md)
+- [map](std-map.md)
+- [fmt](std-fmt.md)
+- [time](std-time.md)
+- [rand](std-rand.md)
+- [arena](std-arena.md)
+- [simd](std-simd.md)
+- [path](std-path.md)
+
+- [CLI Reference](cli.md)
+
+# Advanced
+
+- [C FFI](ffi.md)
+- [Hazard and Unsafe](hazard-unsafe.md)
+- [Embedded](embedded.md)
+
+---
+
+[Contributing](contributing.md)
+[Architecture](ARCHITECTURE.md)

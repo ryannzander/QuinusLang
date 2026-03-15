@@ -5,7 +5,9 @@ on:
     branches: [main, master]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
@@ -15,23 +17,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Install dependencies
+      - name: Install mdBook
         run: |
-          pip install mkdocs-material
-          pip install pymdown-extensions
-          pip install ./pygments_quinus
+          tag=$(curl -sSfL 'https://api.github.com/repos/rust-lang/mdBook/releases/latest' | jq -r '.tag_name')
+          url="https://github.com/rust-lang/mdBook/releases/download/${tag}/mdbook-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          mkdir mdbook
+          curl -sSL "$url" | tar -xz --directory=./mdbook
+          echo "$(pwd)/mdbook" >> $GITHUB_PATH
 
-      - name: Build docs
-        run: mkdocs build --strict
+      - name: Build book
+        run: mdbook build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: book
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          force_orphan: true
+        id: deployment
+        uses: actions/deploy-pages@v4

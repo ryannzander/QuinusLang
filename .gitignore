@@ -17,6 +17,8 @@
 packages/
 # MkDocs build output
 site/
+# mdBook build output
+book/
 # Python package build
 *.egg-info/
 QuinusLang-portable.zip
