@@ -915,11 +915,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             stream.expect("{")?;
             let body = parse_block(stream)?;
             stream.expect("}")?;
-            Ok(Stmt::With {
-                var,
-                expr,
-                body,
-            })
+            Ok(Stmt::With { var, expr, body })
         }
         Some(Token::Choose) => {
             stream.consume();

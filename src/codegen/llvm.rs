@@ -48,23 +48,25 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
     let entry = context.append_basic_block(main_fn, "entry");
     builder.position_at_end(entry);
 
-    let ql_main = module.get_function("_ql_main").ok_or_else(|| {
-        crate::error::semantic_err("main() not found")
-    })?;
+    let ql_main = module
+        .get_function("_ql_main")
+        .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
     builder.build_call(ql_main, &[], "call_main")?;
     builder.build_return(Some(&i32_type.const_int(0, false)))?;
 
     // Verify and write object file
     module.verify()?;
     let target = Target::from_triple(&Target::get_default_triple())?;
-    let target_machine = target.create_target_machine(
-        &Target::get_default_triple(),
-        "generic",
-        "",
-        OptimizationLevel::Default,
-        inkwell::targets::RelocMode::Default,
-        inkwell::targets::CodeModel::Default,
-    ).ok_or_else(|| crate::error::semantic_err("Failed to create target machine"))?;
+    let target_machine = target
+        .create_target_machine(
+            &Target::get_default_triple(),
+            "generic",
+            "",
+            OptimizationLevel::Default,
+            inkwell::targets::RelocMode::Default,
+            inkwell::targets::CodeModel::Default,
+        )
+        .ok_or_else(|| crate::error::semantic_err("Failed to create target machine"))?;
 
     target_machine.write_to_file(&module, FileType::Object, obj_path)?;
     Ok(())
@@ -101,16 +103,16 @@ pub fn compile_to_ir(program: &AnnotatedProgram, ir_path: &Path) -> Result<()> {
     let entry = context.append_basic_block(main_fn, "entry");
     builder.position_at_end(entry);
 
-    let ql_main = module.get_function("_ql_main").ok_or_else(|| {
-        crate::error::semantic_err("main() not found")
-    })?;
+    let ql_main = module
+        .get_function("_ql_main")
+        .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
     builder.build_call(ql_main, &[], "call_main")?;
     builder.build_return(Some(&i32_type.const_int(0, false)))?;
 
     module.verify()?;
-    module.print_to_file(ir_path).map_err(|e| {
-        crate::error::semantic_err(format!("Failed to write IR: {}", e))
-    })?;
+    module
+        .print_to_file(ir_path)
+        .map_err(|e| crate::error::semantic_err(format!("Failed to write IR: {}", e)))?;
     Ok(())
 }
 
@@ -145,9 +147,9 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
     let entry = context.append_basic_block(main_fn, "entry");
     builder.position_at_end(entry);
 
-    let ql_main = module.get_function("_ql_main").ok_or_else(|| {
-        crate::error::semantic_err("main() not found")
-    })?;
+    let ql_main = module
+        .get_function("_ql_main")
+        .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
     builder.build_call(ql_main, &[], "call_main")?;
     builder.build_return(Some(&i32_type.const_int(0, false)))?;
 
@@ -200,21 +202,30 @@ fn type_to_llvm<'ctx>(ctx: &'ctx Context, ty: &Type) -> inkwell::types::BasicTyp
         Type::Float | Type::F64 => ctx.f64_type().into(),
         Type::F32 => ctx.f32_type().into(),
         Type::Bool => ctx.bool_type().into(),
-        Type::Str => ctx.i8_type().ptr_type(inkwell::AddressSpace::default()).into(),
+        Type::Str => ctx
+            .i8_type()
+            .ptr_type(inkwell::AddressSpace::default())
+            .into(),
         Type::U8 => ctx.i8_type().into(),
         Type::U16 => ctx.i16_type().into(),
         Type::U32 => ctx.i32_type().into(),
         Type::U64 => ctx.i64_type().into(),
-        Type::Usize => ctx.i64_type().into(), // assume 64-bit
-        Type::Void => ctx.i8_type().into(), // placeholder
+        Type::Usize => ctx.i64_type().into(),  // assume 64-bit
+        Type::Void => ctx.i8_type().into(),    // placeholder
         Type::Ptr(_) => ctx.i64_type().into(), // pointers as i64 for now
         _ => ctx.i64_type().into(),
     }
 }
 
 fn emit_fn<'ctx>(ctx: &mut LlvmCtx<'ctx>, f: &FnDef) -> Result<()> {
-    let name = if f.name == "main" { "_ql_main".to_string() } else { f.name.clone() };
-    let param_tys: Vec<BasicMetadataTypeEnum> = f.params.iter()
+    let name = if f.name == "main" {
+        "_ql_main".to_string()
+    } else {
+        f.name.clone()
+    };
+    let param_tys: Vec<BasicMetadataTypeEnum> = f
+        .params
+        .iter()
         .map(|p| type_to_llvm(ctx.context, &p.ty).into())
         .collect();
     let fn_type = match f.return_type.as_ref() {
@@ -237,8 +248,16 @@ fn emit_fn<'ctx>(ctx: &mut LlvmCtx<'ctx>, f: &FnDef) -> Result<()> {
     }
 
     // If no explicit return and return type is void
-    if f.return_type.as_ref().map_or(true, |t| matches!(t, Type::Void)) {
-        if ctx.builder.get_insert_block().map(|b| b.get_terminator().is_none()).unwrap_or(true) {
+    if f.return_type
+        .as_ref()
+        .map_or(true, |t| matches!(t, Type::Void))
+    {
+        if ctx
+            .builder
+            .get_insert_block()
+            .map(|b| b.get_terminator().is_none())
+            .unwrap_or(true)
+        {
             ctx.builder.build_return(None)?;
         }
     }
@@ -248,10 +267,15 @@ fn emit_fn<'ctx>(ctx: &mut LlvmCtx<'ctx>, f: &FnDef) -> Result<()> {
 
 fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
     match stmt {
-        Stmt::VarDecl { name, ty, init, mutable: _ } => {
-            let ty_resolved = ty.clone().unwrap_or_else(|| {
-                expr_type(init, ctx).unwrap_or(Type::Int)
-            });
+        Stmt::VarDecl {
+            name,
+            ty,
+            init,
+            mutable: _,
+        } => {
+            let ty_resolved = ty
+                .clone()
+                .unwrap_or_else(|| expr_type(init, ctx).unwrap_or(Type::Int));
             let llvm_ty = type_to_llvm(ctx.context, &ty_resolved);
             let val = emit_expr(ctx, init)?;
             let alloca = ctx.builder.build_alloca(llvm_ty, name)?;
@@ -280,42 +304,66 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
         Stmt::ExprStmt(e) => {
             let _ = emit_expr(ctx, e)?;
         }
-        Stmt::If { cond, then_body, else_body } => {
+        Stmt::If {
+            cond,
+            then_body,
+            else_body,
+        } => {
             let cond_val = emit_expr(ctx, cond)?;
             let cond_bool = match cond_val {
                 BasicValueEnum::IntValue(i) => ctx.builder.build_int_compare(
                     inkwell::IntPredicate::NE,
                     i,
                     i.get_type().const_zero(),
-                    "cond"
+                    "cond",
                 )?,
                 _ => return Err(crate::error::semantic_err("Condition must be integer")),
             };
 
             let then_bb = ctx.context.append_basic_block(
-                ctx.builder.get_insert_block().unwrap().get_parent().unwrap(),
-                "then"
+                ctx.builder
+                    .get_insert_block()
+                    .unwrap()
+                    .get_parent()
+                    .unwrap(),
+                "then",
             );
             let else_bb = ctx.context.append_basic_block(
-                ctx.builder.get_insert_block().unwrap().get_parent().unwrap(),
-                "else"
+                ctx.builder
+                    .get_insert_block()
+                    .unwrap()
+                    .get_parent()
+                    .unwrap(),
+                "else",
             );
             let merge_bb = ctx.context.append_basic_block(
-                ctx.builder.get_insert_block().unwrap().get_parent().unwrap(),
-                "merge"
+                ctx.builder
+                    .get_insert_block()
+                    .unwrap()
+                    .get_parent()
+                    .unwrap(),
+                "merge",
             );
 
             if else_body.is_some() {
-                ctx.builder.build_conditional_branch(cond_bool, then_bb, else_bb)?;
+                ctx.builder
+                    .build_conditional_branch(cond_bool, then_bb, else_bb)?;
             } else {
-                ctx.builder.build_conditional_branch(cond_bool, then_bb, merge_bb)?;
+                ctx.builder
+                    .build_conditional_branch(cond_bool, then_bb, merge_bb)?;
             }
 
             ctx.builder.position_at_end(then_bb);
             for s in then_body {
                 emit_stmt(ctx, s)?;
             }
-            if ctx.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_terminator()
+                .is_none()
+            {
                 ctx.builder.build_unconditional_branch(merge_bb)?;
             }
 
@@ -324,7 +372,13 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
                 for s in else_b {
                     emit_stmt(ctx, s)?;
                 }
-                if ctx.builder.get_insert_block().unwrap().get_terminator().is_none() {
+                if ctx
+                    .builder
+                    .get_insert_block()
+                    .unwrap()
+                    .get_terminator()
+                    .is_none()
+                {
                     ctx.builder.build_unconditional_branch(merge_bb)?;
                 }
             } else {
@@ -334,11 +388,21 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
 
             ctx.builder.position_at_end(merge_bb);
         }
-        Stmt::For { init, cond, step, body } => {
+        Stmt::For {
+            init,
+            cond,
+            step,
+            body,
+        } => {
             if let Some(ref i) = init {
                 emit_stmt(ctx, i)?;
             }
-            let func = ctx.builder.get_insert_block().unwrap().get_parent().unwrap();
+            let func = ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_parent()
+                .unwrap();
             let loop_bb = ctx.context.append_basic_block(func, "for_loop");
             let body_bb = ctx.context.append_basic_block(func, "for_body");
             let step_bb = ctx.context.append_basic_block(func, "for_step");
@@ -351,11 +415,15 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
                 let cond_val = emit_expr(ctx, c)?;
                 let cond_bool = match cond_val {
                     BasicValueEnum::IntValue(i) => ctx.builder.build_int_compare(
-                        inkwell::IntPredicate::NE, i, i.get_type().const_zero(), "for_cond"
+                        inkwell::IntPredicate::NE,
+                        i,
+                        i.get_type().const_zero(),
+                        "for_cond",
                     )?,
                     _ => return Err(crate::error::semantic_err("For condition must be integer")),
                 };
-                ctx.builder.build_conditional_branch(cond_bool, body_bb, end_bb)?;
+                ctx.builder
+                    .build_conditional_branch(cond_bool, body_bb, end_bb)?;
             } else {
                 ctx.builder.build_unconditional_branch(body_bb)?;
             }
@@ -364,7 +432,13 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
             for s in body {
                 emit_stmt(ctx, s)?;
             }
-            if ctx.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_terminator()
+                .is_none()
+            {
                 ctx.builder.build_unconditional_branch(step_bb)?;
             }
 
@@ -372,14 +446,25 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
             if let Some(ref s) = step {
                 emit_stmt(ctx, s)?;
             }
-            if ctx.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_terminator()
+                .is_none()
+            {
                 ctx.builder.build_unconditional_branch(loop_bb)?;
             }
 
             ctx.builder.position_at_end(end_bb);
         }
         Stmt::While { cond, body } => {
-            let func = ctx.builder.get_insert_block().unwrap().get_parent().unwrap();
+            let func = ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_parent()
+                .unwrap();
             let loop_bb = ctx.context.append_basic_block(func, "while_loop");
             let body_bb = ctx.context.append_basic_block(func, "while_body");
             let end_bb = ctx.context.append_basic_block(func, "while_end");
@@ -390,17 +475,31 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
             let cond_val = emit_expr(ctx, cond)?;
             let cond_bool = match cond_val {
                 BasicValueEnum::IntValue(i) => ctx.builder.build_int_compare(
-                    inkwell::IntPredicate::NE, i, i.get_type().const_zero(), "while_cond"
+                    inkwell::IntPredicate::NE,
+                    i,
+                    i.get_type().const_zero(),
+                    "while_cond",
                 )?,
-                _ => return Err(crate::error::semantic_err("While condition must be integer")),
+                _ => {
+                    return Err(crate::error::semantic_err(
+                        "While condition must be integer",
+                    ))
+                }
             };
-            ctx.builder.build_conditional_branch(cond_bool, body_bb, end_bb)?;
+            ctx.builder
+                .build_conditional_branch(cond_bool, body_bb, end_bb)?;
 
             ctx.builder.position_at_end(body_bb);
             for s in body {
                 emit_stmt(ctx, s)?;
             }
-            if ctx.builder.get_insert_block().unwrap().get_terminator().is_none() {
+            if ctx
+                .builder
+                .get_insert_block()
+                .unwrap()
+                .get_terminator()
+                .is_none()
+            {
                 ctx.builder.build_unconditional_branch(loop_bb)?;
             }
 
@@ -417,12 +516,19 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
                 emit_stmt(ctx, s)?;
             }
         }
-        Stmt::VarDeclTuple { .. } | Stmt::Foreach { .. }
-        | Stmt::Break | Stmt::Continue | Stmt::Hazard { .. } | Stmt::InlineAsm { .. }
-        | Stmt::InlineC { .. } | Stmt::TryCatch { .. } | Stmt::Choose { .. } => {
-            return Err(crate::error::semantic_err(
-                format!("LLVM backend: unsupported statement {:?}", stmt)
-            ));
+        Stmt::VarDeclTuple { .. }
+        | Stmt::Foreach { .. }
+        | Stmt::Break
+        | Stmt::Continue
+        | Stmt::Hazard { .. }
+        | Stmt::InlineAsm { .. }
+        | Stmt::InlineC { .. }
+        | Stmt::TryCatch { .. }
+        | Stmt::Choose { .. } => {
+            return Err(crate::error::semantic_err(format!(
+                "LLVM backend: unsupported statement {:?}",
+                stmt
+            )));
         }
     }
     Ok(())
@@ -434,7 +540,10 @@ fn emit_builtin_call<'ctx>(
     args: &[Expr],
 ) -> Result<Option<BasicValueEnum<'ctx>>> {
     let printf_fn = ctx.module.get_function("printf").unwrap();
-    let i8_ptr = ctx.context.i8_type().ptr_type(inkwell::AddressSpace::default());
+    let i8_ptr = ctx
+        .context
+        .i8_type()
+        .ptr_type(inkwell::AddressSpace::default());
 
     match name {
         "print" | "write" => {
@@ -501,9 +610,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
         Expr::Literal(Literal::Int(n)) => {
             Ok(ctx.context.i64_type().const_int(*n as u64, *n < 0).into())
         }
-        Expr::Literal(Literal::Float(f)) => {
-            Ok(ctx.context.f64_type().const_float(*f).into())
-        }
+        Expr::Literal(Literal::Float(f)) => Ok(ctx.context.f64_type().const_float(*f).into()),
         Expr::Literal(Literal::Bool(b)) => {
             Ok(ctx.context.bool_type().const_int(*b as u64, false).into())
         }
@@ -512,7 +619,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let name = format!("str_{}", n);
             let global = ctx.module.add_global(
-                ctx.context.i8_type().ptr_type(inkwell::AddressSpace::default()),
+                ctx.context
+                    .i8_type()
+                    .ptr_type(inkwell::AddressSpace::default()),
                 None,
                 &name,
             );
@@ -521,7 +630,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             global.set_initializer(&ctx.context.const_string(s_nul.as_bytes(), true));
             let ptr = ctx.builder.build_pointer_cast(
                 global.as_pointer_value(),
-                ctx.context.i8_type().ptr_type(inkwell::AddressSpace::default()),
+                ctx.context
+                    .i8_type()
+                    .ptr_type(inkwell::AddressSpace::default()),
                 "str_ptr",
             )?;
             Ok(ptr.into())
@@ -532,12 +643,15 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                     let loaded = ctx.builder.build_load(
                         type_to_llvm(ctx.context, ctx.var_types.get(name).unwrap_or(&Type::Int)),
                         *p,
-                        name
+                        name,
                     )?;
                     return Ok(loaded);
                 }
             }
-            Err(crate::error::semantic_err(format!("Undefined variable: {}", name)))
+            Err(crate::error::semantic_err(format!(
+                "Undefined variable: {}",
+                name
+            )))
         }
         Expr::Binary { op, left, right } => {
             let l = emit_expr(ctx, left)?;
@@ -546,7 +660,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 BinOp::Add => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
                         Ok(ctx.builder.build_int_add(a, b, "add")?.into())
-                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) = (l, r) {
+                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
+                        (l, r)
+                    {
                         Ok(ctx.builder.build_float_add(a, b, "add")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in add"))
@@ -555,7 +671,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 BinOp::Sub => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
                         Ok(ctx.builder.build_int_sub(a, b, "sub")?.into())
-                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) = (l, r) {
+                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
+                        (l, r)
+                    {
                         Ok(ctx.builder.build_float_sub(a, b, "sub")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in sub"))
@@ -564,7 +682,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 BinOp::Mul => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
                         Ok(ctx.builder.build_int_mul(a, b, "mul")?.into())
-                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) = (l, r) {
+                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
+                        (l, r)
+                    {
                         Ok(ctx.builder.build_float_mul(a, b, "mul")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in mul"))
@@ -573,7 +693,9 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 BinOp::Div => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
                         Ok(ctx.builder.build_int_signed_div(a, b, "div")?.into())
-                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) = (l, r) {
+                    } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
+                        (l, r)
+                    {
                         Ok(ctx.builder.build_float_div(a, b, "div")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in div"))
@@ -581,54 +703,60 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Eq => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::EQ, a, b, "eq"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::EQ, a, b, "eq")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in =="))
                     }
                 }
                 BinOp::Ne => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::NE, a, b, "ne"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::NE, a, b, "ne")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in !="))
                     }
                 }
                 BinOp::Lt => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::SLT, a, b, "lt"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::SLT, a, b, "lt")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in <"))
                     }
                 }
                 BinOp::Le => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::SLE, a, b, "le"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::SLE, a, b, "le")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in <="))
                     }
                 }
                 BinOp::Gt => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::SGT, a, b, "gt"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::SGT, a, b, "gt")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in >"))
                     }
                 }
                 BinOp::Ge => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
-                        Ok(ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::SGE, a, b, "ge"
-                        )?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::SGE, a, b, "ge")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in >="))
                     }
@@ -654,7 +782,10 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                         Err(crate::error::semantic_err("Type mismatch in ||"))
                     }
                 }
-                _ => Err(crate::error::semantic_err(format!("Unsupported op: {:?}", op))),
+                _ => Err(crate::error::semantic_err(format!(
+                    "Unsupported op: {:?}",
+                    op
+                ))),
             }
         }
         Expr::Unary { op, operand } => {
@@ -673,9 +804,15 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                     if let BasicValueEnum::IntValue(i) = val {
                         let zero = i.get_type().const_zero();
                         let cmp = ctx.builder.build_int_compare(
-                            inkwell::IntPredicate::EQ, i, zero, "not_cmp"
+                            inkwell::IntPredicate::EQ,
+                            i,
+                            zero,
+                            "not_cmp",
                         )?;
-                        Ok(ctx.builder.build_int_z_extend(cmp, i.get_type(), "not")?.into())
+                        Ok(ctx
+                            .builder
+                            .build_int_z_extend(cmp, i.get_type(), "not")?
+                            .into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in !"))
                     }
@@ -700,15 +837,20 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 _ => return Err(crate::error::semantic_err("Unsupported call")),
             };
-            let fn_val = ctx.module.get_function(&fn_name)
-                .ok_or_else(|| crate::error::semantic_err(format!("Function not found: {}", fn_name)))?;
-            let arg_vals: Vec<BasicValueEnum> = args.iter()
+            let fn_val = ctx.module.get_function(&fn_name).ok_or_else(|| {
+                crate::error::semantic_err(format!("Function not found: {}", fn_name))
+            })?;
+            let arg_vals: Vec<BasicValueEnum> = args
+                .iter()
                 .map(|a| emit_expr(ctx, a))
                 .collect::<Result<Vec<_>>>()?;
             let call = ctx.builder.build_call(
                 fn_val,
-                &arg_vals.iter().map(|v| v.as_basic_value_enum()).collect::<Vec<_>>(),
-                "call"
+                &arg_vals
+                    .iter()
+                    .map(|v| v.as_basic_value_enum())
+                    .collect::<Vec<_>>(),
+                "call",
             )?;
             if call.get_type().is_void_type() {
                 Ok(ctx.context.i64_type().const_zero().into())
@@ -716,9 +858,10 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 Ok(call.try_as_basic_value().left().unwrap().into())
             }
         }
-        _ => Err(crate::error::semantic_err(
-            format!("LLVM backend: unsupported expression {:?}", expr)
-        )),
+        _ => Err(crate::error::semantic_err(format!(
+            "LLVM backend: unsupported expression {:?}",
+            expr
+        ))),
     }
 }
 

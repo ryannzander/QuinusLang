@@ -156,7 +156,13 @@ fn cmd_build(
     });
     let libs = codegen::llvm::required_link_libs(&annotated.program);
     let runtime_path = find_runtime_path(&base);
-    link_with_lld(&obj_path, &exe_path, release, &libs, runtime_path.as_deref())?;
+    link_with_lld(
+        &obj_path,
+        &exe_path,
+        release,
+        &libs,
+        runtime_path.as_deref(),
+    )?;
     println!("Compiled to {}", exe_path.display());
     Ok(())
 }
@@ -208,7 +214,6 @@ fn link_with_lld(
     libs: &[&str],
     runtime_path: Option<&std::path::Path>,
 ) -> anyhow::Result<()> {
-
     if let Some(lld) = find_bundled_lld() {
         if std::env::consts::OS == "windows" {
             let mut cmd = std::process::Command::new(&lld);
