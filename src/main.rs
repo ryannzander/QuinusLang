@@ -68,6 +68,11 @@ enum Commands {
     },
     /// Interactive REPL (parse and show AST)
     Repl,
+    /// Parse and type-check only (no codegen)
+    Check {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -84,6 +89,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Fmt { path } => cmd_fmt(&path),
         Commands::Watch { path } => cmd_watch(&path),
         Commands::Repl => cmd_repl(),
+        Commands::Check { path } => cmd_check(&path),
     }
 }
 
@@ -188,6 +194,21 @@ fn cmd_run(path: &PathBuf, release: bool) -> anyhow::Result<()> {
         println!("Executable not found. Build may have produced assembly only.");
         println!("Install NASM and MinGW GCC to produce .exe files.");
     }
+    Ok(())
+}
+
+fn cmd_check(path: &PathBuf) -> anyhow::Result<()> {
+    let base = if path.is_file() {
+        path.parent().unwrap_or(path).to_path_buf()
+    } else {
+        path.clone()
+    };
+    let base_dir = base.as_path();
+    let (source, _entry_path) = find_entry(&base)?;
+    let packages = resolve_build_packages(base_dir);
+    let program = parse_with_imports(&source, base_dir, &packages)?;
+    let _annotated = analyze(&program)?;
+    println!("Check passed.");
     Ok(())
 }
 

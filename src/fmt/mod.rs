@@ -176,8 +176,125 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
         Stmt::Continue => {
             let _ = writeln!(out, "{}skip;", pad);
         }
-        _ => {
-            let _ = writeln!(out, "{}/* unsupported in fmt */", pad);
+        Stmt::For { init, cond, step, body } => {
+            let _ = write!(out, "{}for (", pad);
+            if let Some(i) = init {
+                format_stmt(out, i, 0);
+                out.pop();
+                out.pop();
+            }
+            out.push_str("; ");
+            if let Some(c) = cond {
+                format_expr(out, c);
+            }
+            out.push_str("; ");
+            if let Some(s) = step {
+                format_stmt(out, s, 0);
+                out.pop();
+                out.pop();
+            }
+            let _ = writeln!(out, ") {{");
+            for s in body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::Foreach { var, iter, body } => {
+            let _ = write!(out, "{}foreach {} in ", pad, var);
+            format_expr(out, iter);
+            let _ = writeln!(out, " {{");
+            for s in body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::Defer { body } => {
+            let _ = writeln!(out, "{}defer {{", pad);
+            for s in body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::Hazard { body } => {
+            let _ = writeln!(out, "{}hazard {{", pad);
+            for s in body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::Choose { expr, arms } => {
+            let _ = write!(out, "{}choose ", pad);
+            format_expr(out, expr);
+            let _ = writeln!(out, " {{");
+            for arm in arms {
+                let _ = write!(out, "{}    ", pad);
+                match &arm.pattern {
+                    ChoosePattern::UnitVariant(v) => {
+                        let _ = write!(out, "{} => ", v);
+                    }
+                    ChoosePattern::TupleVariant(v, fields) => {
+                        let _ = write!(out, "{}({}) => ", v, fields.join(", "));
+                    }
+                    ChoosePattern::Ident(n) => {
+                        let _ = write!(out, "{} => ", n);
+                    }
+                }
+                for s in &arm.body {
+                    format_stmt(out, s, indent + 2);
+                }
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::TryCatch { try_body, catch_param, catch_body } => {
+            let _ = writeln!(out, "{}try {{", pad);
+            for s in try_body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = write!(out, "{}catch", pad);
+            if let Some(p) = catch_param {
+                let _ = write!(out, " ({})", p);
+            }
+            let _ = writeln!(out, " {{");
+            for s in catch_body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::InlineAsm { instructions } => {
+            let _ = writeln!(out, "{}machine {{", pad);
+            for instr in instructions {
+                let _ = writeln!(out, "{}    \"{}\"", pad, instr.replace('\\', "\\\\").replace('"', "\\\""));
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
+        Stmt::Assign { target, value } => {
+            let _ = write!(out, "{}", pad);
+            format_assign_target(out, target);
+            let _ = write!(out, " = ");
+            format_expr(out, value);
+            let _ = writeln!(out, ";");
+        }
+    }
+}
+
+fn format_assign_target(out: &mut String, target: &AssignTarget) {
+    match target {
+        AssignTarget::Ident(name) => {
+            let _ = write!(out, "{}", name);
+        }
+        AssignTarget::Index { base, index } => {
+            format_expr(out, base);
+            out.push('[');
+            format_expr(out, index);
+            out.push(']');
+        }
+        AssignTarget::Field { base, field } => {
+            format_expr(out, base);
+            let _ = write!(out, ".{}", field);
+        }
+        AssignTarget::Deref(operand) => {
+            out.push_str("reach ");
+            format_expr(out, operand);
         }
     }
 }
