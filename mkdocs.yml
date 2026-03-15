@@ -1,0 +1,14 @@
+site_name: QuinusLang
+site_description: Systems programming language with assembly-level control
+site_url: https://ryannzander.github.io/QuinusLang/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+
+nav:
+  - Home: index.md
+  - Language: language.md
+  - CLI: cli.md

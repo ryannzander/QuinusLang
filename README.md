@@ -311,6 +311,18 @@ Install the `syntax/` extension for Cursor/VS Code:
 
 ---
 
+## Documentation
+
+Docs are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages:
+
+1. Edit `mkdocs.yml` — set `site_url` to your Pages URL (e.g. `https://username.github.io/QuinusLang/`)
+2. Push to GitHub — the `Deploy docs` workflow builds and deploys to the `gh-pages` branch
+3. Enable Pages — Repo → Settings → Pages → Source: Deploy from branch → Branch: `gh-pages`
+
+Local preview: `pip install mkdocs-material && mkdocs serve`
+
+---
+
 ## License
 
 [Add your license here]
