@@ -2,7 +2,7 @@
 
 Assembly Power with Readable Modern Syntax
 
-QuinusLang is a modern low-level systems programming language designed to provide assembly-level control with a clean, readable syntax.
+QuinusLang is a modern low-level systems programming language designed to provide assembly-level control with a clean, readable syntax. It compiles to C, then to native executables via your system compiler.
 
 ## Core Philosophy
 
@@ -37,10 +37,35 @@ QuinusLang is a modern low-level systems programming language designed to provid
 | Dereference | `reach` |
 | Unsafe block | `hazard` |
 | Inline asm | `machine` |
+| Type alias | `alias` |
+| Import | `bring` |
+| C FFI | `extern craft` |
+| Defer | `defer` |
+| Pattern match | `choose` |
+
+## Language Features
+
+- **Type aliases**: `alias Id = u64;`
+- **C FFI**: `extern craft fopen(path: str, mode: str) -> link void;`
+- **Tuple destructuring**: `make (a, b) = div_rem(17, 5);`
+- **Cast expression**: `x as usize`
+- **Struct methods**: `impl` blocks with `craft name(self: Type, ...)`
+- **Enum payloads**: `state Option { None, Some(T) }`
+- **Defer**: `defer { ... }` runs at scope exit
+- **Pattern matching**: `choose expr { ... }`
 
 ## Builtins
 
-- `print(...)` — Output to stdout via printf
+- `print(...)`, `write(...)`, `writeln()` — Output to stdout via printf
+- `read()` — Read integer from stdin
+- `len(arr)`, `strlen(s)` — Length
+- `panic()`, `assert(cond)` — Abort
+
+## Standard Library
+
+- **io** — println wrapper
+- **fs** — open_file, close, read_all, exists, write_all
+- **os** — run (process execution)
 
 ## File Extension
 

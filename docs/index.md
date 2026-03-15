@@ -19,4 +19,5 @@ cargo install --path .
 
 - [Language Reference](language.md)
 - [CLI Reference](cli.md)
+- [Contributing](../CONTRIBUTING.md)
 - [GitHub](https://github.com/ryannzander/QuinusLang)

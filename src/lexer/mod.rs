@@ -86,6 +86,8 @@ pub enum Token {
     Defer,
     #[token("choose")]
     Choose,
+    #[token("extern")]
+    Extern,
     #[token("pub")]
     Pub,
     #[token("priv")]

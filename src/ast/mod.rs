@@ -20,6 +20,7 @@ pub enum TopLevelItem {
     Import(Import),
     Alias(AliasDef),
     Impl(ImplDef),
+    Extern(ExternDef),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -131,6 +132,13 @@ pub struct ImplDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct ExternDef {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub return_type: Option<Type>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int,
     Float,
@@ -180,6 +188,7 @@ impl fmt::Display for Type {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     VarDecl { name: String, ty: Option<Type>, init: Expr, mutable: bool },
+    VarDeclTuple { names: Vec<String>, init: Expr, mutable: bool },
     Assign { target: AssignTarget, value: Expr },
     If { cond: Expr, then_body: Vec<Stmt>, else_body: Option<Vec<Stmt>> },
     For { init: Option<Box<Stmt>>, cond: Option<Expr>, step: Option<Box<Stmt>>, body: Vec<Stmt> },
@@ -234,6 +243,7 @@ pub enum Expr {
     Range { start: Box<Expr>, end: Box<Expr> },
     Tuple(Vec<Expr>),
     Interpolate(Vec<InterpolatePart>),
+    Cast { operand: Box<Expr>, target_ty: Type },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

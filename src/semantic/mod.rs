@@ -13,6 +13,7 @@ pub struct AnnotatedProgram {
 #[derive(Debug, Clone, Default)]
 pub struct SymbolTable {
     pub scopes: Vec<Scope>,
+    pub mod_functions: HashMap<String, HashMap<String, FuncSig>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -24,12 +25,15 @@ pub struct Scope {
     pub classes: HashMap<String, ClassDef>,
     pub enums: HashMap<String, EnumDef>,
     pub unions: HashMap<String, UnionDef>,
+    pub modules: HashSet<String>,
+    pub aliases: HashMap<String, Type>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FuncSig {
     pub params: Vec<Type>,
     pub return_type: Option<Type>,
+    pub c_name: Option<String>,
 }
 
 pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
@@ -38,14 +42,15 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
 
     // Register builtins
     let scope = symbol_table.scopes.last_mut().unwrap();
-    scope.funcs.insert("print".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
-    scope.funcs.insert("write".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
-    scope.funcs.insert("writeln".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
-    scope.funcs.insert("read".to_string(), FuncSig { params: vec![], return_type: Some(Type::I32) });
-    scope.funcs.insert("len".to_string(), FuncSig { params: vec![Type::Array(Box::new(Type::Int))], return_type: Some(Type::Usize) });
-    scope.funcs.insert("strlen".to_string(), FuncSig { params: vec![Type::Str], return_type: Some(Type::Usize) });
-    scope.funcs.insert("panic".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
-    scope.funcs.insert("assert".to_string(), FuncSig { params: vec![Type::Bool], return_type: Some(Type::Void) });
+    scope.funcs.insert("print".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert("write".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert("writeln".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert("read".to_string(), FuncSig { params: vec![], return_type: Some(Type::I32), c_name: None });
+    scope.funcs.insert("len".to_string(), FuncSig { params: vec![Type::Array(Box::new(Type::Int))], return_type: Some(Type::Usize), c_name: None });
+    scope.funcs.insert("strlen".to_string(), FuncSig { params: vec![Type::Str], return_type: Some(Type::Usize), c_name: None });
+    scope.funcs.insert("panic".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert("assert".to_string(), FuncSig { params: vec![Type::Bool], return_type: Some(Type::Void), c_name: None });
+    scope.funcs.insert("__ql_null_at".to_string(), FuncSig { params: vec![Type::Ptr(Box::new(Type::Void)), Type::Usize], return_type: Some(Type::Void), c_name: None });
 
     for item in &program.items {
         register_top_level(&mut symbol_table, item)?;
@@ -62,15 +67,21 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
 }
 
 fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Result<()> {
+    register_top_level_with_prefix(symbol_table, item, None)
+}
+
+fn register_top_level_with_prefix(symbol_table: &mut SymbolTable, item: &TopLevelItem, mod_prefix: Option<&str>) -> Result<()> {
     let scope = symbol_table.scopes.last_mut().unwrap();
     match item {
         TopLevelItem::Fn(f) => {
             let params: Vec<Type> = f.params.iter().map(|p| p.ty.clone()).collect();
+            let c_name = mod_prefix.map(|p| format!("{}_{}", p, f.name));
             scope.funcs.insert(
                 f.name.clone(),
                 FuncSig {
                     params,
                     return_type: f.return_type.clone(),
+                    c_name,
                 },
             );
         }
@@ -93,12 +104,37 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
             scope.classes.insert(c.name.clone(), c.clone());
         }
         TopLevelItem::Mod(m) => {
+            scope.modules.insert(m.name.clone());
+            let mut mod_funcs = HashMap::new();
             for sub in &m.items {
-                register_top_level(symbol_table, sub)?;
+                if let TopLevelItem::Fn(f) = sub {
+                    let params: Vec<Type> = f.params.iter().map(|p| p.ty.clone()).collect();
+                    let sig = FuncSig {
+                        params: params.clone(),
+                        return_type: f.return_type.clone(),
+                        c_name: Some(format!("{}_{}", m.name, f.name)),
+                    };
+                    mod_funcs.insert(f.name.clone(), sig);
+                }
+                register_top_level_with_prefix(symbol_table, sub, Some(&m.name))?;
             }
+            symbol_table.mod_functions.insert(m.name.clone(), mod_funcs);
         }
         TopLevelItem::Import(_) => {}
-        TopLevelItem::Alias(_) => {}
+        TopLevelItem::Alias(a) => {
+            scope.aliases.insert(a.name.clone(), a.ty.clone());
+        }
+        TopLevelItem::Extern(e) => {
+            let params: Vec<Type> = e.params.iter().map(|p| p.ty.clone()).collect();
+            scope.funcs.insert(
+                e.name.clone(),
+                FuncSig {
+                    params,
+                    return_type: e.return_type.clone(),
+                    c_name: None,
+                },
+            );
+        }
         TopLevelItem::Impl(impl_def) => {
             for m in &impl_def.methods {
                 scope.funcs.insert(
@@ -106,6 +142,7 @@ fn register_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Re
                     FuncSig {
                         params: m.params.iter().map(|p| p.ty.clone()).collect(),
                         return_type: m.return_type.clone(),
+                        c_name: None,
                     },
                 );
             }
@@ -146,7 +183,7 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
                 }
             }
         }
-        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) | TopLevelItem::Alias(_) => {}
+        TopLevelItem::Struct(_) | TopLevelItem::Class(_) | TopLevelItem::Enum(_) | TopLevelItem::Union(_) | TopLevelItem::Import(_) | TopLevelItem::Alias(_) | TopLevelItem::Extern(_) => {}
         TopLevelItem::Impl(impl_def) => {
             symbol_table.scopes.push(Scope::default());
             for m in &impl_def.methods {
@@ -205,6 +242,29 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
             scope.vars.insert(name.clone(), var_ty);
             if *mutable {
                 scope.mutable_vars.insert(name.clone());
+            }
+        }
+        Stmt::VarDeclTuple { names, init, mutable } => {
+            let init_ty = check_expr(symbol_table, init)?;
+            let elem_tys = match &init_ty {
+                Type::Tuple(inner) => inner,
+                _ => {
+                    return Err(Error::Semantic {
+                        message: format!("Tuple destructuring requires tuple type, got {}", init_ty),
+                    });
+                }
+            };
+            if names.len() != elem_tys.len() {
+                return Err(Error::Semantic {
+                    message: format!("Tuple has {} elements but {} variables", elem_tys.len(), names.len()),
+                });
+            }
+            let scope = symbol_table.scopes.last_mut().unwrap();
+            for (name, ty) in names.iter().zip(elem_tys.iter()) {
+                scope.vars.insert(name.clone(), ty.clone());
+                if *mutable {
+                    scope.mutable_vars.insert(name.clone());
+                }
             }
         }
         Stmt::Assign { target, value } => {
@@ -354,6 +414,9 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                 if scope.funcs.contains_key(name) {
                     return Ok(Type::Void); // Function reference (used in calls)
                 }
+                if scope.modules.contains(name) {
+                    return Ok(Type::Void); // Module reference (used in mod.fn calls)
+                }
                 for (enum_name, e) in &scope.enums {
                     if e.variants.iter().any(|v| match v {
                         crate::ast::EnumVariant::Unit(n) => n == name,
@@ -460,6 +523,21 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                         return Ok(sig.return_type.clone().unwrap_or(Type::Void));
                     }
                 }
+            } else if let Expr::Field { base, field } = callee.as_ref() {
+                if let Expr::Ident(mod_name) = base.as_ref() {
+                    if let Some(mod_funcs) = symbol_table.mod_functions.get(mod_name) {
+                        if let Some(sig) = mod_funcs.get(field) {
+                            for arg in args {
+                                check_expr(symbol_table, arg)?;
+                            }
+                            return Ok(sig.return_type.clone().unwrap_or(Type::Void));
+                        }
+                    }
+                }
+                let _ = check_expr(symbol_table, base)?;
+                for arg in args {
+                    check_expr(symbol_table, arg)?;
+                }
             } else {
                 for arg in args {
                     check_expr(symbol_table, arg)?;
@@ -504,6 +582,10 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
         Expr::Field { base, field: _ } => {
             let _ = check_expr(symbol_table, base)?;
             Ok(Type::Int) // Simplified
+        }
+        Expr::Cast { operand, target_ty } => {
+            let _ = check_expr(symbol_table, operand)?;
+            Ok(target_ty.clone())
         }
         Expr::Range { start, end } => {
             let _ = check_expr(symbol_table, start)?;

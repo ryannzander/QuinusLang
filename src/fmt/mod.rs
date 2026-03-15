@@ -51,6 +51,20 @@ fn format_top_level(out: &mut String, item: &TopLevelItem) {
         TopLevelItem::Import(i) => {
             let _ = writeln!(out, "bring {};", i.path.join("."));
         }
+        TopLevelItem::Extern(e) => {
+            let _ = write!(out, "extern craft {}(", e.name);
+            for (i, p) in e.params.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                let _ = write!(out, "{}: {}", p.name, p.ty);
+            }
+            let _ = write!(out, ")");
+            if let Some(rt) = &e.return_type {
+                let _ = write!(out, " -> {}", rt);
+            }
+            let _ = writeln!(out, ";");
+        }
         _ => {}
     }
 }
@@ -98,6 +112,22 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
                 let _ = write!(out, ": {}", t);
             }
             let _ = write!(out, " = ");
+            format_expr(out, init);
+            let _ = writeln!(out, ";");
+        }
+        Stmt::VarDeclTuple { names, init, mutable } => {
+            let _ = write!(out, "{}make ", pad);
+            if *mutable {
+                out.push_str("shift ");
+            }
+            let _ = write!(out, "(");
+            for (i, n) in names.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                let _ = write!(out, "{}", n);
+            }
+            let _ = write!(out, ") = ");
             format_expr(out, init);
             let _ = writeln!(out, ";");
         }
@@ -236,6 +266,10 @@ fn format_expr(out: &mut String, expr: &Expr) {
                 format_expr(out, e);
             }
             out.push_str("]");
+        }
+        Expr::Cast { operand, target_ty } => {
+            format_expr(out, operand);
+            let _ = write!(out, " as {}", target_ty);
         }
         _ => {
             out.push_str("/* expr */");

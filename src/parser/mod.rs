@@ -182,10 +182,14 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
             stream.consume();
             Ok(TopLevelItem::Impl(parse_impl_def(stream)?))
         }
+        Some(Token::Extern) => {
+            stream.consume();
+            Ok(TopLevelItem::Extern(parse_extern_def(stream)?))
+        }
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected eternal, anchor, craft, form, state, fusion, class, realm, import, bring, alias, or impl".to_string(),
+            message: "Expected eternal, anchor, craft, form, state, fusion, class, realm, import, bring, alias, impl, or extern".to_string(),
         }),
     }
 }
@@ -459,6 +463,30 @@ fn parse_impl_def(stream: &mut TokenStream) -> Result<ImplDef> {
     }
     stream.expect("}")?;
     Ok(ImplDef { struct_name, methods })
+}
+
+fn parse_extern_def(stream: &mut TokenStream) -> Result<ExternDef> {
+    if stream.peek() != Some(&Token::Craft) {
+        let (line, col) = stream.peek_pos().unwrap_or((1, 1));
+        return Err(Error::Parse { line, col, message: "Expected craft after extern".to_string() });
+    }
+    stream.consume();
+    let name = expect_ident(stream)?;
+    stream.expect("(")?;
+    let params = parse_params(stream)?;
+    stream.expect(")")?;
+    let return_type = if stream.peek() == Some(&Token::Arrow) {
+        stream.consume();
+        Some(parse_type(stream)?)
+    } else {
+        None
+    };
+    stream.expect(";")?;
+    Ok(ExternDef {
+        name,
+        params,
+        return_type,
+    })
 }
 
 fn parse_alias_def(stream: &mut TokenStream) -> Result<AliasDef> {
@@ -757,22 +785,40 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             if mutable {
                 stream.consume();
             }
-            let name = expect_ident(stream)?;
-            let ty = if stream.peek() == Some(&Token::Colon) {
+            if stream.peek() == Some(&Token::LParen) {
                 stream.consume();
-                Some(parse_type(stream)?)
+                let mut names = Vec::new();
+                loop {
+                    names.push(expect_ident(stream)?);
+                    if stream.peek() == Some(&Token::Comma) {
+                        stream.consume();
+                    } else {
+                        break;
+                    }
+                }
+                stream.expect(")")?;
+                stream.expect("=")?;
+                let init = parse_expr(stream)?;
+                stream.expect(";")?;
+                Ok(Stmt::VarDeclTuple { names, init, mutable })
             } else {
-                None
-            };
-            stream.expect("=")?;
-            let init = parse_expr(stream)?;
-            stream.expect(";")?;
-            Ok(Stmt::VarDecl {
-                name,
-                ty,
-                init,
-                mutable,
-            })
+                let name = expect_ident(stream)?;
+                let ty = if stream.peek() == Some(&Token::Colon) {
+                    stream.consume();
+                    Some(parse_type(stream)?)
+                } else {
+                    None
+                };
+                stream.expect("=")?;
+                let init = parse_expr(stream)?;
+                stream.expect(";")?;
+                Ok(Stmt::VarDecl {
+                    name,
+                    ty,
+                    init,
+                    mutable,
+                })
+            }
         }
         Some(Token::Ident(_)) | Some(Token::This) => {
             let expr = parse_postfix(stream)?;
@@ -1018,6 +1064,14 @@ fn parse_postfix(stream: &mut TokenStream) -> Result<Expr> {
                 expr = Expr::Field {
                     base: Box::new(expr),
                     field,
+                };
+            }
+            Some(Token::Ident(s)) if s == "as" => {
+                stream.consume();
+                let target_ty = parse_type(stream)?;
+                expr = Expr::Cast {
+                    operand: Box::new(expr),
+                    target_ty,
                 };
             }
             _ => break,

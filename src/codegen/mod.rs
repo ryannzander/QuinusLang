@@ -68,6 +68,7 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut CodegenContex
         }
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
+        TopLevelItem::Extern(_) => {}
         TopLevelItem::Impl(_) => {}
     }
     Ok(())
@@ -194,6 +195,15 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
             emit_expr(out, init, ctx)?;
             let slot = ctx.get_slot(name);
             out.push_str(&format!("    mov [rbp-{}], rax\n", slot));
+        }
+        Stmt::VarDeclTuple { names, init, .. } => {
+            emit_expr(out, init, ctx)?;
+            for (i, name) in names.iter().enumerate() {
+                ctx.add_var(name);
+                let slot = ctx.get_slot(name);
+                out.push_str(&format!("    mov rax, [rax+{}]\n", i * 8));
+                out.push_str(&format!("    mov [rbp-{}], rax\n", slot));
+            }
         }
         Stmt::Assign { target, value } => {
             emit_expr(out, value, ctx)?;
@@ -498,6 +508,9 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
                     emit_expr(out, e, ctx)?;
                 }
             }
+        }
+        Expr::Cast { operand, .. } => {
+            emit_expr(out, operand, ctx)?;
         }
         Expr::New { class, args } => {
             let size = 8 + 16; // vtable ptr + 2 fields for Point

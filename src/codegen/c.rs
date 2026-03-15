@@ -10,12 +10,23 @@ struct Ctx {
     vars: HashMap<String, String>,
     var_types: HashMap<String, Type>,
     program: Option<std::sync::Arc<crate::ast::Program>>,
+    symbol_table: Option<std::sync::Arc<crate::semantic::SymbolTable>>,
+    tuple_typedefs: std::collections::HashMap<String, String>,
 }
 
 impl Default for Ctx {
     fn default() -> Self {
-        Self { vars: HashMap::new(), var_types: HashMap::new(), program: None }
+        Self { vars: HashMap::new(), var_types: HashMap::new(), program: None, symbol_table: None, tuple_typedefs: std::collections::HashMap::new() }
     }
+}
+
+fn lookup_c_name(symbol_table: &crate::semantic::SymbolTable, name: &str) -> String {
+    for scope in symbol_table.scopes.iter().rev() {
+        if let Some(sig) = scope.funcs.get(name) {
+            return sig.c_name.as_ref().cloned().unwrap_or_else(|| name.to_string());
+        }
+    }
+    name.to_string()
 }
 
 fn type_to_c(ty: &Type) -> String {
@@ -44,18 +55,50 @@ fn type_to_c(ty: &Type) -> String {
         Type::F64 => "double".to_string(),
         Type::Ptr(inner) => format!("{}*", type_to_c(inner).trim_end_matches('*')),
         Type::Tuple(inner) => {
-            let parts: Vec<String> = inner.iter().enumerate()
+            let name = tuple_typedef_name(inner);
+            format!("struct {{ {}; }}", inner.iter().enumerate()
                 .map(|(i, t)| format!("{} _{}", type_to_c(t), i))
-                .collect();
-            format!("struct {{ {} }}", parts.join("; "))
+                .collect::<Vec<_>>()
+                .join("; "))
         }
     }
+}
+
+fn resolve_type(ty: &Type, ctx: &Ctx) -> Type {
+    if let Type::Named(name) = ty {
+        if let Some(st) = ctx.symbol_table.as_ref() {
+            for scope in st.scopes.iter().rev() {
+                if let Some(aliased) = scope.aliases.get(name) {
+                    return resolve_type(aliased, ctx);
+                }
+            }
+        }
+    }
+    ty.clone()
+}
+
+fn type_to_c_with_typedef(ty: &Type, ctx: &Ctx) -> String {
+    let ty = resolve_type(ty, ctx);
+    if let Type::Tuple(inner) = &ty {
+        let name = tuple_typedef_name(inner);
+        if ctx.tuple_typedefs.contains_key(&name) {
+            return name;
+        }
+    }
+    type_to_c(&ty)
 }
 
 fn decl_to_c(ty: &Type, name: &str) -> String {
     match ty {
         Type::ArraySized(inner, n) => format!("{} {}[{}]", type_to_c(inner).trim_end_matches('*'), name, n),
         _ => format!("{} {}", type_to_c(ty), name),
+    }
+}
+
+fn decl_to_c_with_ctx(ty: &Type, name: &str, ctx: &Ctx) -> String {
+    match ty {
+        Type::ArraySized(inner, n) => format!("{} {}[{}]", type_to_c(inner).trim_end_matches('*'), name, n),
+        _ => format!("{} {}", type_to_c_with_typedef(ty, ctx), name),
     }
 }
 
@@ -89,8 +132,66 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
             _ => None,
         },
         Expr::Field { base, .. } => expr_type(base, ctx),
+        Expr::Call { callee, .. } => {
+            if let Some(st) = ctx.symbol_table.as_ref() {
+                if let Expr::Ident(name) = callee.as_ref() {
+                    for scope in st.scopes.iter().rev() {
+                        if let Some(sig) = scope.funcs.get(name) {
+                            return sig.return_type.clone();
+                        }
+                    }
+                }
+                if let Expr::Field { base, field } = callee.as_ref() {
+                    if let Expr::Ident(mod_name) = base.as_ref() {
+                        if let Some(mod_funcs) = st.mod_functions.get(mod_name) {
+                            if let Some(sig) = mod_funcs.get(field) {
+                                return sig.return_type.clone();
+                            }
+                        }
+                    }
+                }
+            }
+            None
+        }
+        Expr::Tuple(elems) => {
+            let mut tys = Vec::new();
+            for e in elems {
+                if let Some(t) = expr_type(e, ctx) {
+                    tys.push(t);
+                } else {
+                    return None;
+                }
+            }
+            Some(Type::Tuple(tys))
+        }
+        Expr::Cast { target_ty, .. } => Some(target_ty.clone()),
+        Expr::Binary { op, left, right } => {
+            let lt = expr_type(left, ctx)?;
+            let rt = expr_type(right, ctx)?;
+            match op {
+                BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge
+                | BinOp::And | BinOp::Or => Some(Type::Bool),
+                _ => Some(lt),
+            }
+        }
         _ => None,
     }
+}
+
+fn tuple_typedef_name(inner: &[Type]) -> String {
+    let parts: Vec<String> = inner.iter().map(|t| {
+        match t {
+            Type::Int => "long".to_string(),
+            Type::I32 => "i32".to_string(),
+            Type::I64 => "i64".to_string(),
+            Type::Usize => "usz".to_string(),
+            Type::Str => "str".to_string(),
+            Type::Bool => "bool".to_string(),
+            Type::Float | Type::F32 | Type::F64 => "flt".to_string(),
+            _ => "p".to_string(),
+        }
+    }).collect();
+    format!("tuple_{}", parts.join("_"))
 }
 
 pub fn generate(program: &AnnotatedProgram) -> Result<String> {
@@ -100,8 +201,36 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <stdio.h>\n");
     out.push_str("#include <string.h>\n");
 
+    let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for item in &program.program.items {
+        if let TopLevelItem::Fn(f) = item {
+            if let Some(Type::Tuple(inner)) = &f.return_type {
+                let name = tuple_typedef_name(inner);
+                if !tuple_typedefs.contains(&name) {
+                    tuple_typedefs.insert(name.clone());
+                    let parts: Vec<String> = inner.iter().enumerate()
+                        .map(|(i, t)| format!("{} _{}", type_to_c(t), i))
+                        .collect();
+                    out.push_str(&format!("typedef struct {{ {}; }} {};\n", parts.join("; "), name));
+                }
+            }
+        }
+    }
+
     let mut ctx = Ctx::default();
     ctx.program = Some(std::sync::Arc::new(program.program.clone()));
+    ctx.symbol_table = Some(std::sync::Arc::new(program.symbol_table.clone()));
+    for item in &program.program.items {
+        if let TopLevelItem::Fn(f) = item {
+            if let Some(Type::Tuple(inner)) = &f.return_type {
+                let name = tuple_typedef_name(inner);
+                let parts: Vec<String> = inner.iter().enumerate()
+                    .map(|(i, t)| format!("{} _{}", type_to_c(t), i))
+                    .collect();
+                ctx.tuple_typedefs.insert(name.clone(), format!("struct {{ {}; }}", parts.join("; ")));
+            }
+        }
+    }
     for item in &program.program.items {
         emit_top_level(&mut out, item, &mut ctx)?;
     }
@@ -119,7 +248,24 @@ fn find_method_struct(program: &crate::ast::Program, method_name: &str) -> Optio
     None
 }
 
+fn find_module_function(program: &crate::ast::Program, mod_name: &str, fn_name: &str) -> bool {
+    for item in &program.items {
+        if let TopLevelItem::Mod(m) = item {
+            if m.name == mod_name {
+                return m.items.iter().any(|sub| {
+                    matches!(sub, TopLevelItem::Fn(f) if f.name == fn_name)
+                });
+            }
+        }
+    }
+    false
+}
+
 fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Result<()> {
+    emit_top_level_with_prefix(out, item, ctx, None)
+}
+
+fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx, mod_prefix: Option<&str>) -> Result<()> {
     match item {
         TopLevelItem::Const(c) => {
             out.push_str(&format!("static const {} = ", decl_to_c(&c.ty, &c.name)));
@@ -134,18 +280,36 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut Ctx) -> Resul
             }
             out.push_str(";\n\n");
         }
-        TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
+        TopLevelItem::Fn(f) => {
+            let name = mod_prefix.map(|p| format!("{}_{}", p, f.name)).unwrap_or_else(|| f.name.clone());
+            emit_fn_named(out, f, ctx, &name)?;
+        }
         TopLevelItem::Struct(s) => emit_struct(out, s)?,
         TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
         TopLevelItem::Enum(e) => emit_enum(out, e)?,
         TopLevelItem::Union(u) => emit_union(out, u)?,
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
-                emit_top_level(out, sub, ctx)?;
+                emit_top_level_with_prefix(out, sub, ctx, Some(&m.name))?;
             }
         }
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
+        TopLevelItem::Extern(e) => {
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system"];
+            if STDLIB_FUNCS.contains(&e.name.as_str()) {
+                return Ok(());
+            }
+            let ret = e.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
+            out.push_str(&format!("extern {} {}(", ret, e.name));
+            for (i, p) in e.params.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&format!("{} {}", type_to_c(&p.ty), p.name));
+            }
+            out.push_str(");\n\n");
+        }
         TopLevelItem::Impl(impl_def) => {
             for m in &impl_def.methods {
                 let ret = m.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
@@ -261,9 +425,9 @@ fn emit_class(out: &mut String, c: &ClassDef, _ctx: &mut Ctx) -> Result<()> {
     Ok(())
 }
 
-fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
-    let ret = f.return_type.as_ref().map(type_to_c).unwrap_or_else(|| "void".to_string());
-    out.push_str(&format!("{} {}(", ret, f.name));
+fn emit_fn_named(out: &mut String, f: &FnDef, ctx: &mut Ctx, name: &str) -> Result<()> {
+    let ret = f.return_type.as_ref().map(|t| type_to_c_with_typedef(t, ctx)).unwrap_or_else(|| "void".to_string());
+    out.push_str(&format!("{} {}(", ret, name));
     for (i, p) in f.params.iter().enumerate() {
         if i > 0 {
             out.push_str(", ");
@@ -273,6 +437,8 @@ fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
     out.push_str(") {\n");
     let mut fn_ctx = Ctx::default();
     fn_ctx.program = ctx.program.clone();
+    fn_ctx.symbol_table = ctx.symbol_table.clone();
+    fn_ctx.tuple_typedefs = ctx.tuple_typedefs.clone();
     for p in &f.params {
         fn_ctx.vars.insert(p.name.clone(), p.name.clone());
         fn_ctx.var_types.insert(p.name.clone(), p.ty.clone());
@@ -282,6 +448,10 @@ fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
     }
     out.push_str("}\n\n");
     Ok(())
+}
+
+fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
+    emit_fn_named(out, f, ctx, &f.name)
 }
 
 fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
@@ -294,6 +464,24 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
             out.push_str(&format!("    {} = ", decl));
             emit_expr(out, init, ctx)?;
             out.push_str(";\n");
+        }
+        Stmt::VarDeclTuple { names, init, mutable: _ } => {
+            if let Some(Type::Tuple(elem_tys)) = expr_type(init, ctx) {
+                if names.len() == elem_tys.len() {
+                    let tmp_name = "_tuple_tmp";
+                    let tuple_ty = Type::Tuple(elem_tys.clone());
+                    let decl = decl_to_c_with_ctx(&tuple_ty, tmp_name, ctx);
+                    out.push_str(&format!("    {} = ", decl));
+                    emit_expr(out, init, ctx)?;
+                    out.push_str(";\n");
+                    for (i, (var_name, ty)) in names.iter().zip(elem_tys.iter()).enumerate() {
+                        ctx.vars.insert(var_name.clone(), var_name.clone());
+                        ctx.var_types.insert(var_name.clone(), ty.clone());
+                        let field_decl = decl_to_c(ty, var_name);
+                        out.push_str(&format!("    {} = {}._{};\n", field_decl, tmp_name, i));
+                    }
+                }
+            }
         }
         Stmt::Assign { target, value } => {
             out.push_str("    ");
@@ -570,9 +758,23 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                         out.push_str(")");
                         return Ok(());
                     }
+                    if let Expr::Ident(mod_name) = base.as_ref() {
+                        if find_module_function(prog, mod_name, field) {
+                            out.push_str(&format!("{}_{}(", mod_name, field));
+                            for (i, arg) in args.iter().enumerate() {
+                                if i > 0 {
+                                    out.push_str(", ");
+                                }
+                                emit_expr(out, arg, ctx)?;
+                            }
+                            out.push_str(")");
+                            return Ok(());
+                        }
+                    }
                 }
             }
             let callee_name = callee.as_ref();
+            let is_null_at = matches!(callee_name, Expr::Ident(n) if n == "__ql_null_at");
             let is_print = matches!(callee_name, Expr::Ident(n) if n == "print");
             let is_writeln = matches!(callee_name, Expr::Ident(n) if n == "writeln");
             let is_write = matches!(callee_name, Expr::Ident(n) if n == "write");
@@ -581,7 +783,15 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             let is_strlen = matches!(callee_name, Expr::Ident(n) if n == "strlen");
             let is_panic = matches!(callee_name, Expr::Ident(n) if n == "panic");
             let is_assert = matches!(callee_name, Expr::Ident(n) if n == "assert");
-            if is_print || is_writeln {
+            if is_null_at {
+                if let (Some(ptr), Some(offset)) = (args.get(0), args.get(1)) {
+                    out.push_str("((void)(((char*)(");
+                    emit_expr(out, ptr, ctx)?;
+                    out.push_str("))[");
+                    emit_expr(out, offset, ctx)?;
+                    out.push_str("] = '\\0'))");
+                }
+            } else if is_print || is_writeln {
                 let mut fmt_parts = Vec::new();
                 for arg in args {
                     let fmt = expr_type(arg, ctx)
@@ -652,7 +862,10 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                     }
                 }
             } else if let Expr::Ident(name) = callee.as_ref() {
-                out.push_str(name);
+                let c_name = ctx.symbol_table.as_ref()
+                    .map(|st| lookup_c_name(st, name))
+                    .unwrap_or_else(|| name.clone());
+                out.push_str(&c_name);
                 out.push_str("(");
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -720,14 +933,33 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str("))");
         }
         Expr::Tuple(elems) => {
-            out.push_str("(");
-            for (i, e) in elems.iter().enumerate() {
-                if i > 0 {
-                    out.push_str(", ");
+            let mut tys = Vec::new();
+            for e in elems {
+                if let Some(t) = expr_type(e, ctx) {
+                    tys.push(t);
                 }
-                emit_expr(out, e, ctx)?;
             }
-            out.push_str(")");
+            if tys.len() == elems.len() {
+                let tuple_ty = Type::Tuple(tys);
+                let c_ty = type_to_c_with_typedef(&tuple_ty, ctx);
+                out.push_str(&format!("(({}) {{ ", c_ty));
+                for (i, e) in elems.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    emit_expr(out, e, ctx)?;
+                }
+                out.push_str(" })");
+            } else {
+                out.push_str("(");
+                for (i, e) in elems.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    emit_expr(out, e, ctx)?;
+                }
+                out.push_str(")");
+            }
         }
         Expr::Interpolate(parts) => {
             let mut fmt_parts = Vec::new();
@@ -751,6 +983,12 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                 emit_expr(out, a, ctx)?;
             }
             out.push_str("), (void)0)");
+        }
+        Expr::Cast { operand, target_ty } => {
+            let c_ty = type_to_c(target_ty);
+            out.push_str(&format!("(({})(", c_ty));
+            emit_expr(out, operand, ctx)?;
+            out.push_str("))");
         }
         Expr::New { class, args } => {
             out.push_str(&format!(
