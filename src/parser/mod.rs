@@ -5,6 +5,59 @@ use crate::error::{Error, Result};
 use crate::lexer::{Token, TokenStream};
 use std::path::Path;
 
+fn parse_interpolate_content(content: &str, line: usize, col: usize) -> Result<Vec<InterpolatePart>> {
+    let mut parts = Vec::new();
+    let mut i = 0;
+    let content_bytes = content.as_bytes();
+    while i < content.len() {
+        if let Some(pos) = content[i..].find("${") {
+            let pos = i + pos;
+            if pos > i {
+                parts.push(InterpolatePart::Str(content[i..pos].to_string()));
+            }
+            let start = pos + 2;
+            let mut depth = 1;
+            let mut j = start;
+            while j < content.len() && depth > 0 {
+                match content_bytes.get(j) {
+                    Some(b'{') => depth += 1,
+                    Some(b'}') => depth -= 1,
+                    _ => {}
+                }
+                j += 1;
+            }
+            if depth != 0 {
+                return Err(Error::Parse {
+                    line,
+                    col,
+                    message: "Unclosed ${ in interpolated string".to_string(),
+                });
+            }
+            let expr_str = &content[start..j - 1];
+            let mut sub_stream = crate::lexer::tokenize(expr_str)?;
+            let expr = parse_expr(&mut sub_stream)?;
+            if !sub_stream.is_at_end() {
+                return Err(Error::Parse {
+                    line,
+                    col,
+                    message: format!("Unexpected tokens in interpolation: {}", expr_str),
+                });
+            }
+            parts.push(InterpolatePart::Expr(Box::new(expr)));
+            i = j;
+        } else {
+            if i < content.len() {
+                parts.push(InterpolatePart::Str(content[i..].to_string()));
+            }
+            break;
+        }
+    }
+    if parts.is_empty() {
+        parts.push(InterpolatePart::Str(String::new()));
+    }
+    Ok(parts)
+}
+
 pub fn parse(source: &str) -> Result<Program> {
     let mut stream = crate::lexer::tokenize(source)?;
     parse_program(&mut stream)
@@ -1088,6 +1141,10 @@ fn parse_primary(stream: &mut TokenStream) -> Result<Expr> {
         Some((Token::Float(n), _, _)) => Ok(Expr::Literal(Literal::Float(n))),
         Some((Token::Bool(b), _, _)) => Ok(Expr::Literal(Literal::Bool(b))),
         Some((Token::Str(s), _, _)) => Ok(Expr::Literal(Literal::Str(s))),
+        Some((Token::InterpolateStr(s), _, _)) => {
+            let parts = parse_interpolate_content(&s, line, col)?;
+            Ok(Expr::Interpolate(parts))
+        }
         Some((Token::Ident(s), _, _)) => Ok(Expr::Ident(s)),
         Some((Token::This, _, _)) => Ok(Expr::Ident("this".to_string())),
         Some((Token::New, _, _)) => {

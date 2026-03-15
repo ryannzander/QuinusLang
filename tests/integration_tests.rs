@@ -69,3 +69,21 @@ fn test_parse_with_imports_no_import() {
     let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
     assert_eq!(program.items.len(), 1);
 }
+
+#[test]
+fn test_string_interpolation() {
+    let source = r#"
+craft main() -> void {
+    make name: str = "world";
+    print(`Hello, ${name}!`);
+    make x: i32 = 42;
+    print(`x = ${x}`);
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("Hello, %s!"));
+    assert!(c_code.contains("x = %ld"));
+}

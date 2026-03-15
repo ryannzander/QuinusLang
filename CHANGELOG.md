@@ -4,6 +4,10 @@ All notable changes to QuinusLang will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- String interpolation: `` `Hello, ${name}!` `` — backtick strings with `${expr}` for print/write/writeln
+
 ## [0.2.0] - 2025-03-14
 
 ### Added

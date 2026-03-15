@@ -791,39 +791,65 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                     emit_expr(out, offset, ctx)?;
                     out.push_str("] = '\\0'))");
                 }
-            } else if is_print || is_writeln {
-                let mut fmt_parts = Vec::new();
-                for arg in args {
-                    let fmt = expr_type(arg, ctx)
-                        .as_ref()
-                        .map(type_to_printf)
-                        .unwrap_or("%ld");
-                    fmt_parts.push(fmt);
+            } else if is_print || is_writeln || is_write {
+                if args.len() == 1 {
+                    if let Expr::Interpolate(parts) = &args[0] {
+                        let mut fmt_parts = Vec::new();
+                        let mut expr_args = Vec::new();
+                        for p in parts {
+                            match p {
+                                InterpolatePart::Str(s) => fmt_parts.push(s.replace('%', "%%").replace('\\', "\\\\").replace('"', "\\\"")),
+                                InterpolatePart::Expr(e) => {
+                                    let fmt = expr_type(e, ctx).as_ref().map(type_to_printf).unwrap_or("%ld");
+                                    fmt_parts.push(fmt.to_string());
+                                    expr_args.push(e.clone());
+                                }
+                            }
+                        }
+                        let fmt_str = fmt_parts.join("");
+                        let suffix = if is_writeln || is_print { "\\n\"" } else { "\"" };
+                        out.push_str(&format!("printf(\"{}{}", fmt_str, suffix));
+                        for a in &expr_args {
+                            out.push_str(", ");
+                            emit_expr(out, a, ctx)?;
+                        }
+                        out.push_str(")");
+                    } else {
+                        let mut fmt_parts = Vec::new();
+                        for arg in args {
+                            let fmt = expr_type(arg, ctx)
+                                .as_ref()
+                                .map(type_to_printf)
+                                .unwrap_or("%ld");
+                            fmt_parts.push(fmt);
+                        }
+                        let fmt_str = fmt_parts.join(" ");
+                        let suffix = if is_writeln || is_print { "\\n\"" } else { "\"" };
+                        out.push_str(&format!("printf(\"{}{}", fmt_str, suffix));
+                        for arg in args {
+                            out.push_str(", ");
+                            emit_expr(out, arg, ctx)?;
+                        }
+                        out.push_str(")");
+                    }
+                } else {
+                    let mut fmt_parts = Vec::new();
+                    for arg in args {
+                        let fmt = expr_type(arg, ctx)
+                            .as_ref()
+                            .map(type_to_printf)
+                            .unwrap_or("%ld");
+                        fmt_parts.push(fmt);
+                    }
+                    let fmt_str = fmt_parts.join(" ");
+                    let suffix = if is_writeln || is_print { "\\n\"" } else { "\"" };
+                    out.push_str(&format!("printf(\"{}{}", fmt_str, suffix));
+                    for arg in args {
+                        out.push_str(", ");
+                        emit_expr(out, arg, ctx)?;
+                    }
+                    out.push_str(")");
                 }
-                let fmt_str = fmt_parts.join(" ");
-                let suffix = if is_writeln || is_print { "\\n\"" } else { "\"" };
-                out.push_str(&format!("printf(\"{}{}", fmt_str, suffix));
-                for arg in args {
-                    out.push_str(", ");
-                    emit_expr(out, arg, ctx)?;
-                }
-                out.push_str(")");
-            } else if is_write {
-                let mut fmt_parts = Vec::new();
-                for arg in args {
-                    let fmt = expr_type(arg, ctx)
-                        .as_ref()
-                        .map(type_to_printf)
-                        .unwrap_or("%ld");
-                    fmt_parts.push(fmt);
-                }
-                let fmt_str = fmt_parts.join(" ");
-                out.push_str(&format!("printf(\"{}\"", fmt_str));
-                for arg in args {
-                    out.push_str(", ");
-                    emit_expr(out, arg, ctx)?;
-                }
-                out.push_str(")");
             } else if is_read {
                 out.push_str("({ int _r; scanf(\"%d\", &_r); (int32_t)_r; })");
             } else if is_strlen {

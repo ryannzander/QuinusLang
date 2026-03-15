@@ -10,6 +10,8 @@ Cargo.lock
 .idea/
 .vscode/
 *.log
-
+.cursorrules
+.cursorignore
+.cursor/
 # Package manager
 packages/

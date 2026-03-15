@@ -271,6 +271,23 @@ fn format_expr(out: &mut String, expr: &Expr) {
             format_expr(out, operand);
             let _ = write!(out, " as {}", target_ty);
         }
+        Expr::Interpolate(parts) => {
+            out.push('`');
+            for p in parts {
+                match p {
+                    InterpolatePart::Str(s) => {
+                        let escaped = s.replace('\\', "\\\\").replace('`', "\\`");
+                        out.push_str(&escaped);
+                    }
+                    InterpolatePart::Expr(e) => {
+                        out.push_str("${");
+                        format_expr(out, e);
+                        out.push('}');
+                    }
+                }
+            }
+            out.push('`');
+        }
         _ => {
             out.push_str("/* expr */");
         }

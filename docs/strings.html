@@ -47,6 +47,14 @@ make shift greeting: str = "Hello, World!";</code></pre>
 make shift b: str = " World";
 make shift c: str = a + b;  // "Hello World"</code></pre>
 
+    <h2>String Interpolation</h2>
+    <p>Use backtick strings with <code>${expr}</code> to interpolate values. Works with <code>print</code>, <code>write</code>, and <code>writeln</code>:</p>
+    <pre><code>make name: str = "world";
+print(`Hello, ${name}!`);
+make x: i32 = 42;
+print(`x = ${x}`);</code></pre>
+    <p>Escape backtick with <code>\`</code> inside interpolated strings.</p>
+
     <h2>I/O Builtins</h2>
     <table>
       <tr><th>Builtin</th><th>Description</th></tr>

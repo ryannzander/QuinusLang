@@ -49,6 +49,7 @@ QuinusLang is a modern low-level systems programming language designed to provid
 - **C FFI**: `extern craft fopen(path: str, mode: str) -> link void;`
 - **Tuple destructuring**: `make (a, b) = div_rem(17, 5);`
 - **Cast expression**: `x as usize`
+- **String interpolation**: `` `Hello, ${name}!` `` — backtick strings with `${expr}` (use with print/write/writeln)
 - **Struct methods**: `impl` blocks with `craft name(self: Type, ...)`
 - **Enum payloads**: `state Option { None, Some(T) }`
 - **Defer**: `defer { ... }` runs at scope exit

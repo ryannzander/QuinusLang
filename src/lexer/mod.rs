@@ -164,6 +164,9 @@ pub enum Token {
     #[regex(r#""([^"\\]|\\.)*""#, |lex| parse_string_literal(lex.slice()))]
     Str(String),
 
+    #[regex(r"`((?:[^`\\]|\\.)*)`", |lex| parse_backtick_content(lex.slice()))]
+    InterpolateStr(String),
+
     #[token("true", |_| true)]
     #[token("false", |_| false)]
     Bool(bool),
@@ -191,6 +194,27 @@ fn parse_string_literal(s: &str) -> String {
     result
 }
 
+fn parse_backtick_content(s: &str) -> String {
+    let s = &s[1..s.len() - 1];
+    let mut result = String::new();
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.next() {
+                Some('`') => result.push('`'),
+                Some('\\') => result.push('\\'),
+                Some('n') => result.push('\n'),
+                Some('t') => result.push('\t'),
+                Some(c) => result.push(c),
+                None => result.push('\\'),
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -198,6 +222,7 @@ impl fmt::Display for Token {
             Token::Int(n) => write!(f, "{}", n),
             Token::Float(n) => write!(f, "{}", n),
             Token::Str(s) => write!(f, "\"{}\"", s),
+            Token::InterpolateStr(s) => write!(f, "`{}`", s),
             Token::Bool(b) => write!(f, "{}", b),
             _ => write!(f, "{:?}", self),
         }
