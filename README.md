@@ -2,6 +2,8 @@
 
 A systems programming language with assembly-level control and readable syntax. Compiles to C, then to native executables via your system compiler.
 
+**[Documentation](https://ryannzander.github.io/QuinusLang/)** — Full language reference, stdlib, and guides
+
 ## Philosophy
 
 - **Explicit control** — Expensive or dangerous operations are visible in code
