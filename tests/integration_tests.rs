@@ -480,3 +480,49 @@ craft main() -> void { send; }
     let flattened = preprocess::preprocess_with_defines(source, Path::new("."), &defines).unwrap();
     assert!(flattened.contains("make x"));
 }
+
+#[test]
+fn test_digit_separators() {
+    let source = r#"
+craft main() -> void {
+    make x: i32 = 1_000_000;
+    print(x);
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("1000000"));
+}
+
+#[test]
+fn test_assert_with_message() {
+    let source = r#"
+craft main() -> void {
+    assert(true);
+    assert(1 == 1, "should not fail");
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("assertion failed"));
+}
+
+#[test]
+fn test_path_module() {
+    let source = r#"
+bring "path";
+craft main() -> void {
+    make p: str = path.join("a", "b");
+    print(p);
+    send;
+}
+"#;
+    let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("str_concat") || c_code.contains("ql_str_concat"));
+}

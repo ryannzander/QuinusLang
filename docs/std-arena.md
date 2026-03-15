@@ -12,7 +12,7 @@ Simple allocator wrappers (malloc/free).
 ## Example
 
 ```q
-bring "arena";
+bring "std.arena";
 
 craft main() -> void {
     make p: link void = arena.alloc(64);

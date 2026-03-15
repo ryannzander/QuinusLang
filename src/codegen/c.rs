@@ -1639,9 +1639,17 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                 if let Some(arg) = args.first() {
                     out.push_str("((");
                     emit_expr(out, arg, ctx)?;
-                    out.push_str(
-                        ") ? (void)0 : (fprintf(stderr, \"assertion failed\\n\"), exit(1)))",
-                    );
+                    if let Some(msg) = args.get(1) {
+                        out.push_str(") ? (void)0 : (fprintf(stderr, \"%s\\n\", (");
+                        emit_expr(out, msg, ctx)?;
+                        out.push_str(") ? (");
+                        emit_expr(out, msg, ctx)?;
+                        out.push_str(") : \"assertion failed\"), exit(1)))");
+                    } else {
+                        out.push_str(
+                            ") ? (void)0 : (fprintf(stderr, \"assertion failed\\n\"), exit(1)))",
+                        );
+                    }
                 }
             } else if is_len {
                 if let Some(arg) = args.first() {

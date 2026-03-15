@@ -4,6 +4,7 @@
 
 | Type | Description |
 |------|-------------|
+| `int` | Signed integer (platform-dependent, maps to C `long`) |
 | `i8`, `i16`, `i32`, `i64` | Signed integers |
 | `u8`, `u16`, `u32`, `u64` | Unsigned integers |
 | `usize` | Unsigned size |
@@ -16,10 +17,11 @@
 
 | Type | Example |
 |------|---------|
-| Pointer | `link i32`, `link str` |
+| Pointer | `link i32`, `link str`, `link void` |
 | Array (fixed) | `[i32; 5]` |
 | Array (unsized) | `[i32]` |
 | Tuple | `(i32, str)` |
+| Result | `Result(i32, str)` — Ok or Err |
 
 ## Type Aliases
 

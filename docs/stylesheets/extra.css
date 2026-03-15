@@ -1,0 +1,10 @@
+/* Nav on right, content center, TOC (page outline) on far right */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner.md-grid {
+    display: flex;
+    flex-direction: row;
+  }
+  .md-sidebar--primary { order: 3; }
+  .md-content { order: 1; }
+  .md-sidebar--secondary { order: 2; }
+}

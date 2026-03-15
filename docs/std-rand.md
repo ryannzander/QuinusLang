@@ -12,7 +12,7 @@ Pseudorandom number generation (uses C rand/srand).
 ## Example
 
 ```q
-bring "rand";
+bring "std.rand";
 
 craft main() -> void {
     rand.seed(42);

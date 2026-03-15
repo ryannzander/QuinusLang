@@ -14,14 +14,15 @@ SIMD intrinsics (SSE). Wraps `xmmintrin.h`.
 ## Example
 
 ```q
-bring "simd";
+bring "std.simd";
 
 craft main() -> void {
     hazard {
-        cblock { " float buf[4] = {1.0f, 2.0f, 3.0f, 4.0f}; float out[4]; " }
+        cblock { " float buf[4] = {1.0f, 2.0f, 3.0f, 4.0f}; " }
     }
-    make p: link f32 = 0;
-    make a: link void = simd.loadu_ps(p);
+    // Use simd.loadu_ps, add_ps, mul_ps, storeu_ps with hazard/cblock for setup
     send;
 }
 ```
+
+SIMD requires `hazard` blocks for buffer setup. The compiler adds `#include <xmmintrin.h>` when simd is used.

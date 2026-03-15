@@ -22,6 +22,7 @@ craft main() -> void {
 
 - [Installation](install.md) — Installer, portable zip, or from source
 - [Quick Tour](tour.md) — 15-minute walkthrough
+- [Quick Reference](quick-reference.md) — One-page cheat sheet
 - [Language Reference](language.md) — Full syntax
 - [Standard Library](stdlib-index.md) — Available modules
 - [CLI Reference](cli.md) — All commands

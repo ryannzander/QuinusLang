@@ -27,7 +27,7 @@ class QuinusLangLexer(RegexLexer):
             (r"//.*$", Comment.Single),
             (r'"(?:[^"\\]|\\.)*"', String.Double),
             (r"`(?:[^`\\]|\\.)*`", String.Backtick),
-            (r"-?\b[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?\b", Number),
+            (r"-?\b[0-9][0-9_]*(\.([0-9][0-9_]*))?([eE][+-]?[0-9][0-9_]*)?\b", Number),
             (r"\b(true|false)\b", Keyword.Constant),
             (
                 r"\b(craft|send|make|shift|check|otherwise|loopwhile|foreach|stop|skip|in|for)\b",
@@ -35,8 +35,8 @@ class QuinusLangLexer(RegexLexer):
             ),
             (
                 r"\b(eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|"
-                r"bring|open|import|class|extends|init|new|this|super|impl|implements|"
-                r"try|catch|alias|extern|defer|choose|pub|priv)\b",
+                r"cblock|bring|open|import|class|extends|init|new|this|super|impl|implements|"
+                r"try|catch|alias|extern|defer|choose|move|pub|priv)\b",
                 Keyword.Declaration,
             ),
             (

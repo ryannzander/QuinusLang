@@ -28,5 +28,10 @@ craft main() -> void {
 ## Standard Library
 
 - **fs** — `open_file`, `close`, `read_all`, `exists`, `write_all`
-- **os** — `run(cmd)` for process execution
-- **io** — `println`
+- **os** — `run`, `getenv`, `cwd`
+- **math** — `abs_i32`, `sqrt_f64`, `add_checked_i32`, etc.
+- **str** — `trim`, `concat`
+- **time** — `now`
+- **rand** — `next`, `seed`
+- **arena** — `alloc`, `dealloc`
+- **simd** — `loadu_ps`, `storeu_ps`, `add_ps`, `mul_ps`

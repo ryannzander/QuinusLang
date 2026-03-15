@@ -14,6 +14,7 @@
 | [rand](std-rand.md) | Random: next, seed |
 | [arena](std-arena.md) | Allocator: alloc, dealloc |
 | [simd](std-simd.md) | SIMD: loadu_ps, storeu_ps, add_ps, mul_ps |
+| [path](std-path.md) | Path: join |
 
 ## Usage
 

@@ -158,11 +158,20 @@ pub enum Token {
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),
 
-    #[regex(r"-?[0-9]+", |lex| lex.slice().parse().ok())]
+    #[regex(r"-?[0-9][0-9_]*", |lex| {
+        let s: String = lex.slice().chars().filter(|c| *c != '_').collect();
+        s.parse().ok()
+    })]
     Int(i64),
 
-    #[regex(r"-?[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?", |lex| lex.slice().parse().ok())]
-    #[regex(r"-?[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().parse().ok())]
+    #[regex(r"-?[0-9][0-9_]*\.[0-9][0-9_]*([eE][+-]?[0-9][0-9_]*)?", |lex| {
+        let s: String = lex.slice().chars().filter(|c| *c != '_').collect();
+        s.parse().ok()
+    })]
+    #[regex(r"-?[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*", |lex| {
+        let s: String = lex.slice().chars().filter(|c| *c != '_').collect();
+        s.parse().ok()
+    })]
     Float(f64),
 
     #[regex(r#""([^"\\]|\\.)*""#, |lex| parse_string_literal(lex.slice()))]

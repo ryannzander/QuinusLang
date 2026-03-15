@@ -45,6 +45,61 @@ fusion Maybe {
 }
 ```
 
+## Bitfields
+
+Struct fields can specify a bit width for packed storage:
+
+```q
+form StatusReg {
+    flags: u32 : 8,
+    mode: u32 : 4,
+    reserved: u32 : 20
+}
+```
+
+Use `: N` after the type to allocate N bits. Useful for hardware registers and compact data.
+
+## Enum Payloads
+
+Enums can carry data in variants:
+
+```q
+state Option(T) {
+    None,
+    Some(T)
+}
+
+state Result(Ok, Err) {
+    Ok(Ok),
+    Err(Err)
+}
+```
+
+Use `choose` to pattern match and extract payloads.
+
+## Struct Methods: impl
+
+Add methods to structs with `impl` blocks:
+
+```q
+form Point {
+    x: f64,
+    y: f64
+}
+
+impl Point {
+    craft magnitude(self: Point) -> f64 {
+        send sqrt(self.x * self.x + self.y * self.y);
+    }
+}
+
+craft main() -> void {
+    make p: Point = ...;
+    make m: f64 = p.magnitude();
+    send;
+}
+```
+
 ## Nested Types
 
 ```q

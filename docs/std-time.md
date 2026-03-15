@@ -11,7 +11,7 @@ Time operations.
 ## Example
 
 ```q
-bring "time";
+bring "std.time";
 
 craft main() -> void {
     make t: i64 = time.now();

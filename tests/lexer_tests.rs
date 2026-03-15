@@ -9,6 +9,13 @@ fn test_tokenize_integers() {
 }
 
 #[test]
+fn test_tokenize_digit_separators() {
+    let mut stream = tokenize("1_000_000 999_999").unwrap();
+    let (t, _, _) = stream.consume().unwrap();
+    assert!(matches!(t, quinuslang::lexer::Token::Int(1000000)));
+}
+
+#[test]
 fn test_tokenize_identifiers() {
     let mut stream = tokenize("foo bar_baz").unwrap();
     let (t, _, _) = stream.consume().unwrap();

@@ -706,12 +706,20 @@ fn check_expr(symbol_table: &mut SymbolTable, expr: &Expr) -> Result<Type> {
                     return Ok(Type::Void);
                 }
                 if name == "assert" {
-                    if args.len() != 1 {
-                        return Err(semantic_err("assert() takes exactly 1 argument"));
+                    if args.len() != 1 && args.len() != 2 {
+                        return Err(semantic_err(
+                            "assert() takes 1 argument (cond) or 2 (cond, message)",
+                        ));
                     }
                     let arg_ty = check_expr(symbol_table, &args[0])?;
                     if arg_ty != Type::Bool {
-                        return Err(semantic_err("assert() requires a bool argument"));
+                        return Err(semantic_err("assert() requires a bool as first argument"));
+                    }
+                    if args.len() == 2 {
+                        let msg_ty = check_expr(symbol_table, &args[1])?;
+                        if msg_ty != Type::Str {
+                            return Err(semantic_err("assert() message must be str"));
+                        }
                     }
                     return Ok(Type::Void);
                 }
