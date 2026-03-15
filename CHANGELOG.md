@@ -7,6 +7,11 @@ All notable changes to QuinusLang will be documented in this file.
 ### Added
 
 - String interpolation: `` `Hello, ${name}!` `` — backtick strings with `${expr}` for print/write/writeln
+- stdlib/math.q: abs_i32, abs_f64, min_i32, max_i32, min_f64, max_f64, sqrt_f64
+- stdlib/os.q: os.getenv(name) for environment variables
+- Git package fetch: dependencies with `git = "url"` are cloned before build
+- Formatter: support for For, Foreach, Defer, Choose, Hazard, TryCatch, InlineAsm, Assign
+- `quinus check [path]` — parse + semantic only, no codegen
 
 ## [0.2.0] - 2025-03-14
 

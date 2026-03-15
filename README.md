@@ -325,4 +325,4 @@ Local preview: `pip install mkdocs-material && mkdocs serve`
 
 ## License
 
-[Add your license here]
+MIT License — see [LICENSE](LICENSE)

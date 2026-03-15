@@ -71,6 +71,44 @@ fn test_parse_with_imports_no_import() {
 }
 
 #[test]
+fn test_parse_error() {
+    let bad = r#"craft main() { "#;
+    let result = parse(bad);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(format!("{}", err).contains("Parse") || format!("{}", err).contains("parse"));
+}
+
+#[test]
+fn test_semantic_error_undefined_var() {
+    let source = r#"
+craft main() -> void {
+    make x: i32 = y;
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let result = analyze(&program);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_formatter_roundtrip() {
+    use quinuslang::fmt;
+    let source = r#"craft main() -> void {
+    check (x > 0) {
+        print(1);
+    }
+    send;
+}
+"#;
+    let program = parse(source).unwrap();
+    let formatted = fmt::format_program(&program);
+    let reparsed = parse(&formatted).unwrap();
+    assert_eq!(program.items.len(), reparsed.items.len());
+}
+
+#[test]
 fn test_string_interpolation() {
     let source = r#"
 craft main() -> void {
