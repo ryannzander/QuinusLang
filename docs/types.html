@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Type System - QuinusLang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="language.html">Language</a></li>
+      <li><a href="types.html">Types</a></li>
+      <li><a href="pointers.html">Pointers</a></li>
+      <li><a href="arrays.html">Arrays</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Type System</h1>
+
+    <h2>Primitive Types</h2>
+    <table>
+      <tr><th>Type</th><th>Description</th><th>C mapping</th></tr>
+      <tr><td><code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></td><td>Signed integers</td><td>int8_t, int16_t, int32_t, int64_t</td></tr>
+      <tr><td><code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code></td><td>Unsigned integers</td><td>uint8_t, uint16_t, uint32_t, uint64_t</td></tr>
+      <tr><td><code>usize</code></td><td>Unsigned size (platform-dependent)</td><td>size_t</td></tr>
+      <tr><td><code>f32</code>, <code>f64</code></td><td>Floating point</td><td>float, double</td></tr>
+      <tr><td><code>bool</code></td><td>Boolean</td><td>int</td></tr>
+      <tr><td><code>str</code></td><td>String (null-terminated)</td><td>char*</td></tr>
+      <tr><td><code>void</code></td><td>Unit type (no value)</td><td>void</td></tr>
+      <tr><td><code>int</code>, <code>float</code></td><td>Legacy aliases</td><td>long, double</td></tr>
+    </table>
+
+    <h2>Pointer Types</h2>
+    <p>Use <code>link T</code> for a pointer to type <code>T</code>:</p>
+    <pre><code>make shift p: link i32 = mark x;
+make shift s: link str = mark my_string;</code></pre>
+    <p>See <a href="pointers.html">Pointers</a> for details.</p>
+
+    <h2>Array Types</h2>
+    <p><strong>Fixed-size:</strong> <code>[T; N]</code> — array of N elements of type T</p>
+    <pre><code>make shift arr: [i32; 5] = { 1, 2, 3, 4, 5 };</code></pre>
+    <p><strong>Unsized:</strong> <code>[T]</code> — used for slice results and generic array references</p>
+    <p>See <a href="arrays.html">Arrays</a> for details.</p>
+
+    <h2>Named Types</h2>
+    <p>Struct, enum, and union names become types:</p>
+    <pre><code>form Point { x: i32, y: i32 }
+make shift p: Point = ...;</code></pre>
+
+    <h2>Type Inference</h2>
+    <p>Variable types can often be inferred from the initializer:</p>
+    <pre><code>make x = 42;        // i32 or int
+make f = 3.14;      // f64
+make b = true;      // bool
+make s = "hi";      // str</code></pre>
+
+    <h2>Type Compatibility</h2>
+    <p>Some implicit conversions are allowed (e.g., <code>int</code> to <code>i32</code>, <code>int</code> to <code>f64</code>). Array initializers must match the declared element type or be assignable.</p>
+  </main>
+</body>
+</html>

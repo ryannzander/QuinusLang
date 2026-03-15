@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strings & Builtins - QuinusLang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="strings.html">Strings & Builtins</a></li>
+      <li><a href="arrays.html">Arrays</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Strings & Builtins</h1>
+
+    <h2>String Type</h2>
+    <p>The <code>str</code> type represents null-terminated character strings (C <code>char*</code>):</p>
+    <pre><code>make shift s: str = "hello";
+make shift greeting: str = "Hello, World!";</code></pre>
+
+    <h2>String Literals</h2>
+    <p>Use double quotes. Escape sequences: <code>\\</code> <code>\"</code> <code>\n</code> <code>\t</code> <code>\r</code></p>
+    <pre><code>"plain"
+"with \"quotes\""
+"line1\nline2"</code></pre>
+
+    <h2>String Concatenation</h2>
+    <p>Use <code>+</code> to concatenate strings. The result is a newly allocated string:</p>
+    <pre><code>make shift a: str = "Hello";
+make shift b: str = " World";
+make shift c: str = a + b;  // "Hello World"</code></pre>
+
+    <h2>I/O Builtins</h2>
+    <table>
+      <tr><th>Builtin</th><th>Description</th></tr>
+      <tr><td><code>print(...)</code></td><td>Print arguments to stdout, followed by newline</td></tr>
+      <tr><td><code>write(...)</code></td><td>Print arguments to stdout, no newline</td></tr>
+      <tr><td><code>writeln(...)</code></td><td>Print arguments to stdout with newline</td></tr>
+      <tr><td><code>read()</code></td><td>Read an integer from stdin</td></tr>
+    </table>
+    <pre><code>print(42);
+print("hello");
+write("no newline ");
+writeln("newline");
+make shift x: i32 = read();</code></pre>
+
+    <h2>Array Builtins</h2>
+    <table>
+      <tr><th>Builtin</th><th>Description</th></tr>
+      <tr><td><code>len(arr)</code></td><td>Return the length of an array</td></tr>
+    </table>
+
+    <h2>String Builtins</h2>
+    <table>
+      <tr><th>Builtin</th><th>Description</th></tr>
+      <tr><td><code>strlen(s)</code></td><td>Return the length of a string (excluding null terminator)</td></tr>
+    </table>
+
+    <h2>Assertion Builtins</h2>
+    <table>
+      <tr><th>Builtin</th><th>Description</th></tr>
+      <tr><td><code>panic()</code></td><td>Abort the program with a message</td></tr>
+      <tr><td><code>assert(cond)</code></td><td>Abort if condition is false</td></tr>
+    </table>
+    <pre><code>assert(x > 0);
+check (error) {
+    panic();
+}</code></pre>
+
+    <h2>Print Formatting</h2>
+    <p><code>print</code>, <code>write</code>, and <code>writeln</code> accept multiple arguments. Each is printed with an appropriate format (integer, float, string, etc.) based on its type.</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modules - QuinusLang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="modules.html">Modules</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Modules</h1>
+
+    <h2>Importing: bring</h2>
+    <p>Import a module with <code>bring</code> and a path string:</p>
+    <pre><code>bring "math";
+bring "std.io";</code></pre>
+    <p>The path is resolved relative to the current file and project root. Imported symbols are merged into the current scope.</p>
+
+    <h2>Module Resolution</h2>
+    <p>The compiler looks for modules in this order:</p>
+    <ol>
+      <li>Same directory as the current file</li>
+      <li><code>src/</code> subdirectory</li>
+      <li><code>stdlib/</code> in the project root</li>
+      <li>Packages from <code>quinus.toml</code> dependencies</li>
+    </ol>
+    <p>For <code>bring "math"</code>, the compiler tries:</p>
+    <ul>
+      <li><code>math.q</code></li>
+      <li><code>src/math.q</code></li>
+      <li><code>stdlib/math.q</code></li>
+    </ul>
+
+    <h2>Defining Modules: realm</h2>
+    <p>Group related items in a <code>realm</code> block:</p>
+    <pre><code>realm math {
+    craft add(a: i32, b: i32) -> i32 {
+        send a + b;
+    }
+    craft mul(a: i32, b: i32) -> i32 {
+        send a * b;
+    }
+}</code></pre>
+    <p>Symbols inside a realm are in the global scope (realms are flattened during compilation).</p>
+
+    <h2>Packages</h2>
+    <p>Add dependencies in <code>quinus.toml</code>:</p>
+    <pre><code>[dependencies]
+foo = "0.1"
+bar = { git = "https://github.com/user/bar" }</code></pre>
+    <p>Then <code>bring "foo"</code> resolves to the package. Package resolution uses the paths from <code>quinus add</code> and the lockfile.</p>
+
+    <h2>Visibility: open</h2>
+    <p>The <code>open</code> modifier marks functions and structs as public (exported). Without it, symbols are module-private where applicable.</p>
+  </main>
+</body>
+</html>

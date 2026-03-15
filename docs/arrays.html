@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arrays - QuinusLang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="arrays.html">Arrays</a></li>
+      <li><a href="types.html">Types</a></li>
+      <li><a href="strings.html">Strings</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Arrays</h1>
+
+    <h2>Fixed-Size Arrays</h2>
+    <p>Declare with <code>[T; N]</code> — N elements of type T:</p>
+    <pre><code>make shift arr: [i32; 5] = { 1, 2, 3, 4, 5 };</code></pre>
+    <p>The initializer must have exactly N elements (or fewer, with the rest zero-initialized depending on implementation).</p>
+
+    <h2>Array Initializers</h2>
+    <p>Use curly braces with comma-separated values:</p>
+    <pre><code>make shift nums: [i32; 3] = { 10, 20, 30 };
+make shift zeros: [i32; 5] = { 0, 0, 0, 0, 0 };</code></pre>
+
+    <h2>Indexing</h2>
+    <p>Access elements with <code>[index]</code>:</p>
+    <pre><code>make shift first: i32 = arr[0];
+make shift last: i32 = arr[4];
+arr[2] = 99;</code></pre>
+    <p>Indices are zero-based. Bounds checking is not performed by default.</p>
+
+    <h2>Length: len</h2>
+    <p>Get the number of elements with the <code>len</code> builtin:</p>
+    <pre><code>make shift n: usize = len(arr);
+print(n);  // 5</code></pre>
+
+    <h2>Slices</h2>
+    <p>Create a view into a subrange with <code>[start..end]</code>:</p>
+    <pre><code>arr[1..4]   // Elements at indices 1, 2, 3
+arr[..3]    // From start to index 3 (exclusive)
+arr[2..]    // From index 2 to end</code></pre>
+    <p>A slice produces a pointer to the first element of the range. The end index is exclusive.</p>
+
+    <h2>Foreach Over Arrays</h2>
+    <pre><code>foreach item in arr {
+    print(item);
+}</code></pre>
+
+    <h2>C Mapping</h2>
+    <p><code>[i32; 5]</code> becomes <code>int32_t arr[5]</code> in C. Arrays are stack-allocated. Slices compile to pointer arithmetic.</p>
+  </main>
+</body>
+</html>

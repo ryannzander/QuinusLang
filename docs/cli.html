@@ -4,29 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CLI Reference - QuinusLang</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
-    h1, h2 { color: #333; }
-    code { background: #f4f4f4; padding: 0.2em 0.4em; border-radius: 4px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
-    a { color: #0066cc; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>CLI Reference</h1>
-  <p><a href="index.html">← Back</a></p>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="cli.html">CLI Reference</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+    </ul>
+  </nav>
 
-  <table>
-    <tr><th>Command</th><th>Description</th></tr>
-    <tr><td><code>quinus build</code></td><td>Compile to executable</td></tr>
-    <tr><td><code>quinus build --release</code></td><td>Optimized build</td></tr>
-    <tr><td><code>quinus build --emit-c</code></td><td>Emit C only</td></tr>
-    <tr><td><code>quinus run</code></td><td>Build and run</td></tr>
-    <tr><td><code>quinus init</code></td><td>Create new package</td></tr>
-    <tr><td><code>quinus fmt</code></td><td>Format source</td></tr>
-    <tr><td><code>quinus watch</code></td><td>Rebuild on changes</td></tr>
-    <tr><td><code>quinus repl</code></td><td>Interactive REPL</td></tr>
-  </table>
+  <main class="container">
+    <h1>CLI Reference</h1>
+    <p>All commands are invoked as <code>quinus &lt;command&gt; [options]</code>.</p>
+
+    <h2>Build Commands</h2>
+    <table>
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td><code>quinus build [path]</code></td><td>Compile to executable. Default path: current directory.</td></tr>
+      <tr><td><code>quinus build --release</code></td><td>Optimized build (-O2)</td></tr>
+      <tr><td><code>quinus build --emit-c</code></td><td>Emit C code only, do not invoke C compiler</td></tr>
+      <tr><td><code>quinus run [path]</code></td><td>Build and run the program</td></tr>
+      <tr><td><code>quinus run --release</code></td><td>Build in release mode and run</td></tr>
+    </table>
+
+    <h2>Project Commands</h2>
+    <table>
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td><code>quinus init [path]</code></td><td>Create a new package (quinus.toml, src/main.q)</td></tr>
+      <tr><td><code>quinus parse &lt;file&gt;</code></td><td>Parse file and dump AST (debug)</td></tr>
+      <tr><td><code>quinus fmt [path]</code></td><td>Format .q files</td></tr>
+      <tr><td><code>quinus watch [path]</code></td><td>Watch for changes and rebuild</td></tr>
+      <tr><td><code>quinus repl</code></td><td>Interactive REPL (parse and show AST). Type .quit to exit.</td></tr>
+    </table>
+
+    <h2>Package Commands</h2>
+    <table>
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td><code>quinus add &lt;package&gt;</code></td><td>Add a dependency</td></tr>
+      <tr><td><code>quinus add &lt;package&gt; --git &lt;url&gt;</code></td><td>Add a package from a Git repository</td></tr>
+      <tr><td><code>quinus remove &lt;package&gt;</code></td><td>Remove a dependency</td></tr>
+      <tr><td><code>quinus update</code></td><td>Update dependencies</td></tr>
+      <tr><td><code>quinus publish</code></td><td>Publish to registry (not implemented)</td></tr>
+    </table>
+
+    <h2>Entry Point Resolution</h2>
+    <p>When you run <code>quinus build</code> or <code>quinus run</code> with a path:</p>
+    <ol>
+      <li>If <code>quinus.toml</code> exists, use <code>[build] entry</code></li>
+      <li>Else if <code>src/main.q</code> exists, use it</li>
+      <li>Else if path is a .q file, use it directly</li>
+      <li>Otherwise, error</li>
+    </ol>
+
+    <h2>Output Location</h2>
+    <p>Compiled output goes to <code>build/output.c</code> and <code>build/output.exe</code> (or platform equivalent). The <code>build/</code> directory is created relative to the project root (or the directory containing the entry file when building a single file).</p>
+
+    <h2>Environment</h2>
+    <p>The compiler uses the system C compiler (GCC, Clang, or MSVC) as found by the <code>cc</code> crate. Ensure a C compiler is installed and on your PATH.</p>
+  </main>
 </body>
 </html>
