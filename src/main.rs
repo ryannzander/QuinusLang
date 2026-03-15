@@ -100,7 +100,16 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
     let (source, _entry_path) = find_entry(path)?;
     let (base, base_dir) = if path.is_file() {
         let parent = path.parent().unwrap_or(path).to_path_buf();
-        let project_root = parent.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| parent.clone());
+        let mut project_root = parent.clone();
+        let search = parent.canonicalize().unwrap_or(parent.clone());
+        let mut p = search.as_path();
+        while let Some(next) = p.parent() {
+            if next.join("stdlib").exists() || next.join("quinus.toml").exists() {
+                project_root = next.to_path_buf();
+                break;
+            }
+            p = next;
+        }
         (parent, project_root)
     } else {
         (path.clone(), path.clone())

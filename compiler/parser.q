@@ -66,16 +66,3 @@ realm parser {
         send expr;
     }
 }
-
-craft main() -> void {
-    // Test with simple input: "42" or "x" parses as literal/ident
-    make src: str = "42";
-    make ast: link void = parser.parse(src);
-    check (ast == 0) {
-        writeln("Parse failed");
-    }
-    otherwise {
-        writeln("Parser OK");
-    }
-    send;
-}

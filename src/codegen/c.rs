@@ -498,6 +498,11 @@ static void ql_ast_expr_set_int(void* p, long val) { ((ast_Expr_t*)p)->int_val =
 static void ql_ast_expr_set_str(void* p, char* s) { ((ast_Expr_t*)p)->str_val = s; }
 static void ql_ast_expr_set_left(void* p, void* left) { ((ast_Expr_t*)p)->left = left; }
 static void ql_ast_expr_set_right(void* p, void* right) { ((ast_Expr_t*)p)->right = right; }
+static int ql_ast_expr_tag(void* p) { return ((ast_Expr_t*)p)->tag; }
+static long ql_ast_expr_int(void* p) { return ((ast_Expr_t*)p)->int_val; }
+static char* ql_ast_expr_str(void* p) { return ((ast_Expr_t*)p)->str_val; }
+static void* ql_ast_expr_left(void* p) { return ((ast_Expr_t*)p)->left; }
+static void* ql_ast_expr_right(void* p) { return ((ast_Expr_t*)p)->right; }
 "#;
 
 fn program_uses_module(program: &crate::ast::Program, name: &str) -> bool {
@@ -573,7 +578,8 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
             const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "realloc", "fseek", "ftell", "system", "getenv", "getcwd", "abs", "fabs", "sqrt", "fmin", "fmax", "ql_str_trim", "ql_str_concat", "ql_vec_ptr_new", "ql_vec_ptr_push", "ql_vec_ptr_get", "ql_vec_ptr_len", "ql_vec_ptr_clear", "ql_vec_ptr_free", "ql_vec_u8_new", "ql_vec_u8_push", "ql_vec_u8_append", "ql_vec_u8_len", "ql_vec_u8_to_str", "ql_vec_u8_clear", "ql_vec_u8_free", "ql_map_str_ptr_new", "ql_map_str_ptr_put", "ql_map_str_ptr_get", "ql_map_str_ptr_has", "ql_map_str_ptr_len", "ql_map_str_ptr_free", "snprintf", "ql_fmt_sprintf_s", "ql_fmt_sprintf_ii", "ql_fmt_sprintf_si", "ql_fmt_sprintf_ss", "ql_fmt_alloc_i", "ql_fmt_alloc_s", "ql_fmt_alloc_si", "ql_token_create", "ql_token_ty", "ql_token_line", "ql_token_col", "ql_token_str", "ql_token_int", "ql_token_free", "ql_str_at", "ql_str_sub",
-            "ql_ast_expr_alloc", "ql_ast_expr_set_tag", "ql_ast_expr_set_int", "ql_ast_expr_set_str", "ql_ast_expr_set_left", "ql_ast_expr_set_right"];
+            "ql_ast_expr_alloc", "ql_ast_expr_set_tag", "ql_ast_expr_set_int", "ql_ast_expr_set_str", "ql_ast_expr_set_left", "ql_ast_expr_set_right",
+            "ql_ast_expr_tag", "ql_ast_expr_int", "ql_ast_expr_str", "ql_ast_expr_left", "ql_ast_expr_right"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
             }
