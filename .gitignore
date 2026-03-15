@@ -6,7 +6,7 @@
 *.obj
 *.asm
 *.s
-Cargo.lock
+# Cargo.lock committed for reproducible CI builds (binary project)
 .idea/
 .vscode/
 *.log
