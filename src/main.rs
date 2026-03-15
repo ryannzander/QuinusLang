@@ -280,6 +280,22 @@ fn link_with_lld(
         return Ok(());
     }
 
+    // On Linux, try clang as linker driver (handles libc paths)
+    if std::env::consts::OS != "windows" {
+        let mut clang_cmd = std::process::Command::new("clang");
+        clang_cmd.arg("-o").arg(exe_path);
+        clang_cmd.arg(obj_path);
+        if let Some(ref r) = runtime_path {
+            clang_cmd.arg(r);
+        }
+        for lib in libs {
+            clang_cmd.arg(format!("-l{}", lib));
+        }
+        if clang_cmd.status().map(|s| s.success()).unwrap_or(false) {
+            return Ok(());
+        }
+    }
+
     anyhow::bail!(
         "Linker (lld) not found. LLVM backend produces object files; lld is needed for linking.\n  \
          Install LLVM (includes lld-link on Windows, ld.lld on Linux) or use the installer/portable zip which bundles it.\n  \
