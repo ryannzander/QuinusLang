@@ -19,4 +19,4 @@ cargo install --path .
 
 - [Language Reference](language.md)
 - [CLI Reference](cli.md)
-- [GitHub](https://github.com/YOUR_USERNAME/QuinusLang) — replace with your repo URL
+- [GitHub](https://github.com/ryannzander/QuinusLang)
