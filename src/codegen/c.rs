@@ -74,7 +74,7 @@ fn type_to_c(ty: &Type) -> String {
             type_to_c(err)
         ),
         Type::Tuple(inner) => {
-            let name = tuple_typedef_name(inner);
+            let _name = tuple_typedef_name(inner);
             format!(
                 "struct {{ {}; }}",
                 inner
@@ -233,7 +233,7 @@ fn expr_type(expr: &Expr, ctx: &Ctx) -> Option<Type> {
         Expr::Move(inner) => expr_type(inner, ctx),
         Expr::Binary { op, left, right } => {
             let lt = expr_type(left, ctx)?;
-            let rt = expr_type(right, ctx)?;
+            let _rt = expr_type(right, ctx)?;
             match op {
                 BinOp::Eq
                 | BinOp::Ne
@@ -314,7 +314,8 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
         out.push_str(AST_RUNTIME);
     }
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut result_typedefs_set: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut result_typedefs_set: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
     for item in &program.program.items {
         if let TopLevelItem::Fn(f) = item {
             if let Some(Type::Tuple(inner)) = &f.return_type {
@@ -410,7 +411,10 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
                 let err_c = type_to_c(err);
                 ctx.result_typedefs.insert(
                     name,
-                    format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                    format!(
+                        "struct {{ int is_ok; union {{ {} val; {} err; }} u; }}",
+                        ok_c, err_c
+                    ),
                 );
             }
         }
@@ -423,7 +427,10 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
                         let err_c = type_to_c(err);
                         ctx.result_typedefs.insert(
                             name,
-                            format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                            format!(
+                                "struct {{ int is_ok; union {{ {} val; {} err; }} u; }}",
+                                ok_c, err_c
+                            ),
                         );
                     }
                 }
@@ -436,7 +443,10 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
                 let err_c = type_to_c(err);
                 ctx.result_typedefs.insert(
                     name,
-                    format!("struct {{ int is_ok; union {{ {} val; {} err; }} u; }}", ok_c, err_c),
+                    format!(
+                        "struct {{ int is_ok; union {{ {} val; {} err; }} u; }}",
+                        ok_c, err_c
+                    ),
                 );
             }
         }
@@ -1114,10 +1124,6 @@ fn emit_fn_named(out: &mut String, f: &FnDef, ctx: &mut Ctx, name: &str) -> Resu
     Ok(())
 }
 
-fn emit_fn(out: &mut String, f: &FnDef, ctx: &mut Ctx) -> Result<()> {
-    emit_fn_named(out, f, ctx, &f.name)
-}
-
 fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
         Stmt::VarDecl {
@@ -1316,17 +1322,30 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
                 for (i, arm) in arms.iter().enumerate() {
                     let prefix = if i == 0 { "    if " } else { "    else if " };
                     let (cond, bind_decl) = match &arm.pattern {
-                        ChoosePattern::TupleVariant(v, bindings) if v == "Ok" && bindings.len() == 1 => {
+                        ChoosePattern::TupleVariant(v, bindings)
+                            if v == "Ok" && bindings.len() == 1 =>
+                        {
                             let b = &bindings[0];
                             let decl = decl_to_c_with_ctx(&ok_ty, b, ctx);
-                            ("_choose_r.is_ok".to_string(), Some((b.clone(), decl, "_choose_r.u.val", *ok_ty.clone())))
+                            (
+                                "_choose_r.is_ok".to_string(),
+                                Some((b.clone(), decl, "_choose_r.u.val", *ok_ty.clone())),
+                            )
                         }
-                        ChoosePattern::TupleVariant(v, bindings) if v == "Err" && bindings.len() == 1 => {
+                        ChoosePattern::TupleVariant(v, bindings)
+                            if v == "Err" && bindings.len() == 1 =>
+                        {
                             let b = &bindings[0];
                             let decl = decl_to_c_with_ctx(&err_ty, b, ctx);
-                            ("!_choose_r.is_ok".to_string(), Some((b.clone(), decl, "_choose_r.u.err", *err_ty.clone())))
+                            (
+                                "!_choose_r.is_ok".to_string(),
+                                Some((b.clone(), decl, "_choose_r.u.err", *err_ty.clone())),
+                            )
                         }
-                        _ => (format!("_choose_r.is_ok == {}", if i == 0 { 1 } else { 0 }), None),
+                        _ => (
+                            format!("_choose_r.is_ok == {}", if i == 0 { 1 } else { 0 }),
+                            None,
+                        ),
                     };
                     out.push_str(&format!("{}({}) {{\n", prefix, cond));
                     if let Some((var, decl, extract, bind_ty)) = bind_decl {

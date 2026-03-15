@@ -109,7 +109,12 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool, defines: &[String]) -> anyhow::Result<()> {
+fn cmd_build(
+    path: &PathBuf,
+    release: bool,
+    emit_c_only: bool,
+    defines: &[String],
+) -> anyhow::Result<()> {
     let (source, _entry_path) = find_entry(path)?;
     let (base, base_dir) = if path.is_file() {
         let parent = path.parent().unwrap_or(path).to_path_buf();
@@ -795,6 +800,7 @@ fn semantic_expr_type(
     Some(format!("{}", ty))
 }
 
+#[allow(dead_code)]
 fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> {
     let manifest_path = base_dir.join("quinus.toml");
     if !manifest_path.exists() {

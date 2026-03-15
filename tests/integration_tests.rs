@@ -1,5 +1,5 @@
-use quinuslang::{analyze, codegen, parse, parse_with_imports};
 use quinuslang::preprocess;
+use quinuslang::{analyze, codegen, parse, parse_with_imports};
 use std::path::Path;
 
 #[test]
@@ -405,7 +405,6 @@ craft main() -> void {
     assert!(c_code.contains("42"));
 }
 
-
 #[test]
 fn test_inline_cblock() {
     let source = r#"
@@ -461,7 +460,7 @@ craft main() -> void {
 "#;
     let flattened = preprocess::preprocess_with_defines(source, Path::new("."), &[]).unwrap();
     let program = parse(&flattened).unwrap();
-    let annotated = analyze(&program).unwrap();
+    let _annotated = analyze(&program).unwrap();
     assert!(flattened.contains("make x"));
 }
 
@@ -478,7 +477,6 @@ craft main() -> void { send; }
 #endif
 "#;
     let defines = vec!["DEBUG".to_string()];
-    let flattened =
-        preprocess::preprocess_with_defines(source, Path::new("."), &defines).unwrap();
+    let flattened = preprocess::preprocess_with_defines(source, Path::new("."), &defines).unwrap();
     assert!(flattened.contains("make x"));
 }

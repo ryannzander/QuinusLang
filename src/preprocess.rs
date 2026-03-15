@@ -39,14 +39,22 @@ pub fn apply_compile_flags(source: &str, defines: &mut HashSet<String>) -> Strin
             let name = if trimmed == "#ifndef" {
                 ""
             } else {
-                trimmed[8..].trim_start().split_whitespace().next().unwrap_or("")
+                trimmed[8..]
+                    .trim_start()
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
             };
             let ok = !defines.contains(name);
             stack.push(ok && take);
             continue;
         }
         if trimmed.starts_with("#ifdef ") {
-            let name = trimmed[7..].trim_start().split_whitespace().next().unwrap_or("");
+            let name = trimmed[7..]
+                .trim_start()
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
             let ok = defines.contains(name);
             stack.push(ok && take);
             continue;

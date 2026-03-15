@@ -305,7 +305,12 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             let _ = writeln!(out, "{}}}", pad);
         }
         Stmt::InlineC { code } => {
-            let _ = writeln!(out, "{}cblock {{ \"{}\" }}", pad, code.replace('\\', "\\\\").replace('"', "\\\""));
+            let _ = writeln!(
+                out,
+                "{}cblock {{ \"{}\" }}",
+                pad,
+                code.replace('\\', "\\\\").replace('"', "\\\"")
+            );
         }
         Stmt::Assign { target, value } => {
             let _ = write!(out, "{}", pad);
