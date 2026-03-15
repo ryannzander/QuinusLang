@@ -1,7 +1,7 @@
 {
   "name": "quinuslang",
   "displayName": "QuinusLang",
-  "description": "Syntax highlighting for QuinusLang",
+  "description": "Syntax highlighting for QuinusLang (.q files). Supports backtick interpolation, keywords, types, and builtins.",
   "version": "0.2.2",
   "publisher": "quinuslang",
   "engines": { "vscode": "^1.60.0" },

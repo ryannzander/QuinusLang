@@ -78,7 +78,7 @@ hazard {
 ## CLI
 
 ```bash
-quinus build [--release] [--emit-c] [--define NAME]
+quinus build [--release] [--emit-llvm] [--define NAME]
 quinus run
 quinus fmt
 quinus watch

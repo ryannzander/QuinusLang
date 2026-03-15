@@ -1,6 +1,6 @@
 # QuinusLang
 
-A systems programming language with assembly-level control and readable syntax. Compiles to C, then to native executables.
+A systems programming language with assembly-level control and readable syntax. Compiles to native executables via LLVM (no C compiler required).
 
 ## Quick Start
 

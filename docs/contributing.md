@@ -7,7 +7,7 @@ Thank you for your interest in contributing to QuinusLang!
 ### Prerequisites
 
 - **Rust** — Install from [rustup.rs](https://rustup.rs)
-- **C compiler** — GCC, Clang, or MSVC (for compiling emitted C code)
+- **LLVM 17** — For building the compiler (inkwell). Windows: `choco install llvm`; Linux: `apt install llvm-17-dev`; macOS: `brew install llvm@17`
 
 ### Build
 

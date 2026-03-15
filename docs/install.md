@@ -10,6 +10,8 @@ Download `QuinusLang-Setup.exe` from [releases](https://github.com/ryannzander/Q
 2. Check "Add to PATH" (recommended)
 3. Run `quinus` from any terminal
 
+The installer bundles everything: LLVM is built into quinus.exe, plus the linker (`lld-link.exe`) and runtime. No separate LLVM or C compiler download required.
+
 ## Portable Zip
 
 Download `QuinusLang-portable.zip` from [releases](https://github.com/ryannzander/QuinusLang/releases).
@@ -18,30 +20,40 @@ Download `QuinusLang-portable.zip` from [releases](https://github.com/ryannzande
 2. Run `quinus.exe` from that folder
 3. No admin rights or PATH changes required
 
+The portable zip includes quinus.exe (with LLVM built in), `lld-link.exe`, and `runtime.obj`. Extract and run—no additional tools needed.
+
 ## From Source
 
-Requires **Rust** and a **C compiler**.
+Requires **Rust** and **LLVM 17** (for building the compiler).
 
 ```powershell
 # Windows
+choco install llvm --version=17.0.6
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
-.\build.ps1
+cargo build --release
 ```
 
 ```bash
 # Linux / macOS
+# Install LLVM 17 (e.g. apt install llvm-17-dev or brew install llvm@17)
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
-./build.sh
+cargo build --release
 ```
 
-## C Compiler
+## Runtime (for str, vec, fmt, etc.)
 
-To compile `.q` files, you need a C compiler:
+When building from source, compile the runtime for programs that use stdlib modules:
 
-| Platform | Command |
-|----------|---------|
-| Windows | `winget install mingw` or install MSVC Build Tools |
-| macOS | Xcode Command Line Tools or `brew install gcc` |
-| Linux | `apt install build-essential` or equivalent |
+```powershell
+# Windows
+.\scripts\build-runtime.ps1
+```
+
+```bash
+# Linux
+./scripts/build-runtime.sh
+```
+
+Place `runtime.obj` (Windows) or `runtime.o` (Linux) in `dist-runtime/` or next to `quinus.exe`.

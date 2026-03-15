@@ -19,6 +19,21 @@ if (-not (Test-Path "quinus.exe")) {
     Write-Error "quinus.exe not found"
 }
 
+# Build runtime and copy lld for bundling
+Write-Host "Building runtime..."
+& "$PSScriptRoot\scripts\build-runtime.ps1"
+if (Test-Path "dist-runtime\runtime.obj") {
+    Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
+}
+$llvmPath = $env:LLVM_SYS_170_PREFIX
+if (-not $llvmPath) { $llvmPath = "C:\Program Files\LLVM" }
+$lldLink = Join-Path $llvmPath "bin\lld-link.exe"
+if (Test-Path $lldLink) {
+    Copy-Item $lldLink "lld-link.exe" -Force
+} else {
+    Write-Warning "lld-link.exe not found - installer will work but users need LLVM/lld to link"
+}
+
 $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if (-not (Test-Path $iscc)) {
     $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe"

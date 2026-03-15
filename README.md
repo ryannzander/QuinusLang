@@ -1,6 +1,6 @@
 # QuinusLang
 
-A systems programming language with assembly-level control and readable syntax. Compiles to C, then to native executables via your system compiler.
+A systems programming language with assembly-level control and readable syntax. Compiles to native executables via LLVM (no C compiler required).
 
 **[Documentation](https://ryannzander.github.io/QuinusLang/)** — Full language reference, stdlib, and guides
 
@@ -22,10 +22,7 @@ A systems programming language with assembly-level control and readable syntax. 
 | **Portable** | Download `QuinusLang-portable.zip` → Extract anywhere → Run `quinus.exe` from that folder. |
 | **Build from source** | `git clone` → `.\build.ps1` → Done. |
 
-**To compile `.q` files** you need a C compiler (one command):
-```powershell
-winget install mingw
-```
+**To compile `.q` files** use the bundled LLVM toolchain (included in installer/portable). No separate C compiler required.
 
 ---
 
@@ -51,7 +48,7 @@ Extract and run `quinus.exe`. No admin, no PATH changes.
 ```powershell
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
-.\build.ps1             # Windows - needs Rust + C compiler
+.\build.ps1             # Windows - needs Rust + LLVM 17
 ./build.sh              # Linux/macOS
 ```
 

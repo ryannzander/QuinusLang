@@ -23,9 +23,9 @@ enum Commands {
         /// Release build (optimize)
         #[arg(long)]
         release: bool,
-        /// Emit C only, do not compile
+        /// Emit LLVM IR only, do not compile
         #[arg(long)]
-        emit_c: bool,
+        emit_llvm: bool,
         /// Define for #if (e.g. --define DEBUG)
         #[arg(long, action = clap::ArgAction::Append)]
         define: Vec<String>,
@@ -90,9 +90,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Build {
             path,
             release,
-            emit_c,
+            emit_llvm,
             define,
-        } => cmd_build(&path, release, emit_c, &define),
+        } => cmd_build(&path, release, emit_llvm, &define),
         Commands::Run { path, release } => cmd_run(&path, release),
         Commands::Parse { path } => cmd_parse(&path),
         Commands::Init { path } => cmd_init(&path),
@@ -112,7 +112,7 @@ fn main() -> anyhow::Result<()> {
 fn cmd_build(
     path: &PathBuf,
     release: bool,
-    emit_c_only: bool,
+    emit_llvm_only: bool,
     defines: &[String],
 ) -> anyhow::Result<()> {
     let (source, _entry_path) = find_entry(path)?;
@@ -135,81 +135,151 @@ fn cmd_build(
     let flattened = preprocess::preprocess_with_defines(&source, base_dir.as_path(), defines)?;
     let program = parse(&flattened)?;
     let annotated = analyze(&program)?;
-    let c_code = codegen::c::generate(&annotated)?;
 
     let out_dir = base.join("build");
     std::fs::create_dir_all(&out_dir)?;
-    let c_path = out_dir.join("output.c");
-    std::fs::write(&c_path, c_code)?;
 
-    if emit_c_only {
-        println!("Emitted C to {}", c_path.display());
+    if emit_llvm_only {
+        let ir_path = out_dir.join("output.ll");
+        codegen::llvm::compile_to_ir(&annotated, &ir_path)?;
+        println!("Emitted LLVM IR to {}", ir_path.display());
         return Ok(());
     }
 
-    let exe_path = out_dir.join("output.exe");
-    let opt_level = if release { "2" } else { "0" };
-    std::env::set_var("OPT_LEVEL", opt_level);
+    let obj_path = out_dir.join("output.o");
+    codegen::llvm::compile_to_object(&annotated, &obj_path)?;
 
-    // Try MSVC first, then MinGW. Either works. MSVC: winget install Microsoft.VisualStudio.2022.BuildTools | MinGW: winget install mingw
-    let targets: Vec<&str> = if std::env::consts::OS == "windows" {
-        vec!["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu"]
+    let exe_path = out_dir.join(if std::env::consts::OS == "windows" {
+        "output.exe"
     } else {
-        vec!["x86_64-unknown-linux-gnu"]
+        "output"
+    });
+    let libs = codegen::llvm::required_link_libs(&annotated.program);
+    let runtime_path = find_runtime_path(&base);
+    link_with_lld(&obj_path, &exe_path, release, &libs, runtime_path.as_deref())?;
+    println!("Compiled to {}", exe_path.display());
+    Ok(())
+}
+
+/// Find runtime.o/obj - next to exe (bundled) or in dist-runtime (dev)
+fn find_runtime_path(project_base: &PathBuf) -> Option<std::path::PathBuf> {
+    let suffix = if std::env::consts::OS == "windows" {
+        "runtime.obj"
+    } else {
+        "runtime.o"
     };
-
-    std::env::set_var("OUT_DIR", &out_dir);
-    std::env::set_var("PROFILE", "debug");
-    std::env::set_var("DEBUG", "true");
-
-    for target in targets {
-        std::env::set_var("TARGET", target);
-        std::env::set_var("HOST", target);
-
-        let compiler = match cc::Build::new().file(&c_path).cpp(false).try_get_compiler() {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-
-        let mut cmd = compiler.to_command();
-        cmd.arg(&c_path);
-        if release {
-            if compiler.is_like_msvc() {
-                cmd.arg("/O2");
-            } else {
-                cmd.arg("-O2");
-            }
-        } else {
-            if compiler.is_like_msvc() {
-                cmd.arg("/Od");
-            } else {
-                cmd.arg("-O0");
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let r = dir.join(suffix);
+            if r.exists() {
+                return Some(r);
             }
         }
-        if compiler.is_like_msvc() {
-            cmd.arg(format!("/Fe:{}", exe_path.display()));
-        } else {
-            cmd.arg("-o");
-            cmd.arg(&exe_path);
-        }
+    }
+    let dist = project_base.join("dist-runtime").join(suffix);
+    if dist.exists() {
+        return Some(dist);
+    }
+    None
+}
 
-        for lib in codegen::c::required_link_libs(&annotated.program) {
-            if compiler.is_like_msvc() {
+/// Find lld next to quinus.exe (bundled with installer/portable)
+fn find_bundled_lld() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    if std::env::consts::OS == "windows" {
+        let lld = dir.join("lld-link.exe");
+        if lld.exists() {
+            return Some(lld);
+        }
+    } else {
+        let lld = dir.join("ld.lld");
+        if lld.exists() {
+            return Some(lld);
+        }
+    }
+    None
+}
+
+fn link_with_lld(
+    obj_path: &std::path::Path,
+    exe_path: &std::path::Path,
+    _release: bool,
+    libs: &[&str],
+    runtime_path: Option<&std::path::Path>,
+) -> anyhow::Result<()> {
+
+    if let Some(lld) = find_bundled_lld() {
+        if std::env::consts::OS == "windows" {
+            let mut cmd = std::process::Command::new(&lld);
+            cmd.arg(format!("/out:{}", exe_path.display()));
+            cmd.arg(obj_path);
+            if let Some(ref r) = runtime_path {
+                cmd.arg(r);
+            }
+            cmd.arg("/entry:main");
+            for lib in libs {
                 cmd.arg(format!("{}.lib", lib));
-            } else {
+            }
+            let status = cmd.status()?;
+            if status.success() {
+                return Ok(());
+            }
+        } else {
+            let mut cmd = std::process::Command::new(&lld);
+            cmd.arg("-o").arg(exe_path);
+            cmd.arg(obj_path);
+            if let Some(ref r) = runtime_path {
+                cmd.arg(r);
+            }
+            cmd.arg("-lc");
+            for lib in libs {
                 cmd.arg(format!("-l{}", lib));
             }
-        }
-
-        if cmd.status().map(|s| s.success()).unwrap_or(false) {
-            println!("Compiled to {}", exe_path.display());
-            return Ok(());
+            let status = cmd.status()?;
+            if status.success() {
+                return Ok(());
+            }
         }
     }
 
+    // Fallback: try lld-link / ld.lld in PATH
+    let lld_name = if std::env::consts::OS == "windows" {
+        "lld-link"
+    } else {
+        "ld.lld"
+    };
+    let mut cmd = std::process::Command::new(lld_name);
+    if std::env::consts::OS == "windows" {
+        cmd.arg(format!("/out:{}", exe_path.display()));
+        cmd.arg(obj_path);
+        if let Some(ref r) = runtime_path {
+            cmd.arg(r);
+        }
+        cmd.arg("/entry:main");
+        for lib in libs {
+            cmd.arg(format!("{}.lib", lib));
+        }
+    } else {
+        cmd.arg("-o").arg(exe_path);
+        cmd.arg(obj_path);
+        if let Some(ref r) = runtime_path {
+            cmd.arg(r);
+        }
+        cmd.arg("-lc");
+        for lib in libs {
+            cmd.arg(format!("-l{}", lib));
+        }
+    }
+    if cmd.status().map(|s| s.success()).unwrap_or(false) {
+        return Ok(());
+    }
+
     anyhow::bail!(
-        "C compiler not found. Install one:\n  MSVC: winget install Microsoft.VisualStudio.2022.BuildTools\n  MinGW: winget install mingw\nC source: {}",
-        c_path.display()
+        "Linker (lld) not found. LLVM backend produces object files; lld is needed for linking.\n  \
+         Install LLVM (includes lld-link on Windows, ld.lld on Linux) or use the installer/portable zip which bundles it.\n  \
+         Object: {}",
+        obj_path.display()
     )
 }
 
@@ -221,15 +291,18 @@ fn cmd_run(path: &PathBuf, release: bool) -> anyhow::Result<()> {
     } else {
         base
     };
-    let exe_path = base.join("build").join("output.exe");
+    let exe_name = if std::env::consts::OS == "windows" {
+        "output.exe"
+    } else {
+        "output"
+    };
+    let exe_path = base.join("build").join(exe_name);
     if exe_path.exists() {
         let status = Command::new(&exe_path).status()?;
         std::process::exit(status.code().unwrap_or(1));
     } else {
-        println!(
-            "Executable not found. Check that the C compiler succeeded and output.exe was created."
-        );
-        println!("If build failed, ensure a C compiler is installed (MSVC or MinGW).");
+        println!("Executable not found. Check that the build succeeded.");
+        println!("If build failed, ensure LLVM/lld is installed or use the bundled release.");
     }
     Ok(())
 }

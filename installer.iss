@@ -31,6 +31,12 @@ Name: "addpath"; Description: "Add QuinusLang to PATH (run quinus from any folde
 
 [Files]
 Source: "quinus.exe"; DestDir: "{app}"; Flags: ignoreversion
+#ifexist "runtime.obj"
+Source: "runtime.obj"; DestDir: "{app}"; Flags: ignoreversion
+#endif
+#ifexist "lld-link.exe"
+Source: "lld-link.exe"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 ; Include stdlib and compiler for development (optional - skip if missing)
 Source: "stdlib\*"; DestDir: "{app}\stdlib"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "compiler\*"; DestDir: "{app}\compiler"; Flags: ignoreversion recursesubdirs createallsubdirs

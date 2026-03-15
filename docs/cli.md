@@ -6,7 +6,7 @@
 |---------|-------------|
 | `quinus build [path]` | Compile to executable (default: `.`) |
 | `quinus build --release` | Optimized build |
-| `quinus build --emit-c` | Emit C only, do not compile |
+| `quinus build --emit-llvm` | Emit LLVM IR only, do not compile |
 | `quinus build --define NAME` | Define for `#if` / `#ifdef` (repeatable) |
 | `quinus run [path]` | Build and run |
 

@@ -1,6 +1,6 @@
-//! Code generator - assembly and C backends
+//! Code generator - LLVM backend (primary), NASM assembly (experimental, unused)
 
-pub mod c;
+pub mod llvm;
 
 use crate::ast::*;
 use crate::error::Result;

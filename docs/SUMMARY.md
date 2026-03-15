@@ -49,8 +49,9 @@
 
 - [CLI Reference](cli.md)
 
-# Advanced
+# Build and Advanced
 
+- [Compilation (LLVM)](llvm-backend.md) — How the compiler works, runtime, linking
 - [Benchmarks](benchmarks.md)
 - [C FFI](ffi.md)
 - [Hazard and Unsafe](hazard-unsafe.md)

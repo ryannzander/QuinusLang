@@ -28,7 +28,7 @@
         },
         {
           "name": "keyword.other.q",
-          "match": "\\b(eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|alias|extern|move|pub|priv|cblock)\\b"
+          "match": "\\b(eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|alias|extern|move|pub|priv|cblock|as|Ok|Err)\\b"
         }
       ]
     },
@@ -37,6 +37,10 @@
         {
           "name": "storage.type.q",
           "match": "\\b(int|float|bool|str|void|u8|u16|u32|u64|i8|i16|i32|i64|usize|f32|f64)\\b"
+        },
+        {
+          "name": "storage.type.generic.q",
+          "match": "\\b(Result|Option)\\b"
         }
       ]
     },
@@ -52,7 +56,35 @@
               "match": "\\\\."
             }
           ]
+        },
+        {
+          "name": "string.quoted.backtick.q",
+          "begin": "`",
+          "end": "`",
+          "patterns": [
+            {
+              "name": "constant.character.escape.q",
+              "match": "\\\\."
+            },
+            {
+              "name": "meta.embedded.line.q",
+              "begin": "\\$\\{",
+              "end": "\\}",
+              "patterns": [
+                { "include": "#expressions_in_interpolation" }
+              ]
+            }
+          ]
         }
+      ]
+    },
+    "expressions_in_interpolation": {
+      "patterns": [
+        { "include": "#keywords" },
+        { "include": "#types" },
+        { "include": "#numbers" },
+        { "include": "#operators" },
+        { "include": "#functions" }
       ]
     },
     "numbers": {

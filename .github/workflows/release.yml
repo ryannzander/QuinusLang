@@ -19,6 +19,9 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
 
+      - name: Install LLVM
+        run: choco install llvm --version=17.0.6 -y
+
       - name: Set version from tag
         shell: pwsh
         run: |
@@ -38,7 +41,18 @@ jobs:
           (Get-Content installer.iss) -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$env:VERSION`"" | Set-Content installer.iss
 
       - name: Build
+        env:
+          LLVM_SYS_170_PREFIX: C:\Program Files\LLVM
         run: cargo build --release
+
+      - name: Build runtime
+        run: .\scripts\build-runtime.ps1
+
+      - name: Copy LLVM tools
+        shell: pwsh
+        run: |
+          Copy-Item "C:\Program Files\LLVM\bin\lld-link.exe" "lld-link.exe" -Force
+          Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
 
       - name: Create installer
         shell: pwsh
