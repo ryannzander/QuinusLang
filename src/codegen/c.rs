@@ -83,6 +83,7 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <stdlib.h>\n");
     out.push_str("#include <stdint.h>\n");
     out.push_str("#include <stdio.h>\n");
+    out.push_str("#include <string.h>\n");
 
     let mut ctx = Ctx::default();
     for item in &program.program.items {
@@ -406,6 +407,15 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
         }
         Expr::Ident(name) => out.push_str(name),
         Expr::Binary { op, left, right } => {
+            let lt = expr_type(left, ctx);
+            let rt = expr_type(right, ctx);
+            if *op == BinOp::Add && lt == Some(Type::Str) && rt == Some(Type::Str) {
+                out.push_str("({ const char* _a = ");
+                emit_expr(out, left, ctx)?;
+                out.push_str("; const char* _b = ");
+                emit_expr(out, right, ctx)?;
+                out.push_str("; size_t _la = strlen(_a); size_t _lb = strlen(_b); char* _r = (char*)malloc(_la + _lb + 1); memcpy(_r, _a, _la + 1); strcat(_r, _b); _r; })");
+            } else {
             out.push_str("(");
             emit_expr(out, left, ctx)?;
             out.push_str(" ");
@@ -427,6 +437,7 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str(" ");
             emit_expr(out, right, ctx)?;
             out.push_str(")");
+            }
         }
         Expr::Unary { op, operand } => {
             out.push_str(match op {
@@ -443,6 +454,9 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             let is_write = matches!(callee_name, Expr::Ident(n) if n == "write");
             let is_read = matches!(callee_name, Expr::Ident(n) if n == "read");
             let is_len = matches!(callee_name, Expr::Ident(n) if n == "len");
+            let is_strlen = matches!(callee_name, Expr::Ident(n) if n == "strlen");
+            let is_panic = matches!(callee_name, Expr::Ident(n) if n == "panic");
+            let is_assert = matches!(callee_name, Expr::Ident(n) if n == "assert");
             if is_print || is_writeln {
                 let mut fmt_parts = Vec::new();
                 for arg in args {
@@ -478,6 +492,20 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
                 out.push_str(")");
             } else if is_read {
                 out.push_str("({ int _r; scanf(\"%d\", &_r); (int32_t)_r; })");
+            } else if is_strlen {
+                if let Some(arg) = args.first() {
+                    out.push_str("((size_t)strlen(");
+                    emit_expr(out, arg, ctx)?;
+                    out.push_str("))");
+                }
+            } else if is_panic {
+                out.push_str("(fprintf(stderr, \"panic\\n\"), exit(1), (void)0)");
+            } else if is_assert {
+                if let Some(arg) = args.first() {
+                    out.push_str("((");
+                    emit_expr(out, arg, ctx)?;
+                    out.push_str(") ? (void)0 : (fprintf(stderr, \"assertion failed\\n\"), exit(1)))");
+                }
             } else if is_len {
                 if let Some(arg) = args.first() {
                     if let Some(ty) = expr_type(arg, ctx) {
@@ -526,6 +554,17 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
             out.push_str("[");
             emit_expr(out, index, ctx)?;
             out.push_str("]");
+        }
+        Expr::Slice { base, start, end: _ } => {
+            out.push_str("(&(");
+            emit_expr(out, base, ctx)?;
+            out.push_str(")[");
+            if let Some(s) = start {
+                emit_expr(out, s, ctx)?;
+            } else {
+                out.push_str("0");
+            }
+            out.push_str("])");
         }
         Expr::Field { base, field } => {
             emit_expr(out, base, ctx)?;

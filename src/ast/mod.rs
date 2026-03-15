@@ -189,6 +189,7 @@ pub enum Expr {
     AddrOf(Box<Expr>),
     Deref(Box<Expr>),
     Index { base: Box<Expr>, index: Box<Expr> },
+    Slice { base: Box<Expr>, start: Option<Box<Expr>>, end: Option<Box<Expr>> },
     Field { base: Box<Expr>, field: String },
     New { class: String, args: Vec<Expr> },
     ArrayInit(Vec<Expr>),

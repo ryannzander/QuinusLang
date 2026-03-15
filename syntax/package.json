@@ -1,0 +1,22 @@
+{
+  "name": "quinuslang",
+  "displayName": "QuinusLang",
+  "description": "Syntax highlighting for QuinusLang",
+  "version": "0.1.0",
+  "publisher": "quinuslang",
+  "engines": { "vscode": "^1.60.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "quinuslang",
+      "aliases": ["QuinusLang", "q"],
+      "extensions": [".q"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "quinuslang",
+      "scopeName": "source.q",
+      "path": "./quinuslang.tmLanguage.json"
+    }]
+  }
+}

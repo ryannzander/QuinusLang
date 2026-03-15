@@ -19,11 +19,19 @@ enum Commands {
     Build {
         #[arg(default_value = ".")]
         path: PathBuf,
+        /// Release build (optimize)
+        #[arg(long)]
+        release: bool,
+        /// Emit C only, do not compile
+        #[arg(long)]
+        emit_c: bool,
     },
     /// Build and run a QuinusLang program
     Run {
         #[arg(default_value = ".")]
         path: PathBuf,
+        #[arg(long)]
+        release: bool,
     },
     /// Parse a file (debug)
     Parse {
@@ -53,13 +61,20 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
     },
+    /// Watch and rebuild on changes
+    Watch {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
+    /// Interactive REPL (parse and show AST)
+    Repl,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Build { path } => cmd_build(&path),
-        Commands::Run { path } => cmd_run(&path),
+        Commands::Build { path, release, emit_c } => cmd_build(&path, release, emit_c),
+        Commands::Run { path, release } => cmd_run(&path, release),
         Commands::Parse { path } => cmd_parse(&path),
         Commands::Init { path } => cmd_init(&path),
         Commands::Add { name, git } => cmd_add(&name, git.as_deref()),
@@ -67,28 +82,37 @@ fn main() -> anyhow::Result<()> {
         Commands::Publish => cmd_publish(),
         Commands::Update => cmd_update(),
         Commands::Fmt { path } => cmd_fmt(&path),
+        Commands::Watch { path } => cmd_watch(&path),
+        Commands::Repl => cmd_repl(),
     }
 }
 
-fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
-    let (source, entry_path) = find_entry(path)?;
-    let base_dir = entry_path.parent().unwrap_or(path);
+fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result<()> {
+    let (source, _entry_path) = find_entry(path)?;
+    let base = if path.is_file() {
+        path.parent().unwrap_or(path).to_path_buf()
+    } else {
+        path.clone()
+    };
+    let base_dir = base.as_path();
     let packages = resolve_build_packages(base_dir);
     let program = parse_with_imports(&source, base_dir, &packages)?;
     let annotated = analyze(&program)?;
     let c_code = codegen::c::generate(&annotated)?;
 
-    let base = if entry_path.is_file() {
-        entry_path.parent().unwrap_or(path)
-    } else {
-        path
-    };
     let out_dir = base.join("build");
     std::fs::create_dir_all(&out_dir)?;
     let c_path = out_dir.join("output.c");
     std::fs::write(&c_path, c_code)?;
 
+    if emit_c_only {
+        println!("Emitted C to {}", c_path.display());
+        return Ok(());
+    }
+
     let exe_path = out_dir.join("output.exe");
+    let opt_level = if release { "2" } else { "0" };
+    std::env::set_var("OPT_LEVEL", opt_level);
 
     let targets: Vec<&str> = if std::env::consts::OS == "windows" {
         vec!["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu"]
@@ -96,7 +120,6 @@ fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
         vec!["x86_64-unknown-linux-gnu"]
     };
 
-    std::env::set_var("OPT_LEVEL", "0");
     std::env::set_var("OUT_DIR", &out_dir);
     std::env::set_var("PROFILE", "debug");
     std::env::set_var("DEBUG", "true");
@@ -116,6 +139,19 @@ fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
 
         let mut cmd = compiler.to_command();
         cmd.arg(&c_path);
+        if release {
+            if compiler.is_like_msvc() {
+                cmd.arg("/O2");
+            } else {
+                cmd.arg("-O2");
+            }
+        } else {
+            if compiler.is_like_msvc() {
+                cmd.arg("/Od");
+            } else {
+                cmd.arg("-O0");
+            }
+        }
         if compiler.is_like_msvc() {
             cmd.arg(format!("/Fe:{}", exe_path.display()));
         } else {
@@ -136,8 +172,8 @@ fn cmd_build(path: &PathBuf) -> anyhow::Result<()> {
     )
 }
 
-fn cmd_run(path: &PathBuf) -> anyhow::Result<()> {
-    cmd_build(path)?;
+fn cmd_run(path: &PathBuf, release: bool) -> anyhow::Result<()> {
+    cmd_build(path, release, false)?;
     let base = path.canonicalize().unwrap_or_else(|_| path.clone());
     let base = if base.is_file() {
         base.parent().unwrap_or(&base).to_path_buf()
@@ -270,6 +306,62 @@ fn cmd_fmt(path: &PathBuf) -> anyhow::Result<()> {
             }
             Err(e) => eprintln!("Skip {}: {}", p.display(), e),
         }
+    }
+    Ok(())
+}
+
+fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
+    use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let (tx, rx) = mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(move |res| tx.send(res).unwrap(), Config::default())?;
+    let watch_path = if path.is_file() {
+        path.parent().unwrap_or(path).to_path_buf()
+    } else {
+        path.clone()
+    };
+    watcher.watch(&watch_path, RecursiveMode::Recursive)?;
+    println!("Watching {:?} for changes...", watch_path);
+    loop {
+        match rx.recv_timeout(Duration::from_secs(1)) {
+            Ok(Ok(_)) => {
+                if let Err(e) = cmd_build(path, false, false) {
+                    eprintln!("Build failed: {}", e);
+                }
+            }
+            Ok(Err(e)) => eprintln!("Watch error: {}", e),
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    Ok(())
+}
+
+fn cmd_repl() -> anyhow::Result<()> {
+    use std::io::{self, BufRead, Write};
+    println!("QuinusLang REPL (type .quit to exit)");
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+    for line in stdin.lock().lines() {
+        let line = line?;
+        if line.trim() == ".quit" {
+            break;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        let program = format!("craft _repl() -> void {{ {} }}", line);
+        match parse(&program) {
+            Ok(p) => {
+                writeln!(stdout, "{:#?}", p)?;
+            }
+            Err(e) => {
+                writeln!(stdout, "Error: {}", e)?;
+            }
+        }
+        stdout.flush()?;
     }
     Ok(())
 }

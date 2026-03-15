@@ -43,6 +43,9 @@ pub fn analyze(program: &Program) -> Result<AnnotatedProgram> {
     scope.funcs.insert("writeln".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
     scope.funcs.insert("read".to_string(), FuncSig { params: vec![], return_type: Some(Type::I32) });
     scope.funcs.insert("len".to_string(), FuncSig { params: vec![Type::Array(Box::new(Type::Int))], return_type: Some(Type::Usize) });
+    scope.funcs.insert("strlen".to_string(), FuncSig { params: vec![Type::Str], return_type: Some(Type::Usize) });
+    scope.funcs.insert("panic".to_string(), FuncSig { params: vec![], return_type: Some(Type::Void) });
+    scope.funcs.insert("assert".to_string(), FuncSig { params: vec![Type::Bool], return_type: Some(Type::Void) });
 
     for item in &program.items {
         register_top_level(&mut symbol_table, item)?;
@@ -328,6 +331,9 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             let rt = check_expr(symbol_table, right)?;
             match op {
                 BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
+                    if op == &BinOp::Add && lt == Type::Str && rt == Type::Str {
+                        return Ok(Type::Str);
+                    }
                     if lt != rt {
                         return Err(Error::Semantic {
                             message: "Type mismatch in arithmetic".to_string(),
@@ -373,6 +379,32 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     }
                     return Ok(Type::Usize);
                 }
+                if name == "strlen" {
+                    if args.len() != 1 {
+                        return Err(Error::Semantic { message: "strlen() takes exactly 1 argument".to_string() });
+                    }
+                    let arg_ty = check_expr(symbol_table, &args[0])?;
+                    if arg_ty != Type::Str {
+                        return Err(Error::Semantic { message: "strlen() requires a string argument".to_string() });
+                    }
+                    return Ok(Type::Usize);
+                }
+                if name == "panic" {
+                    for arg in args {
+                        check_expr(symbol_table, arg)?;
+                    }
+                    return Ok(Type::Void);
+                }
+                if name == "assert" {
+                    if args.len() != 1 {
+                        return Err(Error::Semantic { message: "assert() takes exactly 1 argument".to_string() });
+                    }
+                    let arg_ty = check_expr(symbol_table, &args[0])?;
+                    if arg_ty != Type::Bool {
+                        return Err(Error::Semantic { message: "assert() requires a bool argument".to_string() });
+                    }
+                    return Ok(Type::Void);
+                }
                 if name == "read" {
                     if !args.is_empty() {
                         return Err(Error::Semantic { message: "read() takes no arguments".to_string() });
@@ -400,6 +432,19 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
             match base_ty {
                 Type::Array(inner) | Type::ArraySized(inner, _) => Ok(*inner),
                 _ => Ok(Type::Int),
+            }
+        }
+        Expr::Slice { base, start, end } => {
+            let base_ty = check_expr(symbol_table, base)?;
+            if let Some(s) = start {
+                check_expr(symbol_table, s)?;
+            }
+            if let Some(e) = end {
+                check_expr(symbol_table, e)?;
+            }
+            match base_ty {
+                Type::Array(inner) | Type::ArraySized(inner, _) => Ok(Type::Array(inner)),
+                _ => Err(Error::Semantic { message: "Slice requires array type".to_string() }),
             }
         }
         Expr::ArrayInit(elems) => {

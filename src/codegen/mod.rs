@@ -418,6 +418,17 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> 
             out.push_str("    lea rax, [rax + rcx*8]\n");
             out.push_str("    mov rax, [rax]\n");
         }
+        Expr::Slice { base, start, .. } => {
+            if let Some(s) = start {
+                emit_expr(out, s, ctx)?;
+                out.push_str("    push rax\n");
+            }
+            emit_expr(out, base, ctx)?;
+            if let Some(_) = start {
+                out.push_str("    pop rcx\n");
+                out.push_str("    lea rax, [rax + rcx*8]\n");
+            }
+        }
         Expr::Field { base, field } => {
             emit_expr(out, base, ctx)?;
             let offset = field_offset(field);

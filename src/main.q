@@ -1,4 +1,4 @@
-func main() -> void {
-    var x: int = 42;
-    return;
+craft main() -> void {
+    make shift x: int = 42;
+    send;
 }

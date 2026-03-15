@@ -225,6 +225,18 @@ fn format_expr(out: &mut String, expr: &Expr) {
             format_expr(out, index);
             out.push(']');
         }
+        Expr::Slice { base, start, end } => {
+            format_expr(out, base);
+            out.push_str("[");
+            if let Some(s) = start {
+                format_expr(out, s);
+            }
+            out.push_str("..");
+            if let Some(e) = end {
+                format_expr(out, e);
+            }
+            out.push_str("]");
+        }
         _ => {
             out.push_str("/* expr */");
         }

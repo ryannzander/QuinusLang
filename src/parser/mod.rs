@@ -841,12 +841,42 @@ fn parse_postfix(stream: &mut TokenStream) -> Result<Expr> {
             }
             Some(Token::LBracket) => {
                 stream.consume();
-                let index = parse_expr(stream)?;
-                stream.expect("]")?;
-                expr = Expr::Index {
-                    base: Box::new(expr),
-                    index: Box::new(index),
-                };
+                if stream.peek() == Some(&Token::DotDot) {
+                    stream.consume();
+                    let end = if stream.peek() != Some(&Token::RBracket) {
+                        Some(Box::new(parse_expr(stream)?))
+                    } else {
+                        None
+                    };
+                    stream.expect("]")?;
+                    expr = Expr::Slice {
+                        base: Box::new(expr),
+                        start: None,
+                        end,
+                    };
+                } else {
+                    let start = parse_expr(stream)?;
+                    if stream.peek() == Some(&Token::DotDot) {
+                        stream.consume();
+                        let end = if stream.peek() != Some(&Token::RBracket) {
+                            Some(Box::new(parse_expr(stream)?))
+                        } else {
+                            None
+                        };
+                        stream.expect("]")?;
+                        expr = Expr::Slice {
+                            base: Box::new(expr),
+                            start: Some(Box::new(start)),
+                            end,
+                        };
+                    } else {
+                        stream.expect("]")?;
+                        expr = Expr::Index {
+                            base: Box::new(expr),
+                            index: Box::new(start),
+                        };
+                    }
+                }
             }
             Some(Token::Dot) => {
                 stream.consume();

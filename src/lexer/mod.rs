@@ -134,6 +134,8 @@ pub enum Token {
     Comma,
     #[token(":")]
     Colon,
+    #[token("..")]
+    DotDot,
     #[token(".")]
     Dot,
     #[token("->")]
