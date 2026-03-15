@@ -9,15 +9,26 @@ markdown_extensions:
 theme:
   name: material
   palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
     - scheme: default
       primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
   features:
     - navigation.expand
     - navigation.sections
-    - toc.integrate
 
 extra_css:
   - stylesheets/extra.css
+extra_javascript:
+  - javascripts/drawer.js
 
 nav:
   - Getting Started: index.md
