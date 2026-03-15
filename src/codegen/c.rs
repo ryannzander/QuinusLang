@@ -976,7 +976,7 @@ fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
         Expr::Literal(Literal::Float(_)) => out.push_str("0.0"),
         Expr::Literal(Literal::Bool(b)) => out.push_str(if *b { "1" } else { "0" }),
         Expr::Literal(Literal::Str(s)) => {
-            out.push_str(&format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")));
+            out.push_str(&format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")));
         }
         Expr::Ident(name) => out.push_str(name),
         Expr::Binary { op, left, right } => {

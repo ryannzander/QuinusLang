@@ -54,9 +54,11 @@ realm codegen {
     // Use \\n to avoid newlines in string literals (C codegen)
     craft emit_program(expr: link void) -> str {
         make body: str = emit_expr(expr);
-        make header: str = "#include <stdio.h>\\nint main(void) { long _r = ";
+        make header: str = "#include <stdio.h>
+int main(void) { long _r = ";
         make mid: str = str.concat(header, body);
-        make end: str = "; printf(\"%ld\\n\", _r); return 0; }\\n";
+        make end: str = "; printf(\"%ld\\n\", _r); return 0; }
+";
         send str.concat(mid, end);
     }
 }
