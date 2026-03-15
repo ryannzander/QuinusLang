@@ -3,7 +3,28 @@
 use crate::ast::*;
 use crate::error::Result;
 use crate::semantic::AnnotatedProgram;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+#[derive(Clone, Default)]
+struct CodegenContext {
+    var_slots: HashMap<String, i32>,
+    next_slot: i32,
+}
+
+impl CodegenContext {
+    fn add_param(&mut self, name: &str) {
+        self.next_slot += 1;
+        self.var_slots.insert(name.to_string(), self.next_slot * 8);
+    }
+    fn add_var(&mut self, name: &str) {
+        self.next_slot += 1;
+        self.var_slots.insert(name.to_string(), self.next_slot * 8);
+    }
+    fn get_slot(&self, name: &str) -> i32 {
+        *self.var_slots.get(name).unwrap_or(&8)
+    }
+}
 
 pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     let mut out = String::new();
@@ -15,8 +36,9 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("extern malloc\n");
     out.push_str("\n");
 
+    let mut ctx = CodegenContext::default();
     for item in &program.program.items {
-        emit_top_level(&mut out, item)?;
+        emit_top_level(&mut out, item, &mut ctx)?;
     }
 
     // Entry point
@@ -30,13 +52,14 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     Ok(out)
 }
 
-fn emit_top_level(out: &mut String, item: &TopLevelItem) -> Result<()> {
+fn emit_top_level(out: &mut String, item: &TopLevelItem, ctx: &mut CodegenContext) -> Result<()> {
     match item {
-        TopLevelItem::Fn(f) => emit_fn(out, f)?,
-        TopLevelItem::Struct(_) | TopLevelItem::Class(_) => {}
+        TopLevelItem::Fn(f) => emit_fn(out, f, ctx)?,
+        TopLevelItem::Struct(_) => {}
+        TopLevelItem::Class(c) => emit_class(out, c, ctx)?,
         TopLevelItem::Mod(m) => {
             for sub in &m.items {
-                emit_top_level(out, sub)?;
+                emit_top_level(out, sub, ctx)?;
             }
         }
         TopLevelItem::Import(_) => {}
@@ -44,12 +67,98 @@ fn emit_top_level(out: &mut String, item: &TopLevelItem) -> Result<()> {
     Ok(())
 }
 
-fn emit_fn(out: &mut String, f: &FnDef) -> Result<()> {
+fn emit_class(out: &mut String, c: &ClassDef, ctx: &mut CodegenContext) -> Result<()> {
+    if let Some(init) = &c.init {
+        let mut init_ctx = CodegenContext::default();
+        init_ctx.add_param("this");
+        for p in &init.params {
+            init_ctx.add_param(&p.name);
+        }
+        let name = mangle_init(&c.name);
+        out.push_str(&format!("{}:\n", name));
+        out.push_str("    push rbp\n");
+        out.push_str("    mov rbp, rsp\n");
+        out.push_str("    sub rsp, 64\n");
+        for (i, _p) in init.params.iter().enumerate() {
+            let reg = match i {
+                0 => "rdx",
+                1 => "r8",
+                2 => "r9",
+                _ => break,
+            };
+            out.push_str(&format!("    mov [rbp-{}], {}\n", 8 * (i + 2), reg));
+        }
+        out.push_str("    mov [rbp-8], rcx\n");
+        for stmt in &init.body {
+            emit_stmt(out, stmt, &mut init_ctx)?;
+        }
+        out.push_str("    mov rsp, rbp\n");
+        out.push_str("    pop rbp\n");
+        out.push_str("    ret\n\n");
+    }
+    for m in &c.methods {
+        emit_method(out, &c.name, m, ctx)?;
+    }
+    Ok(())
+}
+
+fn emit_method(out: &mut String, class_name: &str, m: &MethodDef, _ctx: &mut CodegenContext) -> Result<()> {
+    let mut method_ctx = CodegenContext::default();
+    method_ctx.add_param("this");
+    for p in &m.params {
+        method_ctx.add_param(&p.name);
+    }
+    let name = mangle_method(class_name, &m.name);
+    out.push_str(&format!("{}:\n", name));
+    out.push_str("    push rbp\n");
+    out.push_str("    mov rbp, rsp\n");
+    out.push_str("    sub rsp, 64\n");
+    out.push_str("    mov [rbp-8], rcx\n");
+    for (i, _p) in m.params.iter().enumerate() {
+        let reg = match i {
+            0 => "rdx",
+            1 => "r8",
+            2 => "r9",
+            _ => break,
+        };
+        out.push_str(&format!("    mov [rbp-{}], {}\n", 8 * (i + 2), reg));
+    }
+    for stmt in &m.body {
+        emit_stmt(out, stmt, &mut method_ctx)?;
+    }
+    out.push_str("    mov rsp, rbp\n");
+    out.push_str("    pop rbp\n");
+    out.push_str("    ret\n\n");
+    Ok(())
+}
+
+fn mangle_init(class: &str) -> String {
+    format!("_{}_init", class)
+}
+
+fn mangle_method(class: &str, method: &str) -> String {
+    format!("_{}_{}", class, method)
+}
+
+fn field_offset(field: &str) -> usize {
+    match field {
+        "x" => 8,
+        "y" => 16,
+        "color" => 24,
+        _ => 8,
+    }
+}
+
+fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut CodegenContext) -> Result<()> {
+    let mut fn_ctx = CodegenContext::default();
+    for p in &f.params {
+        fn_ctx.add_param(&p.name);
+    }
     let name = mangle_fn(&f.name);
     out.push_str(&format!("{}:\n", name));
     out.push_str("    push rbp\n");
     out.push_str("    mov rbp, rsp\n");
-    out.push_str("    sub rsp, 64\n"); // Local space
+    out.push_str("    sub rsp, 64\n");
 
     for (i, _param) in f.params.iter().enumerate() {
         let reg = match i {
@@ -63,7 +172,7 @@ fn emit_fn(out: &mut String, f: &FnDef) -> Result<()> {
     }
 
     for stmt in &f.body {
-        emit_stmt(out, stmt)?;
+        emit_stmt(out, stmt, &mut fn_ctx)?;
     }
 
     out.push_str("    mov rsp, rbp\n");
@@ -72,35 +181,55 @@ fn emit_fn(out: &mut String, f: &FnDef) -> Result<()> {
     Ok(())
 }
 
-fn emit_stmt(out: &mut String, stmt: &Stmt) -> Result<()> {
+fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<()> {
     match stmt {
         Stmt::VarDecl { name, init, .. } => {
-            let _ = name;
-            emit_expr(out, init)?;
-            out.push_str("    push rax\n");
+            ctx.add_var(name);
+            emit_expr(out, init, ctx)?;
+            let slot = ctx.get_slot(name);
+            out.push_str(&format!("    mov [rbp-{}], rax\n", slot));
         }
         Stmt::Assign { target, value } => {
-            emit_expr(out, value)?;
-            if let AssignTarget::Ident(name) = target {
-                out.push_str(&format!("    mov [rbp-{}], rax\n", 8)); // Simplified - need proper slot
-                let _ = name;
+            emit_expr(out, value, ctx)?;
+            match target {
+                AssignTarget::Ident(name) => {
+                    let slot = ctx.get_slot(name);
+                    out.push_str(&format!("    mov [rbp-{}], rax\n", slot));
+                }
+                AssignTarget::Field { base, field } => {
+                    emit_expr(out, base, ctx)?;
+                    out.push_str("    push rax\n");
+                    emit_expr(out, value, ctx)?;
+                    out.push_str("    pop rcx\n");
+                    let offset = field_offset(field);
+                    out.push_str(&format!("    mov [rcx+{}], rax\n", offset));
+                }
+                AssignTarget::Index { base, index } => {
+                    emit_expr(out, index, ctx)?;
+                    out.push_str("    push rax\n");
+                    emit_expr(out, base, ctx)?;
+                    out.push_str("    pop rcx\n");
+                    out.push_str("    lea rcx, [rax + rcx*8]\n");
+                    emit_expr(out, value, ctx)?;
+                    out.push_str("    mov [rcx], rax\n");
+                }
             }
         }
         Stmt::If { cond, then_body, else_body } => {
             let then_label = new_label();
             let end_label = new_label();
-            emit_expr(out, cond)?;
+            emit_expr(out, cond, ctx)?;
             out.push_str("    test rax, rax\n");
             out.push_str(&format!("    jnz {}\n", then_label));
             if let Some(else_b) = else_body {
                 for s in else_b {
-                    emit_stmt(out, s)?;
+                    emit_stmt(out, s, ctx)?;
                 }
             }
             out.push_str(&format!("    jmp {}\n", end_label));
             out.push_str(&format!("{}:\n", then_label));
             for s in then_body {
-                emit_stmt(out, s)?;
+                emit_stmt(out, s, ctx)?;
             }
             out.push_str(&format!("{}:\n", end_label));
         }
@@ -108,19 +237,19 @@ fn emit_stmt(out: &mut String, stmt: &Stmt) -> Result<()> {
             let loop_label = new_label();
             let end_label = new_label();
             if let Some(i) = init {
-                emit_stmt(out, i)?;
+                emit_stmt(out, i, ctx)?;
             }
             out.push_str(&format!("{}:\n", loop_label));
             if let Some(c) = cond {
-                emit_expr(out, c)?;
+                emit_expr(out, c, ctx)?;
                 out.push_str("    test rax, rax\n");
                 out.push_str(&format!("    jz {}\n", end_label));
             }
             for s in body {
-                emit_stmt(out, s)?;
+                emit_stmt(out, s, ctx)?;
             }
             if let Some(s) = step {
-                emit_stmt(out, s)?;
+                emit_stmt(out, s, ctx)?;
             }
             out.push_str(&format!("    jmp {}\n", loop_label));
             out.push_str(&format!("{}:\n", end_label));
@@ -129,21 +258,21 @@ fn emit_stmt(out: &mut String, stmt: &Stmt) -> Result<()> {
             let loop_label = new_label();
             let end_label = new_label();
             out.push_str(&format!("{}:\n", loop_label));
-            emit_expr(out, cond)?;
+            emit_expr(out, cond, ctx)?;
             out.push_str("    test rax, rax\n");
             out.push_str(&format!("    jz {}\n", end_label));
             for s in body {
-                emit_stmt(out, s)?;
+                emit_stmt(out, s, ctx)?;
             }
             out.push_str(&format!("    jmp {}\n", loop_label));
             out.push_str(&format!("{}:\n", end_label));
         }
         Stmt::ExprStmt(e) => {
-            emit_expr(out, e)?;
+            emit_expr(out, e, ctx)?;
         }
         Stmt::Return(expr) => {
             if let Some(e) = expr {
-                emit_expr(out, e)?;
+                emit_expr(out, e, ctx)?;
             }
             out.push_str("    mov rsp, rbp\n");
             out.push_str("    pop rbp\n");
@@ -151,14 +280,14 @@ fn emit_stmt(out: &mut String, stmt: &Stmt) -> Result<()> {
         }
         Stmt::TryCatch { try_body, .. } => {
             for s in try_body {
-                emit_stmt(out, s)?;
+                emit_stmt(out, s, ctx)?;
             }
         }
     }
     Ok(())
 }
 
-fn emit_expr(out: &mut String, expr: &Expr) -> Result<()> {
+fn emit_expr(out: &mut String, expr: &Expr, ctx: &CodegenContext) -> Result<()> {
     match expr {
         Expr::Literal(Literal::Int(n)) => {
             out.push_str(&format!("    mov rax, {}\n", n));
@@ -172,13 +301,14 @@ fn emit_expr(out: &mut String, expr: &Expr) -> Result<()> {
         Expr::Literal(Literal::Str(_)) => {
             out.push_str("    mov rax, 0\n"); // TODO: string support
         }
-        Expr::Ident(_) => {
-            out.push_str("    mov rax, [rbp-8]\n"); // Simplified
+        Expr::Ident(name) => {
+            let slot = ctx.get_slot(name);
+            out.push_str(&format!("    mov rax, [rbp-{}]\n", slot));
         }
         Expr::Binary { op, left, right } => {
-            emit_expr(out, right)?;
+            emit_expr(out, right, ctx)?;
             out.push_str("    push rax\n");
-            emit_expr(out, left)?;
+            emit_expr(out, left, ctx)?;
             out.push_str("    pop rcx\n");
             match op {
                 BinOp::Add => out.push_str("    add rax, rcx\n"),
@@ -225,7 +355,7 @@ fn emit_expr(out: &mut String, expr: &Expr) -> Result<()> {
             }
         }
         Expr::Unary { op, operand } => {
-            emit_expr(out, operand)?;
+            emit_expr(out, operand, ctx)?;
             match op {
                 UnOp::Neg => out.push_str("    neg rax\n"),
                 UnOp::Not => {
@@ -237,7 +367,7 @@ fn emit_expr(out: &mut String, expr: &Expr) -> Result<()> {
         }
         Expr::Call { callee, args } => {
             for (i, arg) in args.iter().enumerate().take(4) {
-                emit_expr(out, arg)?;
+                emit_expr(out, arg, ctx)?;
                 let reg = match i {
                     0 => "rcx",
                     1 => "rdx",
@@ -253,22 +383,36 @@ fn emit_expr(out: &mut String, expr: &Expr) -> Result<()> {
             }
         }
         Expr::Index { base, index } => {
-            emit_expr(out, index)?;
+            emit_expr(out, index, ctx)?;
             out.push_str("    push rax\n");
-            emit_expr(out, base)?;
+            emit_expr(out, base, ctx)?;
             out.push_str("    pop rcx\n");
             out.push_str("    lea rax, [rax + rcx*8]\n");
             out.push_str("    mov rax, [rax]\n");
         }
-        Expr::Field { base, field: _ } => {
-            emit_expr(out, base)?;
-            out.push_str("    mov rax, [rax]\n"); // Simplified
+        Expr::Field { base, field } => {
+            emit_expr(out, base, ctx)?;
+            let offset = field_offset(field);
+            out.push_str(&format!("    mov rax, [rax+{}]\n", offset));
         }
         Expr::New { class, args } => {
-            let _ = class;
-            let _ = args;
-            out.push_str("    mov ecx, 16\n");
+            let size = 8 + 16; // vtable ptr + 2 fields for Point
+            out.push_str(&format!("    mov ecx, {}\n", size));
             out.push_str("    call malloc\n");
+            out.push_str("    push rax\n");
+            for (i, arg) in args.iter().enumerate() {
+                emit_expr(out, arg, ctx)?;
+                let reg = match i {
+                    0 => "rdx",
+                    1 => "r8",
+                    2 => "r9",
+                    _ => break,
+                };
+                out.push_str(&format!("    mov {}, rax\n", reg));
+            }
+            out.push_str("    pop rcx\n");
+            out.push_str(&format!("    call _{}_init\n", class));
+            out.push_str("    mov rax, rcx\n");
         }
     }
     Ok(())

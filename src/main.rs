@@ -45,6 +45,8 @@ enum Commands {
     },
     /// Publish to registry
     Publish,
+    /// Update dependencies
+    Update,
     /// Format source files
     Fmt {
         #[arg(default_value = ".")]
@@ -62,6 +64,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Add { name, git } => cmd_add(&name, git.as_deref()),
         Commands::Remove { name } => cmd_remove(&name),
         Commands::Publish => cmd_publish(),
+        Commands::Update => cmd_update(),
         Commands::Fmt { path } => cmd_fmt(&path),
     }
 }
@@ -169,6 +172,17 @@ fn cmd_remove(name: &str) -> anyhow::Result<()> {
 
 fn cmd_publish() -> anyhow::Result<()> {
     println!("Publish: not yet implemented");
+    Ok(())
+}
+
+fn cmd_update() -> anyhow::Result<()> {
+    let manifest_path = PathBuf::from("quinus.toml");
+    if !manifest_path.exists() {
+        anyhow::bail!("No quinus.toml found. Run 'quinus init' first.");
+    }
+    let manifest = package::manifest::parse_manifest(&manifest_path)?;
+    let resolved = package::resolve::resolve_dependencies(&manifest)?;
+    println!("Resolved {} dependencies", resolved.len());
     Ok(())
 }
 

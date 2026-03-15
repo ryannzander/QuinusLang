@@ -202,9 +202,7 @@ fn check_expr(symbol_table: &SymbolTable, expr: &Expr) -> Result<Type> {
                     return Ok(ty.clone());
                 }
                 if scope.funcs.contains_key(name) {
-                    return Err(Error::Semantic {
-                        message: format!("{} is a function, not a value", name),
-                    });
+                    return Ok(Type::Void); // Function reference (used in calls)
                 }
             }
             Err(Error::Semantic {

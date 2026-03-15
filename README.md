@@ -28,6 +28,7 @@ quinus parse file.quin
 quinus add <package>
 quinus add <package> --git <url>
 quinus remove <package>
+quinus update
 ```
 
 ## Language Syntax
