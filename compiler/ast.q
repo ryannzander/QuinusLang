@@ -13,6 +13,7 @@ realm ast {
     eternal EXPR_UNARY: i32 = 4;
     eternal EXPR_FIELD: i32 = 5;
     eternal EXPR_CAST: i32 = 6;
+    eternal EXPR_STR: i32 = 7;
 
     // Stmt tags
     eternal STMT_VAR: i32 = 10;

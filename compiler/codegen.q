@@ -14,6 +14,8 @@ extern craft ql_ast_expr_int(p: link void) -> i64;
 extern craft ql_ast_expr_str(p: link void) -> str;
 extern craft ql_ast_expr_left(p: link void) -> link void;
 extern craft ql_ast_expr_right(p: link void) -> link void;
+extern craft ql_ast_expr_args(p: link void) -> link void;
+extern craft ql_ptr_to_usize(p: link void) -> usize;
 extern craft strlen(s: str) -> usize;
 
 realm codegen {
@@ -38,6 +40,10 @@ realm codegen {
             make name: str = ql_ast_expr_str(expr);
             send name;
         }
+        check (tag == ast.EXPR_STR) {
+            make s: str = ql_ast_expr_str(expr);
+            send str.concat("\"", str.concat(s, "\""));
+        }
         check (tag == ast.EXPR_BINARY) {
             make left: link void = ql_ast_expr_left(expr);
             make right: link void = ql_ast_expr_right(expr);
@@ -48,7 +54,56 @@ realm codegen {
             make inner: str = str.concat(l, op_s);
             send str.concat(inner, r);
         }
+        check (tag == ast.EXPR_CALL) {
+            make callee: link void = ql_ast_expr_left(expr);
+            make args: link void = ql_ast_expr_args(expr);
+            make callee_s: str = emit_callee(callee);
+            make args_s: str = emit_call_args(args);
+            send str.concat(callee_s, str.concat("(", str.concat(args_s, ")")));
+        }
+        check (tag == ast.EXPR_FIELD) {
+            make base: link void = ql_ast_expr_left(expr);
+            make field: str = ql_ast_expr_str(expr);
+            make base_s: str = emit_expr(base);
+            send str.concat(base_s, str.concat("_", field));
+        }
         send "";
+    }
+
+    craft emit_callee(callee: link void) -> str {
+        check (callee == 0) {
+            send "";
+        }
+        make tag: i32 = ql_ast_expr_tag(callee);
+        check (tag == ast.EXPR_IDENT) {
+            send ql_ast_expr_str(callee);
+        }
+        check (tag == ast.EXPR_FIELD) {
+            make base: link void = ql_ast_expr_left(callee);
+            make field: str = ql_ast_expr_str(callee);
+            make base_s: str = emit_expr(base);
+            send str.concat(base_s, str.concat("_", field));
+        }
+        send "";
+    }
+
+    craft emit_call_args(args: link void) -> str {
+        check (args == 0) {
+            send "";
+        }
+        make n: usize = vec.ptr_len(args);
+        make shift out: str = "";
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make arg: link void = vec.ptr_get(args, i);
+            make s: str = emit_expr(arg);
+            check (i > 0) {
+                out = str.concat(out, ", ");
+            }
+            out = str.concat(out, s);
+            i = i + (1 as usize);
+        }
+        send out;
     }
 
     // Emit minimal C program: (long x = expr;)* long _r = expr; printf(...)

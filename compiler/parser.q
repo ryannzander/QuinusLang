@@ -15,6 +15,7 @@ extern craft ql_ast_expr_set_int(p: link void, val: i64) -> void;
 extern craft ql_ast_expr_set_str(p: link void, s: str) -> void;
 extern craft ql_ast_expr_set_left(p: link void, left: link void) -> void;
 extern craft ql_ast_expr_set_right(p: link void, right: link void) -> void;
+extern craft ql_ast_expr_set_args(p: link void, args: link void) -> void;
 extern craft ql_usize_to_ptr(u: usize) -> link void;
 extern craft ql_ptr_to_usize(p: link void) -> usize;
 
@@ -39,6 +40,29 @@ realm ast_helpers {
         ql_ast_expr_set_int(p, op as i64);
         ql_ast_expr_set_left(p, left);
         ql_ast_expr_set_right(p, right);
+        send p;
+    }
+
+    craft new_expr_call(callee: link void, args: link void) -> link void {
+        make p: link void = ql_ast_expr_alloc();
+        ql_ast_expr_set_tag(p, ast.EXPR_CALL);
+        ql_ast_expr_set_left(p, callee);
+        ql_ast_expr_set_args(p, args);
+        send p;
+    }
+
+    craft new_expr_str(s: str) -> link void {
+        make p: link void = ql_ast_expr_alloc();
+        ql_ast_expr_set_tag(p, ast.EXPR_STR);
+        ql_ast_expr_set_str(p, s);
+        send p;
+    }
+
+    craft new_expr_field(base: link void, field: str) -> link void {
+        make p: link void = ql_ast_expr_alloc();
+        ql_ast_expr_set_tag(p, ast.EXPR_FIELD);
+        ql_ast_expr_set_left(p, base);
+        ql_ast_expr_set_str(p, field);
         send p;
     }
 }
@@ -69,6 +93,98 @@ realm parser {
         }
         make result: link void = vec.ptr_new();
         vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
+    }
+
+    // parse_postfix: primary then optional .ident or (args)
+    craft parse_postfix(toks: link void, i: usize) -> link void {
+        make base_result: link void = parse_primary(toks, i);
+        check (base_result == 0) {
+            send 0;
+        }
+        make shift base: link void = vec.ptr_get(base_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(base_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx < n) {
+            make t: link void = vec.ptr_get(toks, idx);
+            make ty: i32 = lexer.token_ty(t);
+            check (ty == tokens.DOT) {
+                check (idx + (2 as usize) >= n) {
+                    stop;
+                }
+                make t1: link void = vec.ptr_get(toks, idx + (1 as usize));
+                check (lexer.token_ty(t1) != tokens.IDENT) {
+                    stop;
+                }
+                make field: str = lexer.token_str(t1);
+                base = ast_helpers.new_expr_field(base, field);
+                idx = idx + (2 as usize);
+                skip;
+            }
+            check (ty == tokens.LPAREN) {
+                make args_result: link void = parse_call_args(toks, idx);
+                check (args_result == 0) {
+                    stop;
+                }
+                make args: link void = vec.ptr_get(args_result, 0);
+                idx = ql_ptr_to_usize(vec.ptr_get(args_result, 1));
+                base = ast_helpers.new_expr_call(base, args);
+                skip;
+            }
+            stop;
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, base);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
+    }
+
+    // parse_call_args: ( expr, expr, ... ) Returns vec [args_vec, next_idx_ptr]
+    craft parse_call_args(toks: link void, i: usize) -> link void {
+        make n: usize = vec.ptr_len(toks);
+        check (i >= n) {
+            send 0;
+        }
+        make lp: link void = vec.ptr_get(toks, i);
+        check (lexer.token_ty(lp) != tokens.LPAREN) {
+            send 0;
+        }
+        make args: link void = vec.ptr_new();
+        make shift idx: usize = i + (1 as usize);
+        check (idx >= n) {
+            send 0;
+        }
+        make t: link void = vec.ptr_get(toks, idx);
+        check (lexer.token_ty(t) == tokens.RPAREN) {
+            make result: link void = vec.ptr_new();
+            vec.ptr_push(result, args);
+            vec.ptr_push(result, ql_usize_to_ptr(idx + (1 as usize)));
+            send result;
+        }
+        loopwhile (idx < n) {
+            make expr_result: link void = parse_expr(toks, idx);
+            check (expr_result == 0) {
+                send 0;
+            }
+            make expr: link void = vec.ptr_get(expr_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(expr_result, 1));
+            vec.ptr_push(args, expr);
+            check (idx >= n) {
+                send 0;
+            }
+            make t2: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(t2) == tokens.RPAREN) {
+                idx = idx + (1 as usize);
+                stop;
+            }
+            check (lexer.token_ty(t2) != tokens.COMMA) {
+                send 0;
+            }
+            idx = idx + (1 as usize);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, args);
         vec.ptr_push(result, ql_usize_to_ptr(idx));
         send result;
     }
@@ -116,12 +232,20 @@ realm parser {
             vec.ptr_push(result, ql_usize_to_ptr(i + (1 as usize)));
             send result;
         }
+        check (ty == tokens.STR) {
+            make s: str = lexer.token_str(tok);
+            make e: link void = ast_helpers.new_expr_str(s);
+            make result: link void = vec.ptr_new();
+            vec.ptr_push(result, e);
+            vec.ptr_push(result, ql_usize_to_ptr(i + (1 as usize)));
+            send result;
+        }
         send 0;
     }
 
     // parse_mul: term * factor | term / factor. Returns vec [expr, next] or 0
     craft parse_mul(toks: link void, i: usize) -> link void {
-        make left_result: link void = parse_primary(toks, i);
+        make left_result: link void = parse_postfix(toks, i);
         check (left_result == 0) {
             send 0;
         }
@@ -134,7 +258,7 @@ realm parser {
             check (ty_op != tokens.STAR && ty_op != tokens.SLASH) {
                 stop;
             }
-            make right_result: link void = parse_primary(toks, idx + (1 as usize));
+            make right_result: link void = parse_postfix(toks, idx + (1 as usize));
             check (right_result == 0) {
                 stop;
             }

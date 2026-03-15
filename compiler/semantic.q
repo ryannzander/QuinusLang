@@ -12,6 +12,7 @@ extern craft ql_ast_expr_int(p: link void) -> i64;
 extern craft ql_ast_expr_str(p: link void) -> str;
 extern craft ql_ast_expr_left(p: link void) -> link void;
 extern craft ql_ast_expr_right(p: link void) -> link void;
+extern craft ql_ast_expr_args(p: link void) -> link void;
 extern craft strlen(s: str) -> usize;
 
 realm semantic {
@@ -48,6 +49,9 @@ realm semantic {
         check (tag == ast.EXPR_LITERAL) {
             send "i64";
         }
+        check (tag == ast.EXPR_STR) {
+            send "str";
+        }
         check (tag == ast.EXPR_IDENT) {
             make name: str = ql_ast_expr_str(expr);
             make ty: str = symtab_get(names, types, name);
@@ -65,6 +69,24 @@ realm semantic {
                 send lt;
             }
             send "";
+        }
+        check (tag == ast.EXPR_CALL) {
+            make callee: link void = ql_ast_expr_left(expr);
+            make args: link void = ql_ast_expr_args(expr);
+            check (callee == 0) {
+                send "";
+            }
+            make ct: i32 = ql_ast_expr_tag(callee);
+            check (ct == ast.EXPR_IDENT) {
+                send "i64";
+            }
+            check (ct == ast.EXPR_FIELD) {
+                send "i64";
+            }
+            send "";
+        }
+        check (tag == ast.EXPR_FIELD) {
+            send "i64";
         }
         send "";
     }
