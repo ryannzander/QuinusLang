@@ -297,8 +297,8 @@ fn link_with_lld(
     }
 
     anyhow::bail!(
-        "Linker (lld) not found. LLVM backend produces object files; lld is needed for linking.\n  \
-         Install LLVM (includes lld-link on Windows, ld.lld on Linux) or use the installer/portable zip which bundles it.\n  \
+        "Linker failed. LLVM backend produces object files; lld or clang is needed for linking.\n  \
+         Install LLVM (lld-link on Windows, ld.lld/clang on Linux) or use the installer/portable zip which bundles it.\n  \
          Object: {}",
         obj_path.display()
     )
