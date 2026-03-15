@@ -6,6 +6,12 @@ All notable changes to QuinusLang will be documented in this file.
 
 - (none)
 
+## [0.2.1] - 2025-03-14
+
+### Changed
+
+- cargo fmt compliance, clippy warnings fixed, dead code cleanup
+
 ## [0.2.0] - 2025-03-14
 
 ### Added
