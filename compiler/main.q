@@ -9,20 +9,23 @@ bring "compiler.lexer";
 bring "compiler.parser";
 bring "compiler.semantic";
 bring "compiler.codegen";
+bring "compiler.preprocess";
 bring "os";
 
 extern craft strlen(s: str) -> usize;
 
 craft main() -> void {
-    make path: str = "input.q";
+    make path: str = "main.q";
+    make base_dir: str = "..";
     make f: link void = fs.open_file(path, "r");
     check (f == 0) {
-        writeln("Cannot open input.q");
+        writeln("Cannot open input file");
         send;
     }
     make src: str = fs.read_all(f);
     fs.close(f);
-    make parsed: link void = parser.parse(src);
+    make flat: str = preprocess.flatten(src, base_dir);
+    make parsed: link void = parser.parse(flat);
     check (parsed == 0) {
         writeln("Parse failed");
         send;
