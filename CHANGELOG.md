@@ -6,6 +6,12 @@ All notable changes to QuinusLang will be documented in this file.
 
 - (none)
 
+## [0.2.6] - 2025-03-14
+
+### Fixed
+
+- **Linux linking**: Use clang as linker fallback when ld.lld cannot find libc (-lc); fixes CI and Linux builds
+
 ## [0.2.2] - 2025-03-14
 
 ### Added
