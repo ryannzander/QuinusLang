@@ -22,8 +22,8 @@
       },
     ],
     keyword: [
-      /\b(?:craft|send|make|shift|check|otherwise|loopwhile|foreach|stop|skip|in|for)\b/,
-      /\b(?:eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|alias|extern|defer|choose|pub|priv)\b/,
+      /\b(?:craft|send|make|shift|check|otherwise|loopwhile|foreach|stop|skip|in|for|with|defer|choose)\b/,
+      /\b(?:eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|alias|extern|move|pub|priv|cblock)\b/,
     ],
     'type': /\b(?:int|float|bool|str|void|u8|u16|u32|u64|i8|i16|i32|i64|usize|f32|f64)\b/,
     builtin: /\b(?:print|write|writeln|read|len|strlen|panic|assert)\b/,

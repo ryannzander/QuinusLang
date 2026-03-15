@@ -20,6 +20,7 @@
 - [Result Type](result-type.md)
 - [Pattern Matching](pattern-matching.md)
 - [Defer](defer.md)
+- [With Blocks](with-blocks.md)
 - [Move Semantics](move-semantics.md)
 - [Builtins](builtins.md)
 - [Numeric Literals](numeric-literals.md)
@@ -40,11 +41,17 @@
 - [arena](std-arena.md)
 - [simd](std-simd.md)
 - [path](std-path.md)
+- [hash](std-hash.md)
+- [mem](std-mem.md)
+- [term](std-term.md)
+- [sys](std-sys.md)
+- [gui](std-gui.md)
 
 - [CLI Reference](cli.md)
 
 # Advanced
 
+- [Benchmarks](benchmarks.md)
 - [C FFI](ffi.md)
 - [Hazard and Unsafe](hazard-unsafe.md)
 - [Embedded](embedded.md)

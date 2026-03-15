@@ -232,6 +232,15 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             }
             let _ = writeln!(out, "{}}}", pad);
         }
+        Stmt::With { var, expr, body } => {
+            let _ = write!(out, "{}with {} = ", pad, var);
+            format_expr(out, expr);
+            let _ = writeln!(out, " {{");
+            for s in body {
+                format_stmt(out, s, indent + 1);
+            }
+            let _ = writeln!(out, "{}}}", pad);
+        }
         Stmt::Defer { body } => {
             let _ = writeln!(out, "{}defer {{", pad);
             for s in body {

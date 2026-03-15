@@ -313,6 +313,19 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     if program_uses_module(&program.program, "ast") {
         out.push_str(AST_RUNTIME);
     }
+    // Emit hash runtime if hash module is used
+    if program_uses_module(&program.program, "hash") {
+        out.push_str(HASH_RUNTIME);
+    }
+    // Emit term runtime if term module is used
+    if program_uses_module(&program.program, "term") {
+        out.push_str(TERM_RUNTIME);
+    }
+    // Emit gui runtime if gui module is used (Raylib wrappers)
+    if program_uses_module(&program.program, "gui") {
+        out.push_str("#include <raylib.h>\n");
+        out.push_str(GUI_RUNTIME);
+    }
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut result_typedefs_set: std::collections::HashSet<String> =
         std::collections::HashSet::new();
@@ -488,6 +501,53 @@ static char* ql_str_concat(const char* a, const char* b) {
     strcat(r, b);
     return r;
 }
+"#;
+
+const HASH_RUNTIME: &str = r#"
+static uint64_t ql_hash_fnv1a(const void* ptr, size_t len) {
+    const uint8_t* p = (const uint8_t*)ptr;
+    uint64_t h = 14695981039346656037ULL;
+    for (size_t i = 0; i < len; i++) {
+        h ^= (uint64_t)p[i];
+        h *= 1099511628211ULL;
+    }
+    return h;
+}
+static uint64_t ql_hash_djb2(const void* ptr, size_t len) {
+    const uint8_t* p = (const uint8_t*)ptr;
+    uint64_t h = 5381;
+    for (size_t i = 0; i < len; i++) {
+        h = ((h << 5) + h) + (uint64_t)p[i];
+    }
+    return h;
+}
+"#;
+
+const TERM_RUNTIME: &str = r#"
+static void ql_term_reset(void) { printf("\033[0m"); }
+static void ql_term_red(void) { printf("\033[31m"); }
+static void ql_term_green(void) { printf("\033[32m"); }
+static void ql_term_yellow(void) { printf("\033[33m"); }
+static void ql_term_blue(void) { printf("\033[34m"); }
+static void ql_term_magenta(void) { printf("\033[35m"); }
+static void ql_term_cyan(void) { printf("\033[36m"); }
+static void ql_term_bold(void) { printf("\033[1m"); }
+static void ql_term_clear_screen(void) { printf("\033[2J\033[H"); }
+static void ql_term_cursor_hide(void) { printf("\033[?25l"); }
+static void ql_term_cursor_show(void) { printf("\033[?25h"); }
+"#;
+
+const GUI_RUNTIME: &str = r#"
+static void ql_gui_init(int width, int height, const char* title) { InitWindow(width, height, title); }
+static void ql_gui_close(void) { CloseWindow(); }
+static int ql_gui_should_close(void) { return WindowShouldClose(); }
+static void ql_gui_begin_draw(void) { BeginDrawing(); }
+static void ql_gui_end_draw(void) { EndDrawing(); }
+static void ql_gui_clear(int r, int g, int b) { ClearBackground((Color){ (unsigned char)r, (unsigned char)g, (unsigned char)b, 255 }); }
+static void ql_gui_rect(int x, int y, int w, int h, int r, int g, int b) { DrawRectangle(x, y, w, h, (Color){ (unsigned char)r, (unsigned char)g, (unsigned char)b, 255 }); }
+static void ql_gui_circle(int x, int y, float radius, int r, int g, int b) { DrawCircle(x, y, radius, (Color){ (unsigned char)r, (unsigned char)g, (unsigned char)b, 255 }); }
+static void ql_gui_set_fps(int fps) { SetTargetFPS(fps); }
+static void ql_gui_text(const char* t, int x, int y, int size, int r, int g, int b) { DrawText(t, x, y, size, (Color){ (unsigned char)r, (unsigned char)g, (unsigned char)b, 255 }); }
 "#;
 
 const CHECKED_ARITH_RUNTIME: &str = r#"
@@ -760,6 +820,15 @@ static void* ql_ast_expr_right(void* p) { return ((ast_Expr_t*)p)->right; }
 static void* ql_ast_expr_args(void* p) { return ((ast_Expr_t*)p)->args; }
 "#;
 
+/// Returns extra libraries to link when the program uses certain modules (e.g. gui -> raylib).
+pub fn required_link_libs(program: &crate::ast::Program) -> Vec<&'static str> {
+    let mut libs = Vec::new();
+    if program_uses_module(program, "gui") {
+        libs.push("raylib");
+    }
+    libs
+}
+
 fn program_uses_module(program: &crate::ast::Program, name: &str) -> bool {
     for item in &program.items {
         match item {
@@ -773,6 +842,25 @@ fn program_uses_module(program: &crate::ast::Program, name: &str) -> bool {
         }
     }
     false
+}
+
+/// Returns (mod_name, close_fn) for resource expressions that have known cleanup (e.g. fs.open_file -> fs.close).
+fn with_resource_cleanup(expr: &crate::ast::Expr) -> Option<(&'static str, &'static str)> {
+    if let crate::ast::Expr::Call {
+        callee,
+        args: _,
+    } = expr
+    {
+        if let crate::ast::Expr::Field { base, field } = callee.as_ref() {
+            if let crate::ast::Expr::Ident(mod_name) = base.as_ref() {
+                match (mod_name.as_str(), field.as_str()) {
+                    ("fs", "open_file") => return Some(("fs", "close")),
+                    _ => {}
+                }
+            }
+        }
+    }
+    None
 }
 
 fn find_method_struct(program: &crate::ast::Program, method_name: &str) -> Option<String> {
@@ -1313,6 +1401,25 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
                 emit_stmt(out, s, ctx)?;
             }
         }
+        Stmt::With { var, expr, body } => {
+            let cleanup = with_resource_cleanup(expr);
+            out.push_str("    {\n");
+            let expr_ty = expr_type(expr, ctx);
+            let decl_ty = expr_ty.unwrap_or_else(|| Type::Ptr(Box::new(Type::Void)));
+            ctx.vars.insert(var.clone(), var.clone());
+            ctx.var_types.insert(var.clone(), decl_ty.clone());
+            let decl = decl_to_c(&decl_ty, var);
+            out.push_str(&format!("    {} = ", decl));
+            emit_expr(out, expr, ctx)?;
+            out.push_str(";\n");
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+            if let Some((mod_name, close_fn)) = cleanup {
+                out.push_str(&format!("    {}_{}({});\n", mod_name, close_fn, var));
+            }
+            out.push_str("    }\n");
+        }
         Stmt::Choose { expr, arms } => {
             if let Some(Type::Result(ok_ty, err_ty)) = expr_type(expr, ctx) {
                 let name = result_typedef_name(&ok_ty, &err_ty);
@@ -1439,7 +1546,7 @@ fn emit_assign_target(out: &mut String, target: &AssignTarget, ctx: &Ctx) -> Res
 fn emit_expr(out: &mut String, expr: &Expr, ctx: &Ctx) -> Result<()> {
     match expr {
         Expr::Literal(Literal::Int(n)) => out.push_str(&n.to_string()),
-        Expr::Literal(Literal::Float(_)) => out.push_str("0.0"),
+        Expr::Literal(Literal::Float(f)) => out.push_str(&format!("{}", f)),
         Expr::Literal(Literal::Bool(b)) => out.push_str(if *b { "1" } else { "0" }),
         Expr::Literal(Literal::Str(s)) => {
             out.push_str(&format!(

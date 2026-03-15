@@ -2,7 +2,7 @@
   "name": "quinuslang",
   "displayName": "QuinusLang",
   "description": "Syntax highlighting for QuinusLang",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "publisher": "quinuslang",
   "engines": { "vscode": "^1.60.0" },
   "categories": ["Programming Languages"],

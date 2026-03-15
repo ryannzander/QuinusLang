@@ -86,6 +86,8 @@ pub enum Token {
     Alias,
     #[token("defer")]
     Defer,
+    #[token("with")]
+    With,
     #[token("choose")]
     Choose,
     #[token("move")]

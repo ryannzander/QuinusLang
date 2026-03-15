@@ -2,6 +2,8 @@
 /build
 **/build/
 *.exe
+*.pdb
+*.ilk
 *.o
 *.obj
 *.asm

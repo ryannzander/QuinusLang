@@ -15,6 +15,11 @@
 | [arena](std-arena.md) | Allocator: alloc, dealloc |
 | [simd](std-simd.md) | SIMD: loadu_ps, storeu_ps, add_ps, mul_ps |
 | [path](std-path.md) | Path: join |
+| [hash](std-hash.md) | Hashing: fnv1a, djb2 |
+| [mem](std-mem.md) | Memory: copy, set, compare |
+| [term](std-term.md) | Terminal: colors, cursor |
+| [sys](std-sys.md) | Platform: is_windows, is_unix |
+| [gui](std-gui.md) | GUI via Raylib: window, drawing, text |
 
 ## Usage
 

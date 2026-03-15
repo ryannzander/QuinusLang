@@ -345,6 +345,12 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut CodegenContext) -> Result<
                 emit_stmt(out, s, ctx)?;
             }
         }
+        Stmt::With { var: _, expr, body } => {
+            emit_expr(out, expr, ctx)?;
+            for s in body {
+                emit_stmt(out, s, ctx)?;
+            }
+        }
         Stmt::Choose { expr, arms } => {
             let end_label = new_label();
             emit_expr(out, expr, ctx)?;

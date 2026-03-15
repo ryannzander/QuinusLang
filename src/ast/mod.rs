@@ -272,6 +272,11 @@ pub enum Stmt {
     Defer {
         body: Vec<Stmt>,
     },
+    With {
+        var: String,
+        expr: Expr,
+        body: Vec<Stmt>,
+    },
     Choose {
         expr: Box<Expr>,
         arms: Vec<ChooseArm>,

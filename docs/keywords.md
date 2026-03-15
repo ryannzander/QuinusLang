@@ -69,5 +69,6 @@ Complete reference for QuinusLang keywords and their usage.
 | Keyword | Purpose | Example |
 |---------|---------|---------|
 | `defer` | Run at scope exit | `defer { cleanup(); }` |
+| `with` | Scope-bound resource | `with f = fs.open_file(...) { ... }` |
 | `choose` | Pattern matching | `choose x { Ok(v) => ... }` |
 | `move` | Move expression | `make y = move x;` |

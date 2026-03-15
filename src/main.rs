@@ -193,6 +193,14 @@ fn cmd_build(
             cmd.arg(&exe_path);
         }
 
+        for lib in codegen::c::required_link_libs(&annotated.program) {
+            if compiler.is_like_msvc() {
+                cmd.arg(format!("{}.lib", lib));
+            } else {
+                cmd.arg(format!("-l{}", lib));
+            }
+        }
+
         if cmd.status().map(|s| s.success()).unwrap_or(false) {
             println!("Compiled to {}", exe_path.display());
             return Ok(());

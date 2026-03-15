@@ -24,11 +24,11 @@
       "patterns": [
         {
           "name": "keyword.control.q",
-          "match": "\\b(craft|send|make|shift|check|otherwise|loopwhile|foreach|stop|skip|in|for)\\b"
+          "match": "\\b(craft|send|make|shift|check|otherwise|loopwhile|foreach|stop|skip|in|for|with|defer|choose)\\b"
         },
         {
           "name": "keyword.other.q",
-          "match": "\\b(eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|pub|priv)\\b"
+          "match": "\\b(eternal|anchor|form|state|fusion|realm|link|mark|reach|hazard|machine|bring|open|import|class|extends|init|new|this|super|impl|implements|try|catch|alias|extern|move|pub|priv|cblock)\\b"
         }
       ]
     },

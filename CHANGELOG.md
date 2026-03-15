@@ -6,6 +6,15 @@ All notable changes to QuinusLang will be documented in this file.
 
 - (none)
 
+## [0.2.2] - 2025-03-14
+
+### Added
+
+- **stdlib expansion**: std.hash (FNV-1a, djb2), std.mem (copy, set, compare), std.term (ANSI colors/cursor), std.sys (is_windows, is_unix), std.gui (Raylib)
+- **with blocks**: scope-bound resources with automatic cleanup; `with f = fs.open_file(...) { ... }` closes file on block exit
+- **Benchmark suite**: benchmarks/ with sum, fib, sieve, mandelbrot, nbody in QuinusLang, C, Rust, Zig; run.ps1 for timing
+- **VSCode syntax**: updated keywords (with, defer, choose, alias, extern, move, cblock)
+
 ## [0.2.1] - 2025-03-14
 
 ### Changed

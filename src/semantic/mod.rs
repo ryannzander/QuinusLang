@@ -525,6 +525,16 @@ fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
                 check_expr(symbol_table, e)?;
             }
         }
+        Stmt::With { var, expr, body } => {
+            let expr_ty = check_expr(symbol_table, expr)?;
+            symbol_table.scopes.push(Scope::default());
+            let scope = symbol_table.scopes.last_mut().unwrap();
+            scope.vars.insert(var.clone(), expr_ty);
+            for s in body {
+                check_stmt(symbol_table, s)?;
+            }
+            symbol_table.scopes.pop();
+        }
         Stmt::Defer { body } => {
             for s in body {
                 check_stmt(symbol_table, s)?;

@@ -79,10 +79,11 @@ pub fn apply_compile_flags(source: &str, defines: &mut HashSet<String>) -> Strin
 
 /// Resolve a bring path (e.g. ["compiler", "lexer"] or ["vec"]) to a file path.
 /// Resolution order: base_dir/path.q, base_dir/src/path.q, base_dir/stdlib/path.q
+/// Special case: "std.fs" -> stdlib/fs.q (flat stdlib layout)
 fn resolve_bring_path(base_dir: &Path, path: &[String]) -> Result<PathBuf> {
     let rel: PathBuf = path.iter().collect();
     let ext = rel.with_extension("q");
-    let candidates = [
+    let mut candidates: Vec<PathBuf> = vec![
         base_dir.join(&ext),
         base_dir
             .join("src")
@@ -91,6 +92,10 @@ fn resolve_bring_path(base_dir: &Path, path: &[String]) -> Result<PathBuf> {
         base_dir.join(rel.join("mod.q")),
         base_dir.join("stdlib").join(rel.join("mod.q")),
     ];
+    // "std.fs" -> stdlib/fs.q (flat stdlib)
+    if path.len() == 2 && path[0] == "std" {
+        candidates.push(base_dir.join("stdlib").join(format!("{}.q", path[1])));
+    }
     for p in &candidates {
         if p.exists() {
             return Ok(p.clone());
