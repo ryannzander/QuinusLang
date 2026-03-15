@@ -148,18 +148,74 @@ realm parser {
         send result;
     }
 
-    // Parse source string, return AST (link void = Expr or 0)
+    // parse_var_decl: make ident = expr; Returns vec [name, expr] or 0
+    craft parse_var_decl(toks: link void, i: usize) -> link void {
+        make n: usize = vec.ptr_len(toks);
+        check (i + (4 as usize) >= n) {
+            send 0;
+        }
+        make t0: link void = vec.ptr_get(toks, i);
+        make t1: link void = vec.ptr_get(toks, i + (1 as usize));
+        make t2: link void = vec.ptr_get(toks, i + (2 as usize));
+        check (lexer.token_ty(t0) != tokens.MAKE) {
+            send 0;
+        }
+        check (lexer.token_ty(t1) != tokens.IDENT) {
+            send 0;
+        }
+        check (lexer.token_ty(t2) != tokens.EQ) {
+            send 0;
+        }
+        make name: str = lexer.token_str(t1);
+        make expr_result: link void = parse_expr(toks, i + (3 as usize));
+        check (expr_result == 0) {
+            send 0;
+        }
+        make expr: link void = vec.ptr_get(expr_result, 0);
+        make next: usize = ql_ptr_to_usize(vec.ptr_get(expr_result, 1));
+        check (next >= n) {
+            send 0;
+        }
+        make tok_semi: link void = vec.ptr_get(toks, next);
+        check (lexer.token_ty(tok_semi) != tokens.SEMICOLON) {
+            send 0;
+        }
+        make pair: link void = vec.ptr_new();
+        vec.ptr_push(pair, name);
+        vec.ptr_push(pair, expr);
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, pair);
+        vec.ptr_push(result, ql_usize_to_ptr(next + (1 as usize)));
+        send result;
+    }
+
+    // Parse source: (make x = expr;)* expr
+    // Returns vec [stmts_vec, result_expr] or 0. stmts_vec = vec of [name, expr]
     craft parse(source: str) -> link void {
         make toks: link void = lexer.tokenize(source);
         make n: usize = vec.ptr_len(toks);
         check (n == 0) {
             send 0;
         }
-        make parsed: link void = parse_expr(toks, 0);
-        check (parsed == 0) {
+        make stmts: link void = vec.ptr_new();
+        make shift idx: usize = 0;
+        loopwhile (idx < n) {
+            make vd: link void = parse_var_decl(toks, idx);
+            check (vd == 0) {
+                stop;
+            }
+            make pair: link void = vec.ptr_get(vd, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(vd, 1));
+            vec.ptr_push(stmts, pair);
+        }
+        make expr_result: link void = parse_expr(toks, idx);
+        check (expr_result == 0) {
             send 0;
         }
-        make expr: link void = vec.ptr_get(parsed, 0);
-        send expr;
+        make result_expr: link void = vec.ptr_get(expr_result, 0);
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, stmts);
+        vec.ptr_push(result, result_expr);
+        send result;
     }
 }

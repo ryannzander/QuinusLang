@@ -50,15 +50,27 @@ realm codegen {
         send "";
     }
 
-    // Emit minimal C program: int main() { return <expr>; }
-    // Use \\n to avoid newlines in string literals (C codegen)
-    craft emit_program(expr: link void) -> str {
-        make body: str = emit_expr(expr);
+    // Emit minimal C program: (long x = expr;)* long _r = expr; printf(...)
+    craft emit_program(stmts: link void, result_expr: link void) -> str {
+        make shift decls: str = "";
+        make n: usize = vec.ptr_len(stmts);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make pair: link void = vec.ptr_get(stmts, i);
+            make vname: str = vec.ptr_get(pair, 0) as str;
+            make init_expr: link void = vec.ptr_get(pair, 1);
+            make init_s: str = emit_expr(init_expr);
+            make line: str = str.concat("long ", str.concat(vname, str.concat(" = ", str.concat(init_s, "; "))));
+            decls = str.concat(decls, line);
+            i = i + (1 as usize);
+        }
+        make body: str = emit_expr(result_expr);
         make header: str = "#include <stdio.h>
-int main(void) { long _r = ";
-        make mid: str = str.concat(header, body);
-        make end: str = "; printf(\"%ld\\n\", _r); return 0; }
-";
+int main(void) { ";
+        make mid: str = str.concat(header, decls);
+        make assign: str = str.concat("long _r = ", str.concat(body, "; "));
+        make end: str = str.concat(assign, "printf(\"%ld\\n\", _r); return 0; }
+");
         send str.concat(mid, end);
     }
 }

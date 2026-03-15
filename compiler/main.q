@@ -22,19 +22,35 @@ craft main() -> void {
     }
     make src: str = fs.read_all(f);
     fs.close(f);
-    make ast: link void = parser.parse(src);
-    check (ast == 0) {
+    make parsed: link void = parser.parse(src);
+    check (parsed == 0) {
         writeln("Parse failed");
         send;
     }
+    make stmts: link void = vec.ptr_get(parsed, 0);
+    make result_expr: link void = vec.ptr_get(parsed, 1);
     make names: link void = vec.ptr_new();
     make types: link void = vec.ptr_new();
-    make ty: str = semantic.check_expr(ast, names, types);
+    make n: usize = vec.ptr_len(stmts);
+    make shift i: usize = 0;
+    loopwhile (i < n) {
+        make pair: link void = vec.ptr_get(stmts, i);
+        make vname: str = vec.ptr_get(pair, 0) as str;
+        make init_expr: link void = vec.ptr_get(pair, 1);
+        make it: str = semantic.check_expr(init_expr, names, types);
+        check (strlen(it) == 0) {
+            writeln("Semantic check failed (init)");
+            send;
+        }
+        semantic.symtab_put(names, types, vname, it);
+        i = i + (1 as usize);
+    }
+    make ty: str = semantic.check_expr(result_expr, names, types);
     check (strlen(ty) == 0) {
         writeln("Semantic check failed");
         send;
     }
-    make c_code: str = codegen.emit_program(ast);
+    make c_code: str = codegen.emit_program(stmts, result_expr);
     os.run("mkdir build 2>nul");
     make out_path: str = "build/output.c";
     make ok: i32 = fs.write_all(out_path, c_code);
