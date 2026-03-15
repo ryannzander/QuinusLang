@@ -405,8 +405,16 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
         }
         _ => {
             let expr = parse_expr(stream)?;
-            stream.expect(";")?;
-            Ok(Stmt::ExprStmt(expr))
+            if stream.peek() == Some(&Token::Eq) {
+                stream.consume();
+                let value = parse_expr(stream)?;
+                stream.expect(";")?;
+                let target = expr_to_assign_target(expr)?;
+                Ok(Stmt::Assign { target, value })
+            } else {
+                stream.expect(";")?;
+                Ok(Stmt::ExprStmt(expr))
+            }
         }
     }
 }
