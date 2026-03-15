@@ -3,7 +3,7 @@ struct Point {
     y: int
 }
 
-fn main() -> void {
+func main() -> void {
     var x: int = 0;
     return;
 }

@@ -16,8 +16,8 @@ pub enum Token {
     For,
     #[token("while")]
     While,
-    #[token("fn")]
-    Fn,
+    #[token("func")]
+    Func,
     #[token("return")]
     Return,
     #[token("var")]

@@ -7,6 +7,6 @@ fn test_parse_manifest() {
     if manifest_path.exists() {
         let manifest = package::manifest::parse_manifest(manifest_path).unwrap();
         assert_eq!(manifest.package.name, "my-app");
-        assert_eq!(manifest.build.entry, "src/main.quin");
+        assert_eq!(manifest.build.entry, "src/main.q");
     }
 }

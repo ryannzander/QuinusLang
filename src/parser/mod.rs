@@ -25,7 +25,7 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
     let (line, col) = stream.peek_pos().unwrap_or((1, 1));
 
     match stream.peek() {
-        Some(Token::Fn) => {
+        Some(Token::Func) => {
             stream.consume();
             Ok(TopLevelItem::Fn(parse_fn_def(stream)?))
         }
@@ -48,7 +48,7 @@ fn parse_top_level(stream: &mut TokenStream) -> Result<TopLevelItem> {
         _ => Err(Error::Parse {
             line,
             col,
-            message: "Expected fn, struct, class, mod, or import".to_string(),
+            message: "Expected func, struct, class, mod, or import".to_string(),
         }),
     }
 }
@@ -133,7 +133,7 @@ fn parse_class_def(stream: &mut TokenStream) -> Result<ClassDef> {
             let body = parse_block(stream)?;
             stream.expect("}")?;
             init = Some(InitDef { params, body });
-        } else if stream.peek() == Some(&Token::Fn) {
+        } else if stream.peek() == Some(&Token::Func) {
             stream.consume();
             methods.push(parse_method_def(stream)?);
         } else if matches!(stream.peek(), Some(Token::Ident(_))) {

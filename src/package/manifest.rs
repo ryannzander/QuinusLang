@@ -43,7 +43,7 @@ impl Default for Manifest {
             },
             dependencies: HashMap::new(),
             build: BuildConfig {
-                entry: "src/main.quin".to_string(),
+                entry: "src/main.q".to_string(),
                 out_dir: None,
                 optimize: Some("debug".to_string()),
             },

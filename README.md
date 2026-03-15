@@ -16,13 +16,13 @@ quinus init
 
 # Compile a program
 quinus build
-quinus build path/to/file.quin
+quinus build path/to/file.q
 
 # Build and run
 quinus run
 
 # Parse only (debug)
-quinus parse file.quin
+quinus parse file.q
 
 # Package manager
 quinus add <package>
@@ -34,13 +34,13 @@ quinus update
 ## Language Syntax
 
 ### Variables
-```quin
+```q
 var x: int = 42;
 var y = 10;
 ```
 
 ### Control Flow
-```quin
+```q
 if (x > 0) {
     // ...
 }
@@ -55,14 +55,14 @@ for (var i = 0; i < 10; i = i + 1) {
 ```
 
 ### Functions
-```quin
-fn add(a: int, b: int) -> int {
+```q
+func add(a: int, b: int) -> int {
     return a + b;
 }
 ```
 
 ### Structs
-```quin
+```q
 struct Point {
     x: int,
     y: int
@@ -70,7 +70,7 @@ struct Point {
 ```
 
 ### Classes
-```quin
+```q
 class Point {
     x: int
     y: int

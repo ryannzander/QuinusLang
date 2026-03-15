@@ -1,4 +1,4 @@
-fn main() -> void {
+func main() -> void {
     var x: int = 42;
     var y: int = 10;
     var sum: int = x + y;

@@ -8,7 +8,7 @@ class Point {
     }
 }
 
-fn main() -> void {
+func main() -> void {
     var p: Point = new Point(1, 2);
     return;
 }

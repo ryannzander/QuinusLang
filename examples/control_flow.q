@@ -1,4 +1,4 @@
-fn main() -> void {
+func main() -> void {
     var x: int = 5;
     if (x > 0) {
         var y: int = 1;

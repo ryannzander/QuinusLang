@@ -118,13 +118,13 @@ description = ""
 [dependencies]
 
 [build]
-entry = "src/main.quin"
+entry = "src/main.q"
 "#;
     std::fs::write(&manifest_path, manifest)?;
     let src_dir = path.join("src");
     std::fs::create_dir_all(&src_dir)?;
-    let main_path = src_dir.join("main.quin");
-    let main_content = r#"fn main() -> void {
+    let main_path = src_dir.join("main.q");
+    let main_content = r#"func main() -> void {
     var x: int = 42;
     return;
 }
@@ -200,15 +200,15 @@ fn find_entry(path: &PathBuf) -> anyhow::Result<(String, PathBuf)> {
             .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", entry.display(), e))?;
         return Ok((source, entry));
     }
-    let main_path = path.join("src/main.quin");
+    let main_path = path.join("src/main.q");
     if main_path.exists() {
         let source = std::fs::read_to_string(&main_path)?;
         return Ok((source, main_path));
     }
-    let direct = path.with_extension("quin");
+    let direct = path.with_extension("q");
     if direct.exists() {
         let source = std::fs::read_to_string(&direct)?;
         return Ok((source, direct));
     }
-    anyhow::bail!("No entry point found. Create src/main.quin or quinus.toml with [build] entry");
+    anyhow::bail!("No entry point found. Create src/main.q or quinus.toml with [build] entry");
 }

@@ -1,8 +1,8 @@
-fn add(a: int, b: int) -> int {
+func add(a: int, b: int) -> int {
     return a + b;
 }
 
-fn main() -> void {
+func main() -> void {
     var x: int = add(1, 2);
     return;
 }
