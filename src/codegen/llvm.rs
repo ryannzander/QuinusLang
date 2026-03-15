@@ -27,19 +27,19 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
 
     declare_builtins(&context, &module);
 
-    let mut ctx = LlvmCtx {
-        context: &context,
-        module: &module,
-        builder: &builder,
-        vars: HashMap::new(),
-        var_types: HashMap::new(),
-        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-    };
-
-    // Emit user functions
-    for item in &program.program.items {
-        if let TopLevelItem::Fn(f) = item {
-            emit_fn(&mut ctx, f)?;
+    {
+        let mut ctx = LlvmCtx {
+            context: &context,
+            module: &module,
+            builder: &builder,
+            vars: HashMap::new(),
+            var_types: HashMap::new(),
+            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+        };
+        for item in &program.program.items {
+            if let TopLevelItem::Fn(f) = item {
+                emit_fn(&mut ctx, f)?;
+            }
         }
     }
 
@@ -85,18 +85,19 @@ pub fn compile_to_ir(program: &AnnotatedProgram, ir_path: &Path) -> Result<()> {
 
     declare_builtins(&context, &module);
 
-    let mut ctx = LlvmCtx {
-        context: &context,
-        module: &module,
-        builder: &builder,
-        vars: HashMap::new(),
-        var_types: HashMap::new(),
-        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-    };
-
-    for item in &program.program.items {
-        if let TopLevelItem::Fn(f) = item {
-            emit_fn(&mut ctx, f)?;
+    {
+        let mut ctx = LlvmCtx {
+            context: &context,
+            module: &module,
+            builder: &builder,
+            vars: HashMap::new(),
+            var_types: HashMap::new(),
+            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+        };
+        for item in &program.program.items {
+            if let TopLevelItem::Fn(f) = item {
+                emit_fn(&mut ctx, f)?;
+            }
         }
     }
 
@@ -129,18 +130,19 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
 
     declare_builtins(&context, &module);
 
-    let mut ctx = LlvmCtx {
-        context: &context,
-        module: &module,
-        builder: &builder,
-        vars: HashMap::new(),
-        var_types: HashMap::new(),
-        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-    };
-
-    for item in &program.program.items {
-        if let TopLevelItem::Fn(f) = item {
-            emit_fn(&mut ctx, f)?;
+    {
+        let mut ctx = LlvmCtx {
+            context: &context,
+            module: &module,
+            builder: &builder,
+            vars: HashMap::new(),
+            var_types: HashMap::new(),
+            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+        };
+        for item in &program.program.items {
+            if let TopLevelItem::Fn(f) = item {
+                emit_fn(&mut ctx, f)?;
+            }
         }
     }
 
@@ -161,8 +163,7 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
 }
 
 fn declare_builtins<'ctx>(context: &'ctx Context, module: &Module<'ctx>) {
-    let i8 = context.i8_type();
-    let i8_ptr = i8.ptr_type(inkwell::AddressSpace::default());
+    let i8_ptr = context.ptr_type(inkwell::AddressSpace::default());
     let i32 = context.i32_type();
     let i64 = context.i64_type();
 
@@ -205,10 +206,7 @@ fn type_to_llvm<'ctx>(ctx: &'ctx Context, ty: &Type) -> inkwell::types::BasicTyp
         Type::Float | Type::F64 => ctx.f64_type().into(),
         Type::F32 => ctx.f32_type().into(),
         Type::Bool => ctx.bool_type().into(),
-        Type::Str => ctx
-            .i8_type()
-            .ptr_type(inkwell::AddressSpace::default())
-            .into(),
+        Type::Str => ctx.ptr_type(inkwell::AddressSpace::default()).into(),
         Type::U8 => ctx.i8_type().into(),
         Type::U16 => ctx.i16_type().into(),
         Type::U32 => ctx.i32_type().into(),
@@ -543,10 +541,7 @@ fn emit_builtin_call<'ctx>(
     args: &[Expr],
 ) -> Result<Option<BasicValueEnum<'ctx>>> {
     let printf_fn = ctx.module.get_function("printf").unwrap();
-    let i8_ptr = ctx
-        .context
-        .i8_type()
-        .ptr_type(inkwell::AddressSpace::default());
+    let i8_ptr = ctx.context.ptr_type(inkwell::AddressSpace::default());
 
     match name {
         "print" | "write" => {
@@ -622,9 +617,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let name = format!("str_{}", n);
             let global = ctx.module.add_global(
-                ctx.context
-                    .i8_type()
-                    .ptr_type(inkwell::AddressSpace::default()),
+                ctx.context.ptr_type(inkwell::AddressSpace::default()),
                 None,
                 &name,
             );
@@ -633,9 +626,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             global.set_initializer(&ctx.context.const_string(s_nul.as_bytes(), true));
             let ptr = ctx.builder.build_pointer_cast(
                 global.as_pointer_value(),
-                ctx.context
-                    .i8_type()
-                    .ptr_type(inkwell::AddressSpace::default()),
+                ctx.context.ptr_type(inkwell::AddressSpace::default()),
                 "str_ptr",
             )?;
             Ok(ptr.into())
@@ -796,7 +787,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             match op {
                 UnOp::Neg => {
                     if let BasicValueEnum::IntValue(i) = val {
-                        Ok(ctx.builder.build_neg(i, "neg")?.into())
+                        Ok(ctx.builder.build_int_neg(i, "neg")?.into())
                     } else if let BasicValueEnum::FloatValue(f) = val {
                         Ok(ctx.builder.build_float_neg(f, "neg")?.into())
                     } else {
@@ -843,18 +834,14 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let fn_val = ctx.module.get_function(&fn_name).ok_or_else(|| {
                 crate::error::semantic_err(format!("Function not found: {}", fn_name))
             })?;
-            let arg_vals: Vec<BasicValueEnum> = args
+            let arg_vals: Vec<inkwell::values::BasicMetadataValueEnum> = args
                 .iter()
                 .map(|a| emit_expr(ctx, a))
-                .collect::<Result<Vec<_>>>()?;
-            let call = ctx.builder.build_call(
-                fn_val,
-                &arg_vals
-                    .iter()
-                    .map(|v| v.as_basic_value_enum())
-                    .collect::<Vec<_>>(),
-                "call",
-            )?;
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .map(|v| v.into())
+                .collect();
+            let call = ctx.builder.build_call(fn_val, &arg_vals, "call")?;
             Ok(call
                 .try_as_basic_value()
                 .basic()
