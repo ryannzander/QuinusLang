@@ -55,6 +55,15 @@ cargo build --release</code></pre>
     <pre><code class="language-bash">cargo install --path .</code></pre>
     <p>This installs to <code>~/.cargo/bin/quinus</code>, which is on your PATH if you have Rust installed.</p>
 
+    <h2>VS Code / Cursor Extension</h2>
+    <p>For syntax highlighting in VS Code or Cursor, install the extension from the <code>syntax/</code> folder in the repo:</p>
+    <ol>
+      <li>Open the Command Palette: <code>Ctrl+Shift+P</code> (Windows/Linux) or <code>Cmd+Shift+P</code> (macOS)</li>
+      <li>Run <strong>Developer: Install Extension from Location...</strong></li>
+      <li>Select the <code>syntax/</code> folder inside your QuinusLang clone</li>
+    </ol>
+    <p>After installing, <code>.q</code> files will have syntax highlighting.</p>
+
     <h2>Creating Your First Project</h2>
     <p>Create a new QuinusLang project:</p>
     <pre><code class="language-bash">mkdir my-app
