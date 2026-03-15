@@ -1,11 +1,13 @@
 # Create a portable QuinusLang zip - no install, just extract and run
 # Usage: .\make-portable.ps1
+# Packages Rust quinus (full CLI: build, run, init, etc.)
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Building QuinusLang..."
-& "$PSScriptRoot\build.ps1"
+Write-Host "Building QuinusLang (Rust)..."
+cargo build --release
 if ($LASTEXITCODE -ne 0) { exit 1 }
+Copy-Item "target\release\quinus.exe" "quinus.exe" -Force
 
 $portableDir = "QuinusLang-portable"
 $zipName = "QuinusLang-portable.zip"

@@ -89,3 +89,6 @@ end;
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--help"; Description: "Show quinus help"; Flags: nowait postinstall skipifsilent
+
+[Messages]
+FinishedLabel=Setup has finished installing [name].%n%nIf you added to PATH, close and reopen your terminal for "quinus" to work from any folder.
