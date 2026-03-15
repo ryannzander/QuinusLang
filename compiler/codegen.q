@@ -24,6 +24,12 @@ realm codegen {
         check (op == 27) { send "-"; }
         check (op == 28) { send "*"; }
         check (op == 29) { send "/"; }
+        check (op == 20) { send "=="; }
+        check (op == 21) { send "!="; }
+        check (op == 22) { send "<"; }
+        check (op == 23) { send "<="; }
+        check (op == 24) { send ">"; }
+        check (op == 25) { send ">="; }
         send "+";
     }
 
@@ -67,6 +73,21 @@ realm codegen {
             make base_s: str = emit_expr(base);
             send str.concat(base_s, str.concat("_", field));
         }
+        check (tag == ast.EXPR_CAST) {
+            make inner: link void = ql_ast_expr_left(expr);
+            make target: str = ql_ast_expr_str(expr);
+            make inner_s: str = emit_expr(inner);
+            check (lexer.str_eq(target, "str")) {
+                send str.concat("(char*)", inner_s);
+            }
+            check (lexer.str_eq(target, "usize")) {
+                send str.concat("(size_t)", inner_s);
+            }
+            check (lexer.str_eq(target, "i32")) {
+                send str.concat("(int)", inner_s);
+            }
+            send str.concat(str.concat("(", str.concat(target, ")")), inner_s);
+        }
         send "";
     }
 
@@ -106,8 +127,36 @@ realm codegen {
         send out;
     }
 
-    // Emit minimal C program: (long x = expr;)* long _r = expr; printf(...)
-    craft emit_program(stmts: link void, result_expr: link void) -> str {
+    craft emit_externs(externs: link void) -> str {
+        check (externs == 0) {
+            send "";
+        }
+        make shift out: str = "";
+        make n: usize = vec.ptr_len(externs);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make ext: link void = vec.ptr_get(externs, i);
+            make name: str = vec.ptr_get(ext, 0) as str;
+            make ret_ty: str = vec.ptr_get(ext, 1) as str;
+            make shift c_ret: str = "void";
+            check (lexer.str_eq(ret_ty, "usize")) {
+                c_ret = "size_t";
+            }
+            check (lexer.str_eq(ret_ty, "i32")) {
+                c_ret = "int";
+            }
+            check (lexer.str_eq(ret_ty, "str")) {
+                c_ret = "char*";
+            }
+            make line: str = str.concat("extern ", str.concat(c_ret, str.concat(" ", str.concat(name, "(); "))));
+            out = str.concat(out, line);
+            i = i + (1 as usize);
+        }
+        send out;
+    }
+
+    // Emit minimal C program: externs (long x = expr;)* long _r = expr; printf(...)
+    craft emit_program(externs: link void, stmts: link void, result_expr: link void) -> str {
         make shift decls: str = "";
         make n: usize = vec.ptr_len(stmts);
         make shift i: usize = 0;
@@ -121,9 +170,11 @@ realm codegen {
             i = i + (1 as usize);
         }
         make body: str = emit_expr(result_expr);
+        make ext_s: str = emit_externs(externs);
         make header: str = "#include <stdio.h>
-int main(void) { ";
-        make mid: str = str.concat(header, decls);
+";
+        make header2: str = str.concat(header, str.concat(ext_s, "int main(void) { "));
+        make mid: str = str.concat(header2, decls);
         make assign: str = str.concat("long _r = ", str.concat(body, "; "));
         make end: str = str.concat(assign, "printf(\"%ld\\n\", _r); return 0; }
 ");
@@ -131,7 +182,8 @@ int main(void) { ";
     }
 
     // emit_fn_program: emit C for craft main() -> void { body }
-    craft emit_fn_program(fn_def: link void) -> str {
+    craft emit_fn_program(externs: link void, fn_def: link void) -> str {
+        make ext_s: str = emit_externs(externs);
         make name: str = vec.ptr_get(fn_def, 0) as str;
         make ret_ty: str = vec.ptr_get(fn_def, 1) as str;
         make body: link void = vec.ptr_get(fn_def, 2);
@@ -142,10 +194,11 @@ int main(void) { ";
         make body_c: str = emit_block(body);
         make header: str = "#include <stdio.h>
 ";
+        make header2: str = str.concat(header, ext_s);
         make sig: str = str.concat(ret_c, str.concat(" ", str.concat(name, "(void) { ")));
         make end: str = str.concat(body_c, " }
 ");
-        send str.concat(header, str.concat(sig, end));
+        send str.concat(header2, str.concat(sig, end));
     }
 
     craft emit_block(stmts: link void) -> str {

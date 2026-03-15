@@ -88,6 +88,15 @@ realm semantic {
         check (tag == ast.EXPR_FIELD) {
             send "i64";
         }
+        check (tag == ast.EXPR_CAST) {
+            make inner: link void = ql_ast_expr_left(expr);
+            make inner_ty: str = check_expr(inner, names, types);
+            check (strlen(inner_ty) == 0) {
+                send "";
+            }
+            make target: str = ql_ast_expr_str(expr);
+            send target;
+        }
         send "";
     }
 

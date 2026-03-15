@@ -27,20 +27,21 @@ craft main() -> void {
         writeln("Parse failed");
         send;
     }
-    make kind: str = vec.ptr_get(parsed, 0) as str;
+    make externs: link void = vec.ptr_get(parsed, 0);
+    make kind: str = vec.ptr_get(parsed, 1) as str;
     make shift c_code: str = "";
     check (lexer.str_eq(kind, "fn")) {
-        make fn_def: link void = vec.ptr_get(parsed, 1);
+        make fn_def: link void = vec.ptr_get(parsed, 2);
         make ok: bool = semantic.check_fn(fn_def);
         check (!ok) {
             writeln("Semantic check failed");
             send;
         }
-        c_code = codegen.emit_fn_program(fn_def);
+        c_code = codegen.emit_fn_program(externs, fn_def);
     }
     otherwise {
-        make stmts: link void = vec.ptr_get(parsed, 1);
-        make result_expr: link void = vec.ptr_get(parsed, 2);
+        make stmts: link void = vec.ptr_get(parsed, 2);
+        make result_expr: link void = vec.ptr_get(parsed, 3);
         make names: link void = vec.ptr_new();
         make types: link void = vec.ptr_new();
         make n: usize = vec.ptr_len(stmts);
@@ -62,7 +63,7 @@ craft main() -> void {
             writeln("Semantic check failed");
             send;
         }
-        c_code = codegen.emit_program(stmts, result_expr);
+        c_code = codegen.emit_program(externs, stmts, result_expr);
     }
     os.run("mkdir build 2>nul");
     make out_path: str = "build/output.c";

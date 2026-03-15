@@ -58,6 +58,14 @@ realm ast_helpers {
         send p;
     }
 
+    craft new_expr_cast(expr: link void, target_ty: str) -> link void {
+        make p: link void = ql_ast_expr_alloc();
+        ql_ast_expr_set_tag(p, ast.EXPR_CAST);
+        ql_ast_expr_set_left(p, expr);
+        ql_ast_expr_set_str(p, target_ty);
+        send p;
+    }
+
     craft new_expr_field(base: link void, field: str) -> link void {
         make p: link void = ql_ast_expr_alloc();
         ql_ast_expr_set_tag(p, ast.EXPR_FIELD);
@@ -68,8 +76,42 @@ realm ast_helpers {
 }
 
 realm parser {
-    // parse_expr: add + term | add - term. Returns vec [expr, next] or 0 (defined first for recursion)
+    // parse_expr: top level, delegates to parse_compare
     craft parse_expr(toks: link void, i: usize) -> link void {
+        send parse_compare(toks, i);
+    }
+
+    // parse_compare: add == add | add != add | add < add | etc.
+    craft parse_compare(toks: link void, i: usize) -> link void {
+        make left_result: link void = parse_add(toks, i);
+        check (left_result == 0) {
+            send 0;
+        }
+        make shift left: link void = vec.ptr_get(left_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx + (1 as usize) < n) {
+            make tok_op: link void = vec.ptr_get(toks, idx);
+            make ty_op: i32 = lexer.token_ty(tok_op);
+            check (ty_op != tokens.EQEQ && ty_op != tokens.NE && ty_op != tokens.LT && ty_op != tokens.LE && ty_op != tokens.GT && ty_op != tokens.GE) {
+                stop;
+            }
+            make right_result: link void = parse_add(toks, idx + (1 as usize));
+            check (right_result == 0) {
+                stop;
+            }
+            make right: link void = vec.ptr_get(right_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(right_result, 1));
+            left = ast_helpers.new_expr_binary(left, ty_op, right);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
+    }
+
+    // parse_add: mul + mul | mul - mul
+    craft parse_add(toks: link void, i: usize) -> link void {
         make left_result: link void = parse_mul(toks, i);
         check (left_result == 0) {
             send 0;
@@ -131,6 +173,18 @@ realm parser {
                 idx = ql_ptr_to_usize(vec.ptr_get(args_result, 1));
                 base = ast_helpers.new_expr_call(base, args);
                 skip;
+            }
+            check (ty == tokens.IDENT) {
+                make s: str = lexer.token_str(t);
+                check (lexer.str_eq(s, "as") && idx + (2 as usize) <= n) {
+                    make t1: link void = vec.ptr_get(toks, idx + (1 as usize));
+                    check (lexer.token_ty(t1) == tokens.IDENT) {
+                        make target: str = lexer.token_str(t1);
+                        base = ast_helpers.new_expr_cast(base, target);
+                        idx = idx + (2 as usize);
+                        skip;
+                    }
+                }
             }
             stop;
         }
@@ -335,25 +389,73 @@ realm parser {
         send idx;
     }
 
-    // skip_externs: advance idx past extern craft ...;*
-    craft skip_externs(toks: link void, start: usize) -> usize {
+    // parse_externs: extern craft name ( params ) -> ret ;*
+    // extern = vec [name, ret_ty]. Params skipped for now.
+    craft parse_externs(toks: link void, start: usize) -> link void {
         make n: usize = vec.ptr_len(toks);
+        make externs: link void = vec.ptr_new();
         make shift idx: usize = start;
-        loopwhile (idx < n) {
-            make t: link void = vec.ptr_get(toks, idx);
-            check (lexer.token_ty(t) != tokens.EXTERN) {
+        loopwhile (idx + (6 as usize) < n) {
+            make t0: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(t0) != tokens.EXTERN) {
                 stop;
             }
-            idx = idx + (1 as usize);
-            loopwhile (idx < n) {
-                make t2: link void = vec.ptr_get(toks, idx);
-                idx = idx + (1 as usize);
-                check (lexer.token_ty(t2) == tokens.SEMICOLON) {
-                    stop;
-                }
+            make t1: link void = vec.ptr_get(toks, idx + (1 as usize));
+            make t2: link void = vec.ptr_get(toks, idx + (2 as usize));
+            check (lexer.token_ty(t1) != tokens.CRAFT) {
+                stop;
             }
+            check (lexer.token_ty(t2) != tokens.IDENT) {
+                stop;
+            }
+            make name: str = lexer.token_str(t2);
+            make shift j: usize = idx + (3 as usize);
+            check (j >= n) {
+                stop;
+            }
+            make t3: link void = vec.ptr_get(toks, j);
+            check (lexer.token_ty(t3) != tokens.LPAREN) {
+                stop;
+            }
+            j = j + (1 as usize);
+            make shift depth: i32 = 1;
+            loopwhile (j < n && depth > 0) {
+                make tj: link void = vec.ptr_get(toks, j);
+                make ty: i32 = lexer.token_ty(tj);
+                check (ty == tokens.LPAREN) {
+                    depth = depth + 1;
+                }
+                check (ty == tokens.RPAREN) {
+                    depth = depth - 1;
+                }
+                j = j + (1 as usize);
+            }
+            check (j + (2 as usize) >= n) {
+                stop;
+            }
+            make t_arrow: link void = vec.ptr_get(toks, j);
+            make t_ret: link void = vec.ptr_get(toks, j + (1 as usize));
+            make t_semi: link void = vec.ptr_get(toks, j + (2 as usize));
+            check (lexer.token_ty(t_arrow) != tokens.ARROW) {
+                stop;
+            }
+            check (lexer.token_ty(t_ret) != tokens.IDENT) {
+                stop;
+            }
+            check (lexer.token_ty(t_semi) != tokens.SEMICOLON) {
+                stop;
+            }
+            make ret_ty: str = lexer.token_str(t_ret);
+            make ext: link void = vec.ptr_new();
+            vec.ptr_push(ext, name);
+            vec.ptr_push(ext, ret_ty);
+            vec.ptr_push(externs, ext);
+            idx = j + (3 as usize);
         }
-        send idx;
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, externs);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
     }
 
     // parse_block: { stmt* } Returns vec [next_idx_ptr, stmts_vec]
@@ -572,7 +674,7 @@ realm parser {
     }
 
     // Parse source: [bring]* [extern]* (craft fn | script)
-    // Returns: for craft: vec ["fn", fn_def]. For script: vec ["script", stmts, result_expr]
+    // Returns: vec [externs, kind, ...] where kind is "fn" or "script"
     craft parse(source: str) -> link void {
         make toks: link void = lexer.tokenize(source);
         make n: usize = vec.ptr_len(toks);
@@ -580,18 +682,21 @@ realm parser {
             send 0;
         }
         make shift idx: usize = skip_brings(toks, 0);
-        idx = skip_externs(toks, idx);
+        make ext_result: link void = parse_externs(toks, idx);
+        make externs: link void = vec.ptr_get(ext_result, 0);
+        idx = ql_ptr_to_usize(vec.ptr_get(ext_result, 1));
         check (idx >= n) {
             send 0;
         }
         make t: link void = vec.ptr_get(toks, idx);
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, externs);
         check (lexer.token_ty(t) == tokens.CRAFT) {
             make fn_result: link void = parse_fn_def(toks, idx);
             check (fn_result == 0) {
                 send 0;
             }
             make fn_def: link void = vec.ptr_get(fn_result, 0);
-            make result: link void = vec.ptr_new();
             vec.ptr_push(result, "fn");
             vec.ptr_push(result, fn_def);
             send result;
@@ -612,7 +717,6 @@ realm parser {
             send 0;
         }
         make result_expr: link void = vec.ptr_get(expr_result, 0);
-        make result: link void = vec.ptr_new();
         vec.ptr_push(result, "script");
         vec.ptr_push(result, stmts);
         vec.ptr_push(result, result_expr);
