@@ -297,7 +297,7 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
-            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "abs", "fabs", "sqrt", "fmin", "fmax"];
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "getenv", "abs", "fabs", "sqrt", "fmin", "fmax"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
             }
