@@ -34,6 +34,7 @@ if (Test-Path $lldLink) {
 } else {
     Write-Warning "lld-link.exe not found - installer will work but users need LLVM/lld to link"
 }
+Get-ChildItem (Join-Path $llvmPath "bin\*.dll") -ErrorAction SilentlyContinue | Copy-Item -Destination "." -Force
 
 $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if (-not (Test-Path $iscc)) {

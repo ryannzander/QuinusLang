@@ -38,6 +38,7 @@ New-Item -ItemType Directory -Path $portableDir | Out-Null
 Copy-Item "quinus.exe" "$portableDir\"
 if (Test-Path "runtime.obj") { Copy-Item "runtime.obj" "$portableDir\" }
 if (Test-Path "lld-link.exe") { Copy-Item "lld-link.exe" "$portableDir\" }
+Get-ChildItem "*.dll" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName "$portableDir\" }
 Copy-Item "stdlib" "$portableDir\" -Recurse
 Copy-Item "compiler" "$portableDir\" -Recurse
 

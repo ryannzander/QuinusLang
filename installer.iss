@@ -37,6 +37,10 @@ Source: "runtime.obj"; DestDir: "{app}"; Flags: ignoreversion
 #ifexist "lld-link.exe"
 Source: "lld-link.exe"; DestDir: "{app}"; Flags: ignoreversion
 #endif
+; LLVM DLLs (when using dynamic linking)
+#ifexist "LLVM-C.dll"
+Source: "*.dll"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 ; Include stdlib and compiler for development (optional - skip if missing)
 Source: "stdlib\*"; DestDir: "{app}\stdlib"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "compiler\*"; DestDir: "{app}\compiler"; Flags: ignoreversion recursesubdirs createallsubdirs

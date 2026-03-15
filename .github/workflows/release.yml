@@ -59,11 +59,12 @@ jobs:
       - name: Build runtime
         run: .\scripts\build-runtime.ps1
 
-      - name: Copy LLVM tools
+      - name: Copy LLVM tools and DLLs
         shell: pwsh
         run: |
           Copy-Item "$env:LLVM_PATH\bin\lld-link.exe" "lld-link.exe" -Force
           Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
+          Get-ChildItem "$env:LLVM_PATH\bin\*.dll" -ErrorAction SilentlyContinue | Copy-Item -Destination "." -Force
 
       - name: Create installer
         shell: pwsh
