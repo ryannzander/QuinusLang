@@ -16,11 +16,25 @@ A systems programming language with assembly-level control and readable syntax. 
 
 ### From source
 
+**First build (requires Rust for bootstrap):**
+
 ```bash
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
-cargo build --release
+./build.ps1   # Windows
+# or
+./build.sh    # Linux/macOS
 ```
+
+The build script uses Rust once to produce the initial `quinus.exe`, then uses the Q-built compiler. Alternatively:
+
+```bash
+cargo build --release
+quinus build compiler/main.q
+# Output: compiler/build/output.exe (copy to quinus.exe if desired)
+```
+
+**Q-only build (after you have quinus.exe):** Download a pre-built `quinus.exe` from [releases](https://github.com/ryannzander/QuinusLang/releases), then run `quinus build compiler/main.q`. No Rust required.
 
 ### Install globally (add to PATH)
 
@@ -274,16 +288,18 @@ entry = "src/main.q"
 
 ## Requirements
 
-- **Rust** — To build the compiler
 - **C compiler** — MinGW (`winget install mingw`), MSVC Build Tools, or Clang
+- **Rust** — Only for first-time bootstrap (or use a pre-built `quinus.exe` from releases)
 
 ---
 
 ## Compiler pipeline
 
 ```
-.q source → Lexer → Parser → AST → Semantic → C code → System compiler → .exe
+.q source → Preprocess (bring flatten) → Lexer → Parser → AST → Semantic → C code → System compiler → .exe
 ```
+
+The bootstrap compiler (`compiler/*.q`) is written in Quinus and compiles to C. It is self-hosting: once built, only a C compiler is required.
 
 ---
 
