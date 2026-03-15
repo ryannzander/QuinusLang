@@ -340,6 +340,8 @@ Install the `syntax/` extension for Cursor/VS Code:
 
 ## Documentation
 
+**Live docs:** [https://ryannzander.github.io/QuinusLang/](https://ryannzander.github.io/QuinusLang/)
+
 Docs are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages:
 
 1. Edit `mkdocs.yml` — set `site_url` to your Pages URL (e.g. `https://ryannzander.github.io/QuinusLang/`)
