@@ -278,6 +278,9 @@ realm codegen {
     craft emit_program_full(externs: link void, items: link void) -> str {
         make ext_s: str = emit_externs(externs);
         make header: str = "#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 ";
         make shift out: str = str.concat(header, ext_s);
         make n: usize = vec.ptr_len(items);
