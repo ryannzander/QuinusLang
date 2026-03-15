@@ -27,30 +27,43 @@ craft main() -> void {
         writeln("Parse failed");
         send;
     }
-    make stmts: link void = vec.ptr_get(parsed, 0);
-    make result_expr: link void = vec.ptr_get(parsed, 1);
-    make names: link void = vec.ptr_new();
-    make types: link void = vec.ptr_new();
-    make n: usize = vec.ptr_len(stmts);
-    make shift i: usize = 0;
-    loopwhile (i < n) {
-        make pair: link void = vec.ptr_get(stmts, i);
-        make vname: str = vec.ptr_get(pair, 0) as str;
-        make init_expr: link void = vec.ptr_get(pair, 1);
-        make it: str = semantic.check_expr(init_expr, names, types);
-        check (strlen(it) == 0) {
-            writeln("Semantic check failed (init)");
+    make kind: str = vec.ptr_get(parsed, 0) as str;
+    make shift c_code: str = "";
+    check (lexer.str_eq(kind, "fn")) {
+        make fn_def: link void = vec.ptr_get(parsed, 1);
+        make ok: bool = semantic.check_fn(fn_def);
+        check (!ok) {
+            writeln("Semantic check failed");
             send;
         }
-        semantic.symtab_put(names, types, vname, it);
-        i = i + (1 as usize);
+        c_code = codegen.emit_fn_program(fn_def);
     }
-    make ty: str = semantic.check_expr(result_expr, names, types);
-    check (strlen(ty) == 0) {
-        writeln("Semantic check failed");
-        send;
+    otherwise {
+        make stmts: link void = vec.ptr_get(parsed, 1);
+        make result_expr: link void = vec.ptr_get(parsed, 2);
+        make names: link void = vec.ptr_new();
+        make types: link void = vec.ptr_new();
+        make n: usize = vec.ptr_len(stmts);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make pair: link void = vec.ptr_get(stmts, i);
+            make vname: str = vec.ptr_get(pair, 0) as str;
+            make init_expr: link void = vec.ptr_get(pair, 1);
+            make it: str = semantic.check_expr(init_expr, names, types);
+            check (strlen(it) == 0) {
+                writeln("Semantic check failed (init)");
+                send;
+            }
+            semantic.symtab_put(names, types, vname, it);
+            i = i + (1 as usize);
+        }
+        make ty: str = semantic.check_expr(result_expr, names, types);
+        check (strlen(ty) == 0) {
+            writeln("Semantic check failed");
+            send;
+        }
+        c_code = codegen.emit_program(stmts, result_expr);
     }
-    make c_code: str = codegen.emit_program(stmts, result_expr);
     os.run("mkdir build 2>nul");
     make out_path: str = "build/output.c";
     make ok: i32 = fs.write_all(out_path, c_code);

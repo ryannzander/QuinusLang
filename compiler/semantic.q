@@ -7,6 +7,7 @@ bring "compiler.ast";
 bring "compiler.lexer";
 
 extern craft ql_ast_expr_tag(p: link void) -> i32;
+extern craft ql_ptr_to_usize(p: link void) -> usize;
 extern craft ql_ast_expr_int(p: link void) -> i64;
 extern craft ql_ast_expr_str(p: link void) -> str;
 extern craft ql_ast_expr_left(p: link void) -> link void;
@@ -66,5 +67,81 @@ realm semantic {
             send "";
         }
         send "";
+    }
+
+    // check_fn: type-check function body. Returns true if ok.
+    craft check_fn(fn_def: link void) -> bool {
+        check (fn_def == 0) {
+            send false;
+        }
+        make body: link void = vec.ptr_get(fn_def, 2);
+        make names: link void = vec.ptr_new();
+        make types: link void = vec.ptr_new();
+        make ok: bool = check_block(body, names, types);
+        send ok;
+    }
+
+    // check_block: type-check stmt list
+    craft check_block(stmts: link void, names: link void, types: link void) -> bool {
+        check (stmts == 0) {
+            send true;
+        }
+        make n: usize = vec.ptr_len(stmts);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make stmt: link void = vec.ptr_get(stmts, i);
+            make tag_ptr: link void = vec.ptr_get(stmt, 0);
+            make tag_val: i32 = ql_ptr_to_usize(tag_ptr) as i32;
+            check (tag_val == 10) {
+                make pair: link void = vec.ptr_get(stmt, 1);
+                make vname: str = vec.ptr_get(pair, 0) as str;
+                make init_expr: link void = vec.ptr_get(pair, 1);
+                make it: str = check_expr(init_expr, names, types);
+                check (strlen(it) == 0) {
+                    send false;
+                }
+                symtab_put(names, types, vname, it);
+            }
+            check (tag_val == 12) {
+                make cond: link void = vec.ptr_get(stmt, 1);
+                make body: link void = vec.ptr_get(stmt, 2);
+                make ct: str = check_expr(cond, names, types);
+                check (strlen(ct) == 0) {
+                    send false;
+                }
+                check (!check_block(body, names, types)) {
+                    send false;
+                }
+            }
+            check (tag_val == 13) {
+                make cond: link void = vec.ptr_get(stmt, 1);
+                make body: link void = vec.ptr_get(stmt, 2);
+                make ct: str = check_expr(cond, names, types);
+                check (strlen(ct) == 0) {
+                    send false;
+                }
+                check (!check_block(body, names, types)) {
+                    send false;
+                }
+            }
+            check (tag_val == 14) {
+                make ret_expr: link void = vec.ptr_get(stmt, 1);
+                check (ret_expr != 0) {
+                    make rt: str = check_expr(ret_expr, names, types);
+                    check (strlen(rt) == 0) {
+                        send false;
+                    }
+                }
+            }
+            check (tag_val == 15) {
+                make expr: link void = vec.ptr_get(stmt, 1);
+                make et: str = check_expr(expr, names, types);
+                check (strlen(et) == 0) {
+                    send false;
+                }
+            }
+            i = i + (1 as usize);
+        }
+        send true;
     }
 }

@@ -37,4 +37,7 @@ realm tokens {
     eternal STR: i32 = 32;
     eternal BOOL: i32 = 33;
     eternal EOF: i32 = 34;
+    eternal ARROW: i32 = 35;
+    eternal DOT: i32 = 36;
+    eternal EXTERN: i32 = 37;
 }
