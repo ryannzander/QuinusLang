@@ -158,6 +158,12 @@ realm lexer {
                 col = col + (1 as usize);
                 skip;
             }
+            check (c == 33 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 61) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.NE, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
+                skip;
+            }
             check (c == 61 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 61) {
                 vec.ptr_push(tok_list, ql_token_create(tokens.EQEQ, line, col, "", 0));
                 i = i + (2 as usize);
@@ -168,6 +174,18 @@ realm lexer {
                 vec.ptr_push(tok_list, ql_token_create(tokens.EQ, line, col, "", 0));
                 i = i + (1 as usize);
                 col = col + (1 as usize);
+                skip;
+            }
+            check (c == 38 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 38) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.ANDAND, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
+                skip;
+            }
+            check (c == 124 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 124) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.OROR, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
                 skip;
             }
             check (c == 46) {
