@@ -358,7 +358,8 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
         }
         Some(Token::Make) => {
             stream.consume();
-            if stream.peek() == Some(&Token::Shift) {
+            let mutable = stream.peek() == Some(&Token::Shift);
+            if mutable {
                 stream.consume();
             }
             let name = expect_ident(stream)?;
@@ -375,6 +376,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
                 name,
                 ty,
                 init,
+                mutable,
             })
         }
         Some(Token::Ident(_)) | Some(Token::This) => {

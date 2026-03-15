@@ -158,7 +158,7 @@ fn emit_fn(out: &mut String, f: &FnDef, _ctx: &mut Ctx) -> Result<()> {
 
 fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
-        Stmt::VarDecl { name, ty, init } => {
+        Stmt::VarDecl { name, ty, init, mutable: _ } => {
             let cty = ty.as_ref().map(type_to_c).unwrap_or("long");
             ctx.vars.insert(name.clone(), name.clone());
             if let Some(t) = ty.as_ref() {
@@ -246,7 +246,7 @@ fn emit_stmt(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
 
 fn emit_for_init(out: &mut String, stmt: &Stmt, ctx: &mut Ctx) -> Result<()> {
     match stmt {
-        Stmt::VarDecl { name, ty, init } => {
+        Stmt::VarDecl { name, ty, init, mutable: _ } => {
             let cty = ty.as_ref().map(type_to_c).unwrap_or("long");
             ctx.vars.insert(name.clone(), name.clone());
             if let Some(t) = ty.as_ref() {

@@ -2,7 +2,7 @@
 
 use crate::ast::*;
 use crate::error::{Error, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone)]
 pub struct AnnotatedProgram {
@@ -18,6 +18,7 @@ pub struct SymbolTable {
 #[derive(Debug, Clone, Default)]
 pub struct Scope {
     pub vars: HashMap<String, Type>,
+    pub mutable_vars: HashSet<String>,
     pub funcs: HashMap<String, FuncSig>,
     pub structs: HashMap<String, StructDef>,
     pub classes: HashMap<String, ClassDef>,
@@ -90,12 +91,9 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
         TopLevelItem::Fn(f) => {
             symbol_table.scopes.push(Scope::default());
             for p in &f.params {
-                symbol_table
-                    .scopes
-                    .last_mut()
-                    .unwrap()
-                    .vars
-                    .insert(p.name.clone(), p.ty.clone());
+                let scope = symbol_table.scopes.last_mut().unwrap();
+                scope.vars.insert(p.name.clone(), p.ty.clone());
+                // Params are immutable by default
             }
             for stmt in &f.body {
                 check_stmt(symbol_table, stmt)?;
@@ -114,22 +112,35 @@ fn check_top_level(symbol_table: &mut SymbolTable, item: &TopLevelItem) -> Resul
 
 fn check_stmt(symbol_table: &mut SymbolTable, stmt: &Stmt) -> Result<()> {
     match stmt {
-        Stmt::VarDecl { name, ty, init } => {
+        Stmt::VarDecl { name, ty, init, mutable } => {
             let init_ty = check_expr(symbol_table, init)?;
             let var_ty = ty.clone().unwrap_or(init_ty);
-            symbol_table
-                .scopes
-                .last_mut()
-                .unwrap()
-                .vars
-                .insert(name.clone(), var_ty);
+            let scope = symbol_table.scopes.last_mut().unwrap();
+            scope.vars.insert(name.clone(), var_ty);
+            if *mutable {
+                scope.mutable_vars.insert(name.clone());
+            }
         }
         Stmt::Assign { target, value } => {
             check_expr(symbol_table, value)?;
             if let AssignTarget::Ident(name) = target {
-                if !symbol_table.scopes.iter().rev().any(|s| s.vars.contains_key(name)) {
+                let mut found = false;
+                let mut is_mutable = false;
+                for scope in symbol_table.scopes.iter().rev() {
+                    if scope.vars.contains_key(name) {
+                        found = true;
+                        is_mutable = scope.mutable_vars.contains(name);
+                        break;
+                    }
+                }
+                if !found {
                     return Err(Error::Semantic {
                         message: format!("Undefined variable: {}", name),
+                    });
+                }
+                if !is_mutable {
+                    return Err(Error::Semantic {
+                        message: format!("Cannot assign to immutable variable: {}", name),
                     });
                 }
             }

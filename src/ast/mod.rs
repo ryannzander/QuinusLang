@@ -105,7 +105,7 @@ impl fmt::Display for Type {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    VarDecl { name: String, ty: Option<Type>, init: Expr },
+    VarDecl { name: String, ty: Option<Type>, init: Expr, mutable: bool },
     Assign { target: AssignTarget, value: Expr },
     If { cond: Expr, then_body: Vec<Stmt>, else_body: Option<Vec<Stmt>> },
     For { init: Option<Box<Stmt>>, cond: Option<Expr>, step: Option<Box<Stmt>>, body: Vec<Stmt> },
