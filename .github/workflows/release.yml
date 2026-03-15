@@ -19,8 +19,15 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
 
-      - name: Install LLVM
-        run: choco install llvm --version=17.0.6 -y --allow-downgrade
+      - name: Install LLVM 17
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "17"
+          directory: ${{ runner.temp }}/llvm
+
+      - name: Set LLVM env for build
+        shell: pwsh
+        run: "LLVM_SYS_170_PREFIX=$env:LLVM_PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set version from tag
         shell: pwsh
@@ -41,8 +48,6 @@ jobs:
           (Get-Content installer.iss) -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$env:VERSION`"" | Set-Content installer.iss
 
       - name: Build
-        env:
-          LLVM_SYS_170_PREFIX: C:\Program Files\LLVM
         run: cargo build --release
 
       - name: Build runtime
@@ -51,7 +56,7 @@ jobs:
       - name: Copy LLVM tools
         shell: pwsh
         run: |
-          Copy-Item "C:\Program Files\LLVM\bin\lld-link.exe" "lld-link.exe" -Force
+          Copy-Item "$env:LLVM_PATH\bin\lld-link.exe" "lld-link.exe" -Force
           Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
 
       - name: Create installer
