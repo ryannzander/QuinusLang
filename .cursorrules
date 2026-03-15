@@ -1,5 +1,16 @@
 # QuinusLang Project Rules
 
+## Version Bump (when releasing)
+
+When bumping the version (e.g. 0.1.0 → 0.1.1), update **all** of these:
+
+- `Cargo.toml` — `version = "X.Y.Z"` (source of truth for `quinus --version`)
+- `installer.iss` — `#define MyAppVersion "X.Y.Z"`
+- `quinus.toml` — `version = "X.Y.Z"` (if project uses it)
+- `CHANGELOG.md` — Add `## [X.Y.Z] - YYYY-MM-DD` section
+
+Then rebuild installer and zip: `.\build-installer.ps1` and `.\make-portable.ps1`
+
 ## Git Workflow
 
 - **Before finishing a feature**: Update documentation (SPEC.md, docs/*.html, CHANGELOG.md) and commit.
