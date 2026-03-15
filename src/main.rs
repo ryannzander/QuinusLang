@@ -68,6 +68,8 @@ enum Commands {
     },
     /// Interactive REPL (parse and show AST)
     Repl,
+    /// Language Server Protocol (for IDE support)
+    Lsp,
     /// Parse and type-check only (no codegen)
     Check {
         #[arg(default_value = ".")]
@@ -89,6 +91,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Fmt { path } => cmd_fmt(&path),
         Commands::Watch { path } => cmd_watch(&path),
         Commands::Repl => cmd_repl(),
+        Commands::Lsp => cmd_lsp(),
         Commands::Check { path } => cmd_check(&path),
     }
 }
@@ -287,7 +290,39 @@ fn cmd_remove(name: &str) -> anyhow::Result<()> {
 }
 
 fn cmd_publish() -> anyhow::Result<()> {
-    println!("Publish: not yet implemented");
+    let manifest_path = PathBuf::from("quinus.toml");
+    if !manifest_path.exists() {
+        anyhow::bail!("No quinus.toml found. Run 'quinus init' first.");
+    }
+    let manifest = package::manifest::parse_manifest(&manifest_path)?;
+    let version = &manifest.package.version;
+    let name = &manifest.package.name;
+
+    // Validate: entry exists
+    let entry_path = PathBuf::from(&manifest.build.entry);
+    if !entry_path.exists() {
+        anyhow::bail!("Entry point {} not found", manifest.build.entry);
+    }
+
+    // Build to validate
+    let base = PathBuf::from(".");
+    let packages = resolve_build_packages(base.as_path());
+    let (source, _) = find_entry(&base)?;
+    let program = parse_with_imports(&source, base.as_path(), &packages)?;
+    let _annotated = analyze(&program)?;
+
+    let tag = format!("v{}", version);
+    let status = Command::new("git")
+        .args(["tag", "-a", &tag, "-m", &format!("Release {} {}", name, version)])
+        .status();
+    match status {
+        Ok(s) if s.success() => {
+            println!("Created tag {}", tag);
+            println!("Run 'git push origin {}' to publish", tag);
+        }
+        Ok(_) => anyhow::bail!("git tag failed"),
+        Err(e) => anyhow::bail!("git not found or failed: {}", e),
+    }
     Ok(())
 }
 
@@ -362,29 +397,174 @@ fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
 
 fn cmd_repl() -> anyhow::Result<()> {
     use std::io::{self, BufRead, Write};
-    println!("QuinusLang REPL (type .quit to exit)");
+    println!("QuinusLang REPL (type .help for commands)");
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     for line in stdin.lock().lines() {
         let line = line?;
-        if line.trim() == ".quit" {
+        let trimmed = line.trim();
+        if trimmed == ".quit" || trimmed == ".exit" {
             break;
         }
-        if line.trim().is_empty() {
+        if trimmed.is_empty() {
+            continue;
+        }
+        if trimmed == ".help" {
+            writeln!(stdout, "Commands: .quit .help")?;
+            writeln!(stdout, "Enter expressions; type is shown on success.")?;
+            stdout.flush()?;
             continue;
         }
         let program = format!("craft _repl() -> void {{ {} }}", line);
         match parse(&program) {
             Ok(p) => {
-                writeln!(stdout, "{:#?}", p)?;
+                match analyze(&p) {
+                    Ok(annotated) => {
+                        writeln!(stdout, "ok")?;
+                        if let Some(last) = p.items.first().and_then(|i| {
+                            if let quinuslang::ast::TopLevelItem::Fn(f) = i {
+                                f.body.last()
+                            } else {
+                                None
+                            }
+                        }) {
+                            let expr = match last {
+                                quinuslang::ast::Stmt::VarDecl { init, .. } => Some(init),
+                                quinuslang::ast::Stmt::ExprStmt(e) => Some(e),
+                                _ => None,
+                            };
+                            if let Some(e) = expr {
+                                if let Some(ty) = semantic_expr_type(&annotated, e) {
+                                    writeln!(stdout, "  type: {}", ty)?;
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => writeln!(stdout, "Error: {}", e)?,
+                }
             }
-            Err(e) => {
-                writeln!(stdout, "Error: {}", e)?;
-            }
+            Err(e) => writeln!(stdout, "Error: {}", e)?,
         }
         stdout.flush()?;
     }
     Ok(())
+}
+
+fn cmd_lsp() -> anyhow::Result<()> {
+    use lsp_server::{Connection, Message, RequestId, Response};
+    use lsp_types::{
+        Hover, HoverContents, InitializeParams, InitializeResult, ServerCapabilities,
+        TextDocumentSyncCapability, TextDocumentSyncKind,
+    };
+
+    let (connection, io_threads) = Connection::stdio();
+    let (id, params) = connection.initialize_start()?;
+    let _params: InitializeParams = serde_json::from_value(params)?;
+    let caps = ServerCapabilities {
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+        hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
+        ..Default::default()
+    };
+    let result = InitializeResult {
+        capabilities: caps,
+        server_info: Some(lsp_types::ServerInfo {
+            name: "quinus".to_string(),
+            version: Some("0.1.0".to_string()),
+        }),
+        ..Default::default()
+    };
+    connection.initialize_finish(id, serde_json::to_value(result)?)?;
+
+    let mut documents: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+    for msg in &connection.receiver {
+        match msg {
+            Message::Request(req) => {
+                if connection.handle_shutdown(&req)? {
+                    return Ok(());
+                }
+                match req.method.as_str() {
+                    "textDocument/hover" => {
+                        let (id, params): (RequestId, lsp_types::HoverParams) =
+                            serde_json::from_value(req.params)?;
+                        let uri = params.text_document_position_params.text_document.uri;
+                        let pos = params.text_document_position_params.position;
+                        let content = documents
+                            .get(&uri.to_string())
+                            .and_then(|text| {
+                                let offset = position_to_offset(text, pos)?;
+                                let program = parse(text).ok()?;
+                                let annotated = analyze(&program).ok()?;
+                                find_hover_at_offset(&annotated, text, offset)
+                            })
+                            .unwrap_or_else(|| "No info".to_string());
+                        let response = Response::new_ok(
+                            id,
+                            serde_json::to_value(Hover {
+                                contents: HoverContents::Scalar(lsp_types::MarkedString::String(content)),
+                                range: None,
+                            })?,
+                        );
+                        connection.sender.send(Message::Response(response))?;
+                    }
+                    _ => {}
+                }
+            }
+            Message::Notification(n) => match n.method.as_str() {
+                "textDocument/didOpen" => {
+                    let params: lsp_types::DidOpenTextDocumentParams =
+                        serde_json::from_value(n.params)?;
+                    documents.insert(
+                        params.text_document.uri.to_string(),
+                        params.text_document.text,
+                    );
+                }
+                "textDocument/didChange" => {
+                    let params: lsp_types::DidChangeTextDocumentParams =
+                        serde_json::from_value(n.params)?;
+                    if let Some(changes) = params.content_changes.first() {
+                        documents.insert(
+                            params.text_document.uri.to_string(),
+                            changes.text.clone(),
+                        );
+                    }
+                }
+                "textDocument/didClose" => {
+                    let params: lsp_types::DidCloseTextDocumentParams =
+                        serde_json::from_value(n.params)?;
+                    documents.remove(&params.text_document.uri.to_string());
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    io_threads.join()?;
+    Ok(())
+}
+
+fn position_to_offset(text: &str, pos: lsp_types::Position) -> Option<usize> {
+    let mut offset = 0;
+    for (i, line) in text.lines().enumerate() {
+        if i == pos.line as usize {
+            return Some(offset + (pos.character as usize).min(line.chars().count()));
+        }
+        offset += line.len() + 1;
+    }
+    Some(offset)
+}
+
+fn find_hover_at_offset(
+    _annotated: &quinuslang::semantic::AnnotatedProgram,
+    _text: &str,
+    _offset: usize,
+) -> Option<String> {
+    Some("QuinusLang".to_string())
+}
+
+fn semantic_expr_type(annotated: &quinuslang::semantic::AnnotatedProgram, expr: &quinuslang::ast::Expr) -> Option<String> {
+    let ty = quinuslang::type_of_expr(&annotated.symbol_table, expr)?;
+    Some(format!("{:?}", ty))
 }
 
 fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> {
