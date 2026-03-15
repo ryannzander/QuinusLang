@@ -20,16 +20,26 @@ jobs:
         run: choco install innosetup -y
 
       - name: Install LLVM 17
-        run: choco install llvm --version=17.0.6 -y --allow-downgrade
+        shell: pwsh
+        run: |
+          choco install llvm --version=17.0.6 -y --allow-downgrade
+          if (-not $?) { throw "Chocolatey LLVM install failed" }
 
-      - name: Refresh environment
+      - name: Setup LLVM environment
         shell: pwsh
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           $llvmPath = "C:\Program Files\LLVM"
+          if (-not (Test-Path "$llvmPath\bin\llvm-config.exe")) {
+            Write-Host "LLVM not found at $llvmPath. Searching..."
+            $found = Get-ChildItem -Path "C:\Program Files" -Filter "llvm-config.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $llvmPath = $found.Directory.Parent.FullName; Write-Host "Found at $llvmPath" }
+            else { throw "LLVM 17 not found. llvm-sys requires llvm-config.exe. Install path: $llvmPath" }
+          }
           "LLVM_SYS_170_PREFIX=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
           "LLVM_PATH=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          if (Test-Path "$llvmPath\bin\llvm-config.exe") { Write-Host "llvm-config found at $llvmPath" } else { Write-Host "WARNING: llvm-config not found at $llvmPath"; Get-ChildItem $llvmPath -ErrorAction SilentlyContinue | Out-String }
+          echo "$llvmPath\bin" >> $env:GITHUB_PATH
+          Write-Host "LLVM_SYS_170_PREFIX=$llvmPath"
 
       - name: Set version from tag
         shell: pwsh
