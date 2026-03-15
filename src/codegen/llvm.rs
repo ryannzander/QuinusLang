@@ -196,6 +196,7 @@ struct LlvmCtx<'ctx> {
     builder: Builder<'ctx>,
     vars: HashMap<String, BasicValueEnum<'ctx>>,
     var_types: HashMap<String, Type>,
+    #[allow(dead_code)]
     symbol_table: Option<std::sync::Arc<crate::semantic::SymbolTable>>,
 }
 
@@ -555,14 +556,17 @@ fn emit_builtin_call<'ctx>(
                 Expr::Literal(Literal::Bool(_)) => "%d\0",
                 _ => "%s\0",
             };
+            let init = ctx.context.const_string(fmt.as_bytes(), true);
             let fmt_global = ctx.module.add_global(
-                i8_ptr,
+                init.get_type().into(),
                 None,
                 &format!("fmt_{}", STRING_COUNTER.fetch_add(1, Ordering::Relaxed)),
             );
             fmt_global.set_constant(true);
-            fmt_global.set_initializer(&ctx.context.const_string(fmt.as_bytes(), true));
-            let fmt_ptr = fmt_global.as_pointer_value();
+            fmt_global.set_initializer(&init);
+            let fmt_ptr =
+                ctx.builder
+                    .build_pointer_cast(fmt_global.as_pointer_value(), i8_ptr, "fmt_ptr")?;
 
             let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum> = vec![fmt_ptr.into()];
             for a in args {
@@ -586,10 +590,15 @@ fn emit_builtin_call<'ctx>(
                 (f, 1)
             };
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
-            let fmt_global = ctx.module.add_global(i8_ptr, None, &format!("fmt_{}", n));
+            let init = ctx.context.const_string(fmt.as_bytes(), true);
+            let fmt_global =
+                ctx.module
+                    .add_global(init.get_type().into(), None, &format!("fmt_{}", n));
             fmt_global.set_constant(true);
-            fmt_global.set_initializer(&ctx.context.const_string(fmt.as_bytes(), true));
-            let fmt_ptr = fmt_global.as_pointer_value();
+            fmt_global.set_initializer(&init);
+            let fmt_ptr =
+                ctx.builder
+                    .build_pointer_cast(fmt_global.as_pointer_value(), i8_ptr, "fmt_ptr")?;
 
             let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum> = vec![fmt_ptr.into()];
             for a in args.iter().take(num_args) {
@@ -616,14 +625,11 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let s_nul = format!("{}\0", s);
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let name = format!("str_{}", n);
-            let global = ctx.module.add_global(
-                ctx.context.ptr_type(inkwell::AddressSpace::default()),
-                None,
-                &name,
-            );
+            let init = ctx.context.const_string(s_nul.as_bytes(), true);
+            let global = ctx.module.add_global(init.get_type().into(), None, &name);
             global.set_constant(true);
             global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
-            global.set_initializer(&ctx.context.const_string(s_nul.as_bytes(), true));
+            global.set_initializer(&init);
             let ptr = ctx.builder.build_pointer_cast(
                 global.as_pointer_value(),
                 ctx.context.ptr_type(inkwell::AddressSpace::default()),
