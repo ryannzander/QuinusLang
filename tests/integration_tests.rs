@@ -109,6 +109,22 @@ fn test_formatter_roundtrip() {
 }
 
 #[test]
+fn test_os_cwd() {
+    let source = r#"
+bring "os";
+craft main() -> void {
+    make dir: str = os.cwd();
+    print(dir);
+    send;
+}
+"#;
+    let program = parse_with_imports(source, Path::new("."), &[]).unwrap();
+    let annotated = analyze(&program).unwrap();
+    let c_code = codegen::c::generate(&annotated).unwrap();
+    assert!(c_code.contains("getcwd") || c_code.contains("_getcwd"));
+}
+
+#[test]
 fn test_string_interpolation() {
     let source = r#"
 craft main() -> void {
