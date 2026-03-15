@@ -42,4 +42,6 @@ realm tokens {
     eternal EXTERN: i32 = 37;
     eternal REALM: i32 = 38;
     eternal LINK: i32 = 39;
+    eternal ANDAND: i32 = 40;
+    eternal OROR: i32 = 41;
 }

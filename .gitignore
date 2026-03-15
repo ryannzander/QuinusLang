@@ -19,3 +19,6 @@ packages/
 site/
 # Python package build
 *.egg-info/
+QuinusLang-portable.zip
+QuinusLang-portable/
+/installer_output/

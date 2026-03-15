@@ -178,6 +178,8 @@ realm tokens {
     eternal EXTERN: i32 = 37;
     eternal REALM: i32 = 38;
     eternal LINK: i32 = 39;
+    eternal ANDAND: i32 = 40;
+    eternal OROR: i32 = 41;
 }
 // QuinusLang lexer - hand-written tokenizer for bootstrap compiler
 // Output: vec of tokens (link void = token pointer)
@@ -337,6 +339,12 @@ realm lexer {
                 col = col + (1 as usize);
                 skip;
             }
+            check (c == 33 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 61) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.NE, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
+                skip;
+            }
             check (c == 61 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 61) {
                 vec.ptr_push(tok_list, ql_token_create(tokens.EQEQ, line, col, "", 0));
                 i = i + (2 as usize);
@@ -347,6 +355,18 @@ realm lexer {
                 vec.ptr_push(tok_list, ql_token_create(tokens.EQ, line, col, "", 0));
                 i = i + (1 as usize);
                 col = col + (1 as usize);
+                skip;
+            }
+            check (c == 38 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 38) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.ANDAND, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
+                skip;
+            }
+            check (c == 124 && (i + (1 as usize)) < n && ql_str_at(source, i + (1 as usize)) == 124) {
+                vec.ptr_push(tok_list, ql_token_create(tokens.OROR, line, col, "", 0));
+                i = i + (2 as usize);
+                col = col + (2 as usize);
                 skip;
             }
             check (c == 46) {
@@ -629,9 +649,65 @@ realm ast_helpers {
 }
 
 realm parser {
-    // parse_expr: top level, delegates to parse_compare
+    // parse_expr: top level, delegates to parse_logical_or
     craft parse_expr(toks: link void, i: usize) -> link void {
-        send parse_compare(toks, i);
+        send parse_logical_or(toks, i);
+    }
+
+    // parse_logical_or: logical_and || logical_and | ...
+    craft parse_logical_or(toks: link void, i: usize) -> link void {
+        make left_result: link void = parse_logical_and(toks, i);
+        check (left_result == 0) {
+            send 0;
+        }
+        make shift left: link void = vec.ptr_get(left_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx + (1 as usize) < n) {
+            make tok_op: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(tok_op) != tokens.OROR) {
+                stop;
+            }
+            make right_result: link void = parse_logical_and(toks, idx + (1 as usize));
+            check (right_result == 0) {
+                stop;
+            }
+            make right: link void = vec.ptr_get(right_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(right_result, 1));
+            left = ast_helpers.new_expr_binary(left, tokens.OROR, right);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
+    }
+
+    // parse_logical_and: compare && compare | ...
+    craft parse_logical_and(toks: link void, i: usize) -> link void {
+        make left_result: link void = parse_compare(toks, i);
+        check (left_result == 0) {
+            send 0;
+        }
+        make shift left: link void = vec.ptr_get(left_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx + (1 as usize) < n) {
+            make tok_op: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(tok_op) != tokens.ANDAND) {
+                stop;
+            }
+            make right_result: link void = parse_compare(toks, idx + (1 as usize));
+            check (right_result == 0) {
+                stop;
+            }
+            make right: link void = vec.ptr_get(right_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(right_result, 1));
+            left = ast_helpers.new_expr_binary(left, tokens.ANDAND, right);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
     }
 
     // parse_compare: add == add | add != add | add < add | etc.
@@ -1148,13 +1224,38 @@ realm parser {
                 send 0;
             }
             make body: link void = vec.ptr_get(block_result, 1);
+            make shift next_idx: usize = ql_ptr_to_usize(vec.ptr_get(block_result, 0));
             make stmt: link void = vec.ptr_new();
             vec.ptr_push(stmt, ql_usize_to_ptr((ast.STMT_IF as i64) as usize));
             vec.ptr_push(stmt, cond);
             vec.ptr_push(stmt, body);
+            check (next_idx + (1 as usize) < n) {
+                make tok_next: link void = vec.ptr_get(toks, next_idx);
+                check (lexer.token_ty(tok_next) == tokens.OTHERWISE) {
+                    check (next_idx + (4 as usize) >= n) {
+                        make result: link void = vec.ptr_new();
+                        vec.ptr_push(result, stmt);
+                        vec.ptr_push(result, ql_usize_to_ptr(next_idx));
+                        send result;
+                    }
+                    make obrace: link void = vec.ptr_get(toks, next_idx + (1 as usize));
+                    check (lexer.token_ty(obrace) != tokens.LBRACE) {
+                        make result: link void = vec.ptr_new();
+                        vec.ptr_push(result, stmt);
+                        vec.ptr_push(result, ql_usize_to_ptr(next_idx));
+                        send result;
+                    }
+                    make else_result: link void = parse_block(toks, next_idx + (2 as usize));
+                    check (else_result != 0) {
+                        make else_body: link void = vec.ptr_get(else_result, 1);
+                        vec.ptr_push(stmt, else_body);
+                        next_idx = ql_ptr_to_usize(vec.ptr_get(else_result, 0));
+                    }
+                }
+            }
             make result: link void = vec.ptr_new();
             vec.ptr_push(result, stmt);
-            vec.ptr_push(result, ql_usize_to_ptr(ql_ptr_to_usize(vec.ptr_get(block_result, 0))));
+            vec.ptr_push(result, ql_usize_to_ptr(next_idx));
             send result;
         }
         check (ty == tokens.LOOPWHILE) {
@@ -1344,19 +1445,61 @@ realm parser {
             send 0;
         }
         make name: str = lexer.token_str(t1);
+        make params: link void = vec.ptr_new();
         make shift j: usize = i + (3 as usize);
-        make shift depth: i32 = 1;
-        loopwhile (j < n && depth > 0) {
-            make tj: link void = vec.ptr_get(toks, j);
-            make ty: i32 = lexer.token_ty(tj);
-            check (ty == tokens.LPAREN) {
-                depth = depth + 1;
+        make t_j: link void = vec.ptr_get(toks, j);
+        check (lexer.token_ty(t_j) != tokens.RPAREN) {
+            loopwhile (j < n) {
+                make tp: link void = vec.ptr_get(toks, j);
+                check (lexer.token_ty(tp) != tokens.IDENT) {
+                    stop;
+                }
+                make pname: str = lexer.token_str(tp);
+                j = j + (1 as usize);
+                check (j >= n || lexer.token_ty(vec.ptr_get(toks, j)) != tokens.COLON) {
+                    stop;
+                }
+                j = j + (1 as usize);
+                make shift ty_parts: link void = vec.ptr_new();
+                loopwhile (j < n) {
+                    make tt: link void = vec.ptr_get(toks, j);
+                    make ty_t: i32 = lexer.token_ty(tt);
+                    check (ty_t == tokens.COMMA || ty_t == tokens.RPAREN) {
+                        stop;
+                    }
+                    check (ty_t == tokens.LINK || ty_t == tokens.IDENT) {
+                        vec.ptr_push(ty_parts, lexer.token_str(tt));
+                        j = j + (1 as usize);
+                        skip;
+                    }
+                    stop;
+                }
+                make shift pty: str = vec.ptr_get(ty_parts, 0) as str;
+                check (vec.ptr_len(ty_parts) == 2) {
+                    pty = str.concat(vec.ptr_get(ty_parts, 0) as str, str.concat(" ", vec.ptr_get(ty_parts, 1) as str));
+                }
+                make pair: link void = vec.ptr_new();
+                vec.ptr_push(pair, pname);
+                vec.ptr_push(pair, pty);
+                vec.ptr_push(params, pair);
+                check (j >= n) {
+                    stop;
+                }
+                make t_comma: link void = vec.ptr_get(toks, j);
+                check (lexer.token_ty(t_comma) != tokens.COMMA) {
+                    stop;
+                }
+                j = j + (1 as usize);
             }
-            check (ty == tokens.RPAREN) {
-                depth = depth - 1;
-            }
-            j = j + (1 as usize);
         }
+        check (j >= n) {
+            send 0;
+        }
+        make t_rp: link void = vec.ptr_get(toks, j);
+        check (lexer.token_ty(t_rp) != tokens.RPAREN) {
+            send 0;
+        }
+        j = j + (1 as usize);
         check (j + (3 as usize) >= n) {
             send 0;
         }
@@ -1397,6 +1540,7 @@ realm parser {
         make fn_def: link void = vec.ptr_new();
         vec.ptr_push(fn_def, name);
         vec.ptr_push(fn_def, ret_ty);
+        vec.ptr_push(fn_def, params);
         vec.ptr_push(fn_def, body);
         make result: link void = vec.ptr_new();
         vec.ptr_push(result, fn_def);
@@ -1565,6 +1709,7 @@ realm semantic {
         check (tag == ast.EXPR_BINARY) {
             make left: link void = ql_ast_expr_left(expr);
             make right: link void = ql_ast_expr_right(expr);
+            make op: i32 = ql_ast_expr_int(expr) as i32;
             make lt: str = check_expr(left, names, types);
             make rt: str = check_expr(right, names, types);
             check (strlen(lt) == 0 || strlen(rt) == 0) {
@@ -1572,6 +1717,19 @@ realm semantic {
             }
             check (lexer.str_eq(lt, rt)) {
                 send lt;
+            }
+            check (op == tokens.EQEQ || op == tokens.NE || op == tokens.LT || op == tokens.LE || op == tokens.GT || op == tokens.GE) {
+                send "i64";
+            }
+            check (op == tokens.ANDAND || op == tokens.OROR) {
+                send "i64";
+            }
+            check (op == tokens.PLUS || op == tokens.MINUS || op == tokens.STAR || op == tokens.SLASH) {
+                check (lexer.str_eq(lt, "i64") || lexer.str_eq(lt, "int") || lexer.str_eq(lt, "usize")) {
+                    check (lexer.str_eq(rt, "i64") || lexer.str_eq(rt, "int") || lexer.str_eq(rt, "usize")) {
+                        send "i64";
+                    }
+                }
             }
             send "";
         }
@@ -1610,9 +1768,22 @@ realm semantic {
         check (fn_def == 0) {
             send false;
         }
-        make body: link void = vec.ptr_get(fn_def, 2);
+        make params: link void = vec.ptr_get(fn_def, 2);
+        make body: link void = vec.ptr_get(fn_def, 3);
         make names: link void = vec.ptr_new();
         make types: link void = vec.ptr_new();
+        make shift np: usize = 0;
+        check (params != 0) {
+            np = vec.ptr_len(params);
+        }
+        make shift i: usize = 0;
+        loopwhile (i < np) {
+            make pair: link void = vec.ptr_get(params, i);
+            make pname: str = vec.ptr_get(pair, 0) as str;
+            make pty: str = vec.ptr_get(pair, 1) as str;
+            symtab_put(names, types, pname, pty);
+            i = i + (1 as usize);
+        }
         make ok: bool = check_block(body, names, types);
         send ok;
     }
@@ -1647,6 +1818,12 @@ realm semantic {
                 }
                 check (!check_block(body, names, types)) {
                     send false;
+                }
+                check (vec.ptr_len(stmt) >= 4) {
+                    make else_body: link void = vec.ptr_get(stmt, 3);
+                    check (!check_block(else_body, names, types)) {
+                        send false;
+                    }
                 }
             }
             check (tag_val == 13) {
@@ -1727,6 +1904,237 @@ realm fmt {
         send ql_fmt_alloc_si(fmt, s, a);
     }
 }
+// C runtime for ql_* functions - emitted by codegen when building self-contained output
+// Bring "compiler.runtime" from codegen
+
+
+realm runtime {
+    craft emit() -> str {
+        make str_rt: str = "static char* ql_str_trim(const char* s) {
+    if (!s) return (char*)\"\";
+    while (*s == ' ' || *s == '\\t' || *s == '\\n' || *s == '\\r') s++;
+    const char* end = s;
+    while (*end) end++;
+    while (end > s && (end[-1] == ' ' || end[-1] == '\\t' || end[-1] == '\\n' || end[-1] == '\\r')) end--;
+    size_t n = end - s;
+    char* r = (char*)malloc(n + 1);
+    memcpy(r, s, n);
+    r[n] = 0;
+    return r;
+}
+static char* ql_str_concat(const char* a, const char* b) {
+    if (!a) a = \"\";
+    if (!b) b = \"\";
+    size_t la = strlen(a), lb = strlen(b);
+    char* r = (char*)malloc(la + lb + 1);
+    memcpy(r, a, la + 1);
+    strcat(r, b);
+    return r;
+}
+";
+        make vec_rt: str = "typedef struct { void** data; size_t len; size_t cap; } ql_vec_ptr_t;
+typedef struct { char* data; size_t len; size_t cap; } ql_vec_u8_t;
+static void* ql_vec_ptr_new(void) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)malloc(sizeof(ql_vec_ptr_t));
+    v->data = 0; v->len = 0; v->cap = 0;
+    return v;
+}
+static void ql_vec_ptr_push(void* vp, void* ptr) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    if (v->len >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 16;
+        v->data = (void**)realloc(v->data, ncap * sizeof(void*));
+        v->cap = ncap;
+    }
+    v->data[v->len++] = ptr;
+}
+static void* ql_vec_ptr_get(void* vp, size_t i) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    return (i < v->len) ? v->data[i] : 0;
+}
+static size_t ql_vec_ptr_len(void* vp) { return ((ql_vec_ptr_t*)vp)->len; }
+static void ql_vec_ptr_clear(void* vp) { ((ql_vec_ptr_t*)vp)->len = 0; }
+static void ql_vec_ptr_free(void* vp) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    free(v->data);
+    free(v);
+}
+static void* ql_vec_u8_new(void) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)malloc(sizeof(ql_vec_u8_t));
+    v->data = 0; v->len = 0; v->cap = 0;
+    return v;
+}
+static void ql_vec_u8_push(void* vp, unsigned char b) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    if (v->len >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 64;
+        v->data = (char*)realloc(v->data, ncap);
+        v->cap = ncap;
+    }
+    v->data[v->len++] = (char)b;
+}
+static void ql_vec_u8_append(void* vp, const char* s) {
+    if (!s) return;
+    size_t n = strlen(s);
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    while (v->len + n >= v->cap) {
+        size_t ncap = v->cap ? v->cap * 2 : 64;
+        if (ncap < v->len + n + 1) ncap = v->len + n + 1;
+        v->data = (char*)realloc(v->data, ncap);
+        v->cap = ncap;
+    }
+    memcpy(v->data + v->len, s, n);
+    v->len += n;
+}
+static size_t ql_vec_u8_len(void* vp) { return ((ql_vec_u8_t*)vp)->len; }
+static char* ql_vec_u8_to_str(void* vp) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    char* r = (char*)malloc(v->len + 1);
+    memcpy(r, v->data, v->len);
+    r[v->len] = 0;
+    return r;
+}
+static void ql_vec_u8_clear(void* vp) { ((ql_vec_u8_t*)vp)->len = 0; }
+static void ql_vec_u8_free(void* vp) {
+    ql_vec_u8_t* v = (ql_vec_u8_t*)vp;
+    free(v->data);
+    free(v);
+}
+";
+        make map_rt: str = "typedef struct { char* key; void* value; } ql_map_pair_t;
+static void* ql_map_str_ptr_new(void) { return ql_vec_ptr_new(); }
+static void ql_map_str_ptr_put(void* mp, const char* key, void* value) {
+    void** vp = (void**)mp;
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)vp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p && strcmp(p->key, key) == 0) {
+            free(p->key);
+            p->value = value;
+            return;
+        }
+    }
+    ql_map_pair_t* p = (ql_map_pair_t*)malloc(sizeof(ql_map_pair_t));
+    p->key = key ? strdup(key) : 0;
+    p->value = value;
+    ql_vec_ptr_push(mp, p);
+}
+static void* ql_map_str_ptr_get(void* mp, const char* key) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)mp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p && p->key && key && strcmp(p->key, key) == 0)
+            return p->value;
+    }
+    return 0;
+}
+static int ql_map_str_ptr_has(void* mp, const char* key) {
+    return ql_map_str_ptr_get(mp, key) != 0;
+}
+static size_t ql_map_str_ptr_len(void* mp) {
+    return ql_vec_ptr_len(mp);
+}
+static void ql_map_str_ptr_free(void* mp) {
+    ql_vec_ptr_t* v = (ql_vec_ptr_t*)mp;
+    size_t i;
+    for (i = 0; i < v->len; i++) {
+        ql_map_pair_t* p = (ql_map_pair_t*)v->data[i];
+        if (p) { free(p->key); free(p); }
+    }
+    ql_vec_ptr_free(mp);
+}
+";
+        make fmt_rt: str = "static int ql_fmt_sprintf_s(char* buf, size_t size, const char* fmt, const char* s) {
+    return snprintf(buf, size, fmt, s ? s : \"\");
+}
+static int ql_fmt_sprintf_ii(char* buf, size_t size, const char* fmt, long a, long b) {
+    return snprintf(buf, size, fmt, a, b);
+}
+static int ql_fmt_sprintf_si(char* buf, size_t size, const char* fmt, const char* s, long a) {
+    return snprintf(buf, size, fmt, s ? s : \"\", a);
+}
+static int ql_fmt_sprintf_ss(char* buf, size_t size, const char* fmt, const char* a, const char* b) {
+    return snprintf(buf, size, fmt, a ? a : \"\", b ? b : \"\");
+}
+static char* ql_fmt_alloc_i(const char* fmt, long a) {
+    char buf[64];
+    int n = snprintf(buf, sizeof(buf), fmt, a);
+    char* r = (char*)malloc((size_t)n + 1);
+    memcpy(r, buf, (size_t)n + 1);
+    return r;
+}
+static char* ql_fmt_alloc_s(const char* fmt, const char* s) {
+    size_t n = strlen(s ? s : \"\") + 64;
+    char* r = (char*)malloc(n);
+    snprintf(r, n, fmt, s ? s : \"\");
+    return r;
+}
+static char* ql_fmt_alloc_si(const char* fmt, const char* s, long a) {
+    size_t n = strlen(s ? s : \"\") + 64;
+    char* r = (char*)malloc(n);
+    snprintf(r, n, fmt, s ? s : \"\"\", a);
+    return r;
+}
+";
+        make lex_rt: str = "typedef struct { int ty; size_t line; size_t col; char* str_val; long int_val; } ql_token_t;
+static void* ql_token_create(int ty, size_t line, size_t col, const char* str_val, long int_val) {
+    ql_token_t* t = (ql_token_t*)malloc(sizeof(ql_token_t));
+    t->ty = ty; t->line = line; t->col = col;
+    t->str_val = str_val ? strdup(str_val) : 0;
+    t->int_val = int_val;
+    return t;
+}
+static int ql_token_ty(void* t) { return ((ql_token_t*)t)->ty; }
+static size_t ql_token_line(void* t) { return ((ql_token_t*)t)->line; }
+static size_t ql_token_col(void* t) { return ((ql_token_t*)t)->col; }
+static char* ql_token_str(void* t) { return ((ql_token_t*)t)->str_val; }
+static long ql_token_int(void* t) { return ((ql_token_t*)t)->int_val; }
+static void ql_token_free(void* t) {
+    ql_token_t* tok = (ql_token_t*)t;
+    free(tok->str_val);
+    free(tok);
+}
+static int ql_str_at(const char* s, size_t i) {
+    if (!s || i >= strlen(s)) return -1;
+    return (unsigned char)s[i];
+}
+static char* ql_str_sub(const char* s, size_t start, size_t end) {
+    if (!s || start >= end || end > strlen(s)) return strdup(\"\");
+    size_t n = end - start;
+    char* r = (char*)malloc(n + 1);
+    memcpy(r, s + start, n);
+    r[n] = 0;
+    return r;
+}
+static void* ql_usize_to_ptr(size_t u) { return (void*)(uintptr_t)u; }
+static size_t ql_ptr_to_usize(void* p) { return (size_t)(uintptr_t)p; }
+";
+        make ast_rt: str = "typedef struct { int tag; long int_val; char* str_val; void* left; void* right; void* args; } ast_Expr_t;
+static void* ql_ast_expr_alloc(void) {
+    return malloc(sizeof(ast_Expr_t));
+}
+static void ql_ast_expr_set_tag(void* p, int tag) { ((ast_Expr_t*)p)->tag = tag; }
+static void ql_ast_expr_set_int(void* p, long val) { ((ast_Expr_t*)p)->int_val = val; }
+static void ql_ast_expr_set_str(void* p, char* s) { ((ast_Expr_t*)p)->str_val = s; }
+static void ql_ast_expr_set_left(void* p, void* left) { ((ast_Expr_t*)p)->left = left; }
+static void ql_ast_expr_set_right(void* p, void* right) { ((ast_Expr_t*)p)->right = right; }
+static void ql_ast_expr_set_args(void* p, void* args) { ((ast_Expr_t*)p)->args = args; }
+static int ql_ast_expr_tag(void* p) { return ((ast_Expr_t*)p)->tag; }
+static long ql_ast_expr_int(void* p) { return ((ast_Expr_t*)p)->int_val; }
+static char* ql_ast_expr_str(void* p) { return ((ast_Expr_t*)p)->str_val; }
+static void* ql_ast_expr_left(void* p) { return ((ast_Expr_t*)p)->left; }
+static void* ql_ast_expr_right(void* p) { return ((ast_Expr_t*)p)->right; }
+static void* ql_ast_expr_args(void* p) { return ((ast_Expr_t*)p)->args; }
+";
+        make r1: str = str.concat(str_rt, vec_rt);
+        make r2: str = str.concat(r1, map_rt);
+        make r3: str = str.concat(r2, fmt_rt);
+        make r4: str = str.concat(r3, lex_rt);
+        send str.concat(r4, ast_rt);
+    }
+}
 // QuinusLang codegen - walk AST, emit C
 // Minimal: Literal, Ident, Binary (+, -, *, /)
 // Build: cargo run -- build compiler/codegen_test.q
@@ -1741,6 +2149,7 @@ extern craft ql_ast_expr_right(p: link void) -> link void;
 extern craft ql_ast_expr_args(p: link void) -> link void;
 extern craft ql_ptr_to_usize(p: link void) -> usize;
 extern craft strlen(s: str) -> usize;
+extern craft ql_str_at(s: str, i: usize) -> i32;
 
 realm codegen {
     craft op_to_c(op: i32) -> str {
@@ -1754,6 +2163,8 @@ realm codegen {
         check (op == 23) { send "<="; }
         check (op == 24) { send ">"; }
         check (op == 25) { send ">="; }
+        check (op == 40) { send "&&"; }
+        check (op == 41) { send "||"; }
         send "+";
     }
 
@@ -1787,6 +2198,14 @@ realm codegen {
         check (tag == ast.EXPR_CALL) {
             make callee: link void = ql_ast_expr_left(expr);
             make args: link void = ql_ast_expr_args(expr);
+            check (ql_ast_expr_tag(callee) == ast.EXPR_IDENT && lexer.str_eq(ql_ast_expr_str(callee), "__ql_null_at")) {
+                check (vec.ptr_len(args) >= 2) {
+                    make buf_s: str = emit_expr(vec.ptr_get(args, 0));
+                    make pos_s: str = emit_expr(vec.ptr_get(args, 1));
+                    make suffix: str = "] = 0)";
+                    send str.concat("((char*)(", str.concat(buf_s, str.concat("))[", str.concat(pos_s, suffix))));
+                }
+            }
             make callee_s: str = emit_callee(callee);
             make args_s: str = emit_call_args(args);
             send str.concat(callee_s, str.concat("(", str.concat(args_s, ")")));
@@ -1809,6 +2228,9 @@ realm codegen {
             }
             check (lexer.str_eq(target, "i32")) {
                 send str.concat("(int)", inner_s);
+            }
+            check (lexer.str_eq(target, "link void")) {
+                send str.concat("(void*)", inner_s);
             }
             send str.concat(str.concat("(", str.concat(target, ")")), inner_s);
         }
@@ -1851,7 +2273,19 @@ realm codegen {
         send out;
     }
 
+    craft name_is_ql_runtime(name: str) -> bool {
+        check (strlen(name) < 3) { send false; }
+        check (ql_str_at(name, 0) != 113) { send false; }
+        check (ql_str_at(name, 1) != 108) { send false; }
+        check (ql_str_at(name, 2) != 95) { send false; }
+        send true;
+    }
+
     craft emit_externs(externs: link void) -> str {
+        send emit_externs_filtered(externs, false);
+    }
+
+    craft emit_externs_filtered(externs: link void, skip_runtime: bool) -> str {
         check (externs == 0) {
             send "";
         }
@@ -1861,6 +2295,10 @@ realm codegen {
         loopwhile (i < n) {
             make ext: link void = vec.ptr_get(externs, i);
             make name: str = vec.ptr_get(ext, 0) as str;
+            check (skip_runtime && name_is_ql_runtime(name)) {
+                i = i + (1 as usize);
+                skip;
+            }
             make ret_ty: str = vec.ptr_get(ext, 1) as str;
             make shift c_ret: str = "void";
             check (lexer.str_eq(ret_ty, "usize")) {
@@ -1919,7 +2357,8 @@ realm codegen {
             c_name = str.concat(prefix, str.concat("_", name));
         }
         make ret_ty: str = vec.ptr_get(fn_def, 1) as str;
-        make body: link void = vec.ptr_get(fn_def, 2);
+        make params: link void = vec.ptr_get(fn_def, 2);
+        make body: link void = vec.ptr_get(fn_def, 3);
         make shift ret_c: str = "void";
         check (lexer.str_eq(ret_ty, "i64")) {
             ret_c = "long";
@@ -1933,19 +2372,76 @@ realm codegen {
         check (lexer.str_eq(ret_ty, "str")) {
             ret_c = "char*";
         }
+        check (lexer.str_eq(ret_ty, "link void")) {
+            ret_c = "void*";
+        }
+        check (lexer.str_eq(ret_ty, "bool")) {
+            ret_c = "int";
+        }
+        make params_s: str = emit_params(params);
         make body_c: str = emit_block(body);
-        make sig: str = str.concat(ret_c, str.concat(" ", str.concat(c_name, "(void) { ")));
+        make sig: str = str.concat(ret_c, str.concat(" ", str.concat(c_name, str.concat(params_s, " { "))));
         make end: str = str.concat(body_c, " }
 ");
         send str.concat(sig, end);
     }
 
+    craft emit_params(params: link void) -> str {
+        check (params == 0) {
+            send "()";
+        }
+        make n: usize = vec.ptr_len(params);
+        check (n == 0) {
+            send "()";
+        }
+        make shift out: str = "(";
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make pair: link void = vec.ptr_get(params, i);
+            make pname: str = vec.ptr_get(pair, 0) as str;
+            make pty: str = vec.ptr_get(pair, 1) as str;
+            make shift cty: str = "long";
+            check (lexer.str_eq(pty, "str")) {
+                cty = "char*";
+            }
+            check (lexer.str_eq(pty, "i32")) {
+                cty = "int";
+            }
+            check (lexer.str_eq(pty, "i64")) {
+                cty = "long";
+            }
+            check (lexer.str_eq(pty, "usize")) {
+                cty = "size_t";
+            }
+            check (lexer.str_eq(pty, "link void")) {
+                cty = "void*";
+            }
+            check (lexer.str_eq(pty, "bool")) {
+                cty = "int";
+            }
+            check (lexer.str_eq(pty, "u8")) {
+                cty = "unsigned char";
+            }
+            out = str.concat(out, str.concat(cty, str.concat(" ", pname)));
+            i = i + (1 as usize);
+            check (i < n) {
+                out = str.concat(out, ", ");
+            }
+        }
+        send str.concat(out, ")");
+    }
+
     // emit_program_full: emit C for full program (realms + crafts). Prefixes functions with realm name.
     craft emit_program_full(externs: link void, items: link void) -> str {
-        make ext_s: str = emit_externs(externs);
         make header: str = "#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 ";
-        make shift out: str = str.concat(header, ext_s);
+        make rt: str = runtime.emit();
+        make ext_s: str = emit_externs_filtered(externs, true);
+        make shift out: str = str.concat(header, rt);
+        out = str.concat(out, ext_s);
         make n: usize = vec.ptr_len(items);
         make shift i: usize = 0;
         loopwhile (i < n) {
@@ -1953,6 +2449,16 @@ realm codegen {
             make tag: str = vec.ptr_get(item, 0) as str;
             check (lexer.str_eq(tag, "realm")) {
                 make realm_name: str = vec.ptr_get(item, 1) as str;
+                check (lexer.str_eq(realm_name, "tokens")) {
+                    make tok_defs: str = "static const int tokens_CRAFT=0,tokens_MAKE=1,tokens_SEND=2,tokens_CHECK=3,tokens_OTHERWISE=4,tokens_FOR=5,tokens_LOOPWHILE=6,tokens_FOREACH=7,tokens_IN=8,tokens_FORM=9,tokens_STATE=10,tokens_BRING=11,tokens_LPAREN=12,tokens_RPAREN=13,tokens_LBRACE=14,tokens_RBRACE=15,tokens_SEMICOLON=16,tokens_COMMA=17,tokens_COLON=18,tokens_EQ=19,tokens_EQEQ=20,tokens_NE=21,tokens_LT=22,tokens_LE=23,tokens_GT=24,tokens_GE=25,tokens_PLUS=26,tokens_MINUS=27,tokens_STAR=28,tokens_SLASH=29,tokens_IDENT=30,tokens_INT=31,tokens_STR=32,tokens_BOOL=33,tokens_EOF=34,tokens_ARROW=35,tokens_DOT=36,tokens_EXTERN=37,tokens_REALM=38,tokens_LINK=39,tokens_ANDAND=40,tokens_OROR=41;
+";
+                    out = str.concat(out, tok_defs);
+                }
+                check (lexer.str_eq(realm_name, "ast")) {
+                    make ast_defs: str = "static const int ast_EXPR_LITERAL=0,ast_EXPR_IDENT=1,ast_EXPR_BINARY=2,ast_EXPR_CALL=3,ast_EXPR_UNARY=4,ast_EXPR_FIELD=5,ast_EXPR_CAST=6,ast_EXPR_STR=7,ast_STMT_VAR=10,ast_STMT_ASSIGN=11,ast_STMT_IF=12,ast_STMT_WHILE=13,ast_STMT_RETURN=14,ast_STMT_EXPR=15,ast_STMT_BLOCK=16;
+";
+                    out = str.concat(out, ast_defs);
+                }
                 make crafts: link void = vec.ptr_get(item, 2);
                 make nc: usize = vec.ptr_len(crafts);
                 make shift j: usize = 0;
@@ -1980,7 +2486,7 @@ realm codegen {
         make ext_s: str = emit_externs(externs);
         make name: str = vec.ptr_get(fn_def, 0) as str;
         make ret_ty: str = vec.ptr_get(fn_def, 1) as str;
-        make body: link void = vec.ptr_get(fn_def, 2);
+        make body: link void = vec.ptr_get(fn_def, 3);
         make shift ret_c: str = "void";
         check (lexer.str_eq(ret_ty, "i64")) {
             ret_c = "long";
@@ -2019,7 +2525,12 @@ realm codegen {
                 make inner: link void = vec.ptr_get(stmt, 2);
                 make cond_s: str = emit_expr(cond);
                 make body_s: str = emit_block(inner);
-                make line: str = str.concat("if (", str.concat(cond_s, str.concat(") { ", str.concat(body_s, " } "))));
+                make shift line: str = str.concat("if (", str.concat(cond_s, str.concat(") { ", str.concat(body_s, " } "))));
+                check (vec.ptr_len(stmt) >= 4) {
+                    make else_body: link void = vec.ptr_get(stmt, 3);
+                    make else_s: str = emit_block(else_body);
+                    line = str.concat(line, str.concat(" else { ", str.concat(else_s, " } ")));
+                }
                 out = str.concat(out, line);
             }
             check (tag == 13) {
@@ -2047,6 +2558,235 @@ realm codegen {
             i = i + (1 as usize);
         }
         send out;
+    }
+}
+// QuinusLang preprocessor - bring flattening
+// Resolves bring statements recursively, outputs flattened source
+// Port of src/preprocess.rs
+
+
+extern craft strlen(s: str) -> usize;
+extern craft ql_str_at(s: str, i: usize) -> i32;
+extern craft ql_str_sub(s: str, start: usize, end: usize) -> str;
+
+realm preprocess {
+    craft path_join(base: str, part: str) -> str {
+        check (strlen(base) == 0) { send part; }
+        make sep: str = "/";
+        send str.concat(base, str.concat(sep, part));
+    }
+
+    // parse_bring_path: " \"compiler.lexer\" ;" or " compiler.lexer ;" -> "compiler.lexer" or ""
+    craft parse_bring_path_rest(rest: str) -> str {
+        make n: usize = strlen(rest);
+        make shift i: usize = 0;
+        loopwhile (i < n && (ql_str_at(rest, i) == 32 || ql_str_at(rest, i) == 9)) {
+            i = i + (1 as usize);
+        }
+        check (i >= n) { send ""; }
+        make shift path_str: str = "";
+        check (ql_str_at(rest, i) == 34) {
+            i = i + (1 as usize);
+            make start: usize = i;
+            loopwhile (i < n && ql_str_at(rest, i) != 34) {
+                i = i + (1 as usize);
+            }
+            check (i >= n) { send ""; }
+            path_str = ql_str_sub(rest, start, i);
+        }
+        otherwise {
+            make start: usize = i;
+            loopwhile (i < n && ql_str_at(rest, i) != 59 && ql_str_at(rest, i) != 32 && ql_str_at(rest, i) != 9 && ql_str_at(rest, i) != 10) {
+                i = i + (1 as usize);
+            }
+            path_str = ql_str_sub(rest, start, i);
+        }
+        send path_str;
+    }
+
+    // extract_brings: returns vec of path strings like "compiler.lexer"
+    craft extract_brings(source: str) -> link void {
+        make result: link void = vec.ptr_new();
+        make n: usize = strlen(source);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make line_start: usize = i;
+            make shift j: usize = i;
+            loopwhile (j < n && ql_str_at(source, j) != 10) {
+                j = j + (1 as usize);
+            }
+            make line: str = ql_str_sub(source, line_start, j);
+            make shift trim_i: usize = 0;
+            make ln: usize = strlen(line);
+            loopwhile (trim_i < ln && (ql_str_at(line, trim_i) == 32 || ql_str_at(line, trim_i) == 9)) {
+                trim_i = trim_i + (1 as usize);
+            }
+            check (trim_i + (5 as usize) <= ln) {
+                check (ql_str_at(line, trim_i) == 98 && ql_str_at(line, trim_i + (1 as usize)) == 114 && ql_str_at(line, trim_i + (2 as usize)) == 105 && ql_str_at(line, trim_i + (3 as usize)) == 110 && ql_str_at(line, trim_i + (4 as usize)) == 103) {
+                    make rest: str = ql_str_sub(line, trim_i + (5 as usize), ln);
+                    make path_str: str = parse_bring_path_rest(rest);
+                    check (strlen(path_str) > 0) {
+                        vec.ptr_push(result, path_str);
+                    }
+                }
+            }
+            i = j;
+            check (i < n) {
+                i = i + (1 as usize);
+            }
+        }
+        send result;
+    }
+
+    // resolve_path: base_dir + path "compiler.lexer" -> try compiler/lexer.q, etc.
+    craft resolve_path(base_dir: str, path_str: str) -> str {
+        make n: usize = strlen(path_str);
+        make shift i: usize = 0;
+        make shift parts: link void = vec.ptr_new();
+        make shift cur_start: usize = 0;
+        loopwhile (i <= n) {
+            check (i == n || ql_str_at(path_str, i) == 46) {
+                make part: str = ql_str_sub(path_str, cur_start, i);
+                check (strlen(part) > 0) {
+                    vec.ptr_push(parts, part);
+                }
+                cur_start = i + (1 as usize);
+            }
+            i = i + (1 as usize);
+        }
+        make np: usize = vec.ptr_len(parts);
+        check (np == 0) { send ""; }
+        make shift rel: str = vec.ptr_get(parts, 0) as str;
+        make shift k: usize = 1;
+        loopwhile (k < np) {
+            rel = path_join(rel, vec.ptr_get(parts, k) as str);
+            k = k + (1 as usize);
+        }
+        make cand1: str = path_join(base_dir, str.concat(rel, ".q"));
+        check (fs.exists(cand1)) { send cand1; }
+        make shift last_part: str = vec.ptr_get(parts, np - (1 as usize)) as str;
+        make cand2: str = path_join(path_join(base_dir, "src"), str.concat(last_part, ".q"));
+        check (fs.exists(cand2)) { send cand2; }
+        make cand3: str = path_join(path_join(base_dir, "stdlib"), str.concat(rel, ".q"));
+        check (fs.exists(cand3)) { send cand3; }
+        make cand4: str = path_join(path_join(base_dir, rel), "mod.q");
+        check (fs.exists(cand4)) { send cand4; }
+        make cand5: str = path_join(path_join(path_join(base_dir, "stdlib"), rel), "mod.q");
+        check (fs.exists(cand5)) { send cand5; }
+        send "";
+    }
+
+    // content_without_brings: remove bring lines, keep rest
+    craft content_without_brings(source: str) -> str {
+        make n: usize = strlen(source);
+        make shift out: str = "";
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make line_start: usize = i;
+            make shift j: usize = i;
+            loopwhile (j < n && ql_str_at(source, j) != 10) {
+                j = j + (1 as usize);
+            }
+            make line: str = ql_str_sub(source, line_start, j);
+            make shift trim_i: usize = 0;
+            make ln: usize = strlen(line);
+            loopwhile (trim_i < ln && (ql_str_at(line, trim_i) == 32 || ql_str_at(line, trim_i) == 9)) {
+                trim_i = trim_i + (1 as usize);
+            }
+            make shift is_bring: bool = false;
+            check (trim_i + (5 as usize) <= ln) {
+                check (ql_str_at(line, trim_i) == 98 && ql_str_at(line, trim_i + (1 as usize)) == 114 && ql_str_at(line, trim_i + (2 as usize)) == 105 && ql_str_at(line, trim_i + (3 as usize)) == 110 && ql_str_at(line, trim_i + (4 as usize)) == 103) {
+                    make shift k: usize = trim_i + (5 as usize);
+                    loopwhile (k < ln && (ql_str_at(line, k) == 32 || ql_str_at(line, k) == 9)) {
+                        k = k + (1 as usize);
+                    }
+                    loopwhile (k < ln && ql_str_at(line, k) != 59) {
+                        k = k + (1 as usize);
+                    }
+                    check (k < ln) {
+                        is_bring = true;
+                    }
+                }
+            }
+            check (!is_bring) {
+                out = str.concat(out, ql_str_sub(source, line_start, j));
+                check (j < n) {
+                    out = str.concat(out, "
+");
+                }
+            }
+            i = j;
+            check (i < n) {
+                i = i + (1 as usize);
+            }
+        }
+        send out;
+    }
+
+    craft vec_contains(vec: link void, s: str) -> bool {
+        make n: usize = vec.ptr_len(vec);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            check (lexer.str_eq(vec.ptr_get(vec, i) as str, s)) { send true; }
+            i = i + (1 as usize);
+        }
+        send false;
+    }
+
+    craft trim_str(s: str) -> str {
+        make n: usize = strlen(s);
+        make shift start: usize = 0;
+        loopwhile (start < n && (ql_str_at(s, start) == 32 || ql_str_at(s, start) == 9 || ql_str_at(s, start) == 10 || ql_str_at(s, start) == 13)) {
+            start = start + (1 as usize);
+        }
+        make shift end: usize = n;
+        loopwhile (end > start && (ql_str_at(s, end - (1 as usize)) == 32 || ql_str_at(s, end - (1 as usize)) == 9 || ql_str_at(s, end - (1 as usize)) == 10 || ql_str_at(s, end - (1 as usize)) == 13)) {
+            end = end - (1 as usize);
+        }
+        send ql_str_sub(s, start, end);
+    }
+
+    craft flatten_inner(source: str, base_dir: str, seen: link void, output: link void) -> void {
+        make brings: link void = extract_brings(source);
+        make nb: usize = vec.ptr_len(brings);
+        make shift bi: usize = 0;
+        loopwhile (bi < nb) {
+            make path_str: str = vec.ptr_get(brings, bi) as str;
+            check (!vec_contains(seen, path_str)) {
+                vec.ptr_push(seen, path_str);
+                make file_path: str = resolve_path(base_dir, path_str);
+                check (strlen(file_path) > 0) {
+                    make f: link void = fs.open_file(file_path, "r");
+                    check (f != 0) {
+                        make sub_source: str = fs.read_all(f);
+                        fs.close(f);
+                        flatten_inner(sub_source, base_dir, seen, output);
+                    }
+                }
+            }
+            bi = bi + (1 as usize);
+        }
+        make body: str = content_without_brings(source);
+        make trimmed: str = trim_str(body);
+        check (strlen(trimmed) > 0) {
+            make out_str: str = vec.ptr_get(output, 0) as str;
+            make shift new_str: str = trimmed;
+            check (strlen(out_str) > 0) {
+                new_str = str.concat(out_str, str.concat("
+", trimmed));
+            }
+            vec.ptr_clear(output);
+            vec.ptr_push(output, new_str);
+        }
+        send;
+    }
+
+    craft flatten(source: str, base_dir: str) -> str {
+        make seen: link void = vec.ptr_new();
+        make output: link void = vec.ptr_new();
+        vec.ptr_push(output, "");
+        flatten_inner(source, base_dir, seen, output);
+        send vec.ptr_get(output, 0) as str;
     }
 }
 // QuinusLang standard library: Process execution and environment
@@ -2088,15 +2828,17 @@ realm os {
 extern craft strlen(s: str) -> usize;
 
 craft main() -> void {
-    make path: str = "input.q";
+    make path: str = "main.q";
+    make base_dir: str = "..";
     make f: link void = fs.open_file(path, "r");
     check (f == 0) {
-        writeln("Cannot open input.q");
+        writeln("Cannot open input file");
         send;
     }
     make src: str = fs.read_all(f);
     fs.close(f);
-    make parsed: link void = parser.parse(src);
+    make flat: str = preprocess.flatten(src, base_dir);
+    make parsed: link void = parser.parse(flat);
     check (parsed == 0) {
         writeln("Parse failed");
         send;
