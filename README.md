@@ -36,6 +36,12 @@ quinus build compiler/main.q
 
 **Q-only build (after you have quinus.exe):** Download a pre-built `quinus.exe` from [releases](https://github.com/ryannzander/QuinusLang/releases), then run `quinus build compiler/main.q`. No Rust required.
 
+### Windows installer
+
+1. Run `.\build-installer.ps1` (requires [Inno Setup 6](https://jrsoftware.org/isdl.php))
+2. The installer is created in `installer_output/QuinusLang-Setup-0.1.0.exe`
+3. Run the installer to install QuinusLang to `C:\Program Files\QuinusLang\`
+
 ### Install globally (add to PATH)
 
 ```bash
@@ -288,7 +294,7 @@ entry = "src/main.q"
 
 ## Requirements
 
-- **C compiler** — MinGW (`winget install mingw`), MSVC Build Tools, or Clang
+- **C compiler** — MSVC Build Tools (`winget install Microsoft.VisualStudio.2022.BuildTools`)
 - **Rust** — Only for first-time bootstrap (or use a pre-built `quinus.exe` from releases)
 
 ---

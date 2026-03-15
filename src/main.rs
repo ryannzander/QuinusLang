@@ -141,8 +141,9 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
     let opt_level = if release { "2" } else { "0" };
     std::env::set_var("OPT_LEVEL", opt_level);
 
+    // Prefer MSVC on Windows (no MinGW required). Install: winget install Microsoft.VisualStudio.2022.BuildTools
     let targets: Vec<&str> = if std::env::consts::OS == "windows" {
-        vec!["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu"]
+        vec!["x86_64-pc-windows-msvc"]
     } else {
         vec!["x86_64-unknown-linux-gnu"]
     };
@@ -193,7 +194,7 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
     }
 
     anyhow::bail!(
-        "C compiler failed. Install MinGW (winget install mingw), MSVC Build Tools, or Clang.\n\
+        "C compiler failed. Install MSVC Build Tools: winget install Microsoft.VisualStudio.2022.BuildTools\n\
          C source: {}",
         c_path.display()
     )
