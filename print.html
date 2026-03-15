@@ -1,0 +1,1860 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>QuinusLang</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Systems programming language with assembly-level control">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-2459343d.css">
+        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-69f99506.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2a220fe2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">QuinusLang</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/ryannzander/QuinusLang" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="quinuslang"><a class="header" href="#quinuslang">QuinusLang</a></h1>
+<p>A systems programming language with assembly-level control and readable syntax. Compiles to C, then to native executables.</p>
+<h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
+<pre><code class="language-bash">quinus init
+quinus run
+</code></pre>
+<p>Your entry point is <code>src/main.q</code>:</p>
+<pre><code class="language-q">craft main() -&gt; void {
+    print(42);
+    send;
+}
+</code></pre>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
+<ul>
+<li><a href="#installation">Installation</a> — Installer, portable zip, or from source</li>
+<li><a href="#quick-tour">Quick Tour</a> — 15-minute walkthrough</li>
+<li><a href="#quick-reference">Quick Reference</a> — One-page cheat sheet</li>
+<li><a href="#language-reference">Language Reference</a> — Full syntax</li>
+<li><a href="#standard-library-1">Standard Library</a> — Available modules</li>
+<li><a href="#cli-reference">CLI Reference</a> — All commands</li>
+</ul>
+<h2 id="links"><a class="header" href="#links">Links</a></h2>
+<ul>
+<li><a href="https://github.com/ryannzander/QuinusLang">GitHub</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<p>Choose the method that fits your workflow.</p>
+<h2 id="windows-installer"><a class="header" href="#windows-installer">Windows Installer</a></h2>
+<p>Download <code>QuinusLang-Setup.exe</code> from <a href="https://github.com/ryannzander/QuinusLang/releases">releases</a>.</p>
+<ol>
+<li>Run the installer</li>
+<li>Check “Add to PATH” (recommended)</li>
+<li>Run <code>quinus</code> from any terminal</li>
+</ol>
+<h2 id="portable-zip"><a class="header" href="#portable-zip">Portable Zip</a></h2>
+<p>Download <code>QuinusLang-portable.zip</code> from <a href="https://github.com/ryannzander/QuinusLang/releases">releases</a>.</p>
+<ol>
+<li>Extract anywhere</li>
+<li>Run <code>quinus.exe</code> from that folder</li>
+<li>No admin rights or PATH changes required</li>
+</ol>
+<h2 id="from-source"><a class="header" href="#from-source">From Source</a></h2>
+<p>Requires <strong>Rust</strong> and a <strong>C compiler</strong>.</p>
+<pre><code class="language-powershell"># Windows
+git clone https://github.com/ryannzander/QuinusLang.git
+cd QuinusLang
+.\build.ps1
+</code></pre>
+<pre><code class="language-bash"># Linux / macOS
+git clone https://github.com/ryannzander/QuinusLang.git
+cd QuinusLang
+./build.sh
+</code></pre>
+<h2 id="c-compiler"><a class="header" href="#c-compiler">C Compiler</a></h2>
+<p>To compile <code>.q</code> files, you need a C compiler:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Platform</th><th>Command</th></tr>
+</thead>
+<tbody>
+<tr><td>Windows</td><td><code>winget install mingw</code> or install MSVC Build Tools</td></tr>
+<tr><td>macOS</td><td>Xcode Command Line Tools or <code>brew install gcc</code></td></tr>
+<tr><td>Linux</td><td><code>apt install build-essential</code> or equivalent</td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="quick-tour"><a class="header" href="#quick-tour">Quick Tour</a></h1>
+<p>A 15–20 minute walkthrough of QuinusLang.</p>
+<h2 id="1-create-a-project"><a class="header" href="#1-create-a-project">1. Create a Project</a></h2>
+<pre><code class="language-bash">quinus init my-app
+cd my-app
+</code></pre>
+<p>This creates <code>src/main.q</code> and <code>quinus.toml</code>.</p>
+<h2 id="2-variables"><a class="header" href="#2-variables">2. Variables</a></h2>
+<pre><code class="language-q">make x: i32 = 42;        // Immutable
+make shift y: i32 = 10;   // Mutable
+y = y + 1;
+</code></pre>
+<ul>
+<li><code>make</code> — immutable binding</li>
+<li><code>make shift</code> — mutable variable</li>
+</ul>
+<h2 id="3-functions"><a class="header" href="#3-functions">3. Functions</a></h2>
+<pre><code class="language-q">craft add(a: i32, b: i32) -&gt; i32 {
+    send a + b;
+}
+
+craft main() -&gt; void {
+    print(add(1, 2));
+    send;
+}
+</code></pre>
+<ul>
+<li><code>craft</code> — function</li>
+<li><code>send</code> — return</li>
+</ul>
+<h2 id="4-control-flow"><a class="header" href="#4-control-flow">4. Control Flow</a></h2>
+<pre><code class="language-q">check (x &gt; 0) {
+    print("positive");
+}
+otherwise {
+    print("non-positive");
+}
+
+loopwhile (i &lt; 10) {
+    i = i + 1;
+}
+
+foreach item in arr {
+    print(item);
+}
+</code></pre>
+<ul>
+<li><code>check</code> / <code>otherwise</code> — if / else</li>
+<li><code>loopwhile</code> — while loop</li>
+<li><code>foreach</code> — iterate over array</li>
+</ul>
+<h2 id="5-structs"><a class="header" href="#5-structs">5. Structs</a></h2>
+<pre><code class="language-q">form Point {
+    x: i32,
+    y: i32
+}
+
+craft main() -&gt; void {
+    make shift p: Point = ...;
+    p.x = 10;
+    p.y = 20;
+    send;
+}
+</code></pre>
+<h2 id="6-modules"><a class="header" href="#6-modules">6. Modules</a></h2>
+<pre><code class="language-q">bring "std.fs";
+
+craft main() -&gt; void {
+    make f = fs.open_file("data.txt", "r");
+    check (f != 0) {
+        make content = fs.read_all(f);
+        fs.close(f);
+        print(content);
+    }
+    send;
+}
+</code></pre>
+<h2 id="7-build-and-run"><a class="header" href="#7-build-and-run">7. Build and Run</a></h2>
+<pre><code class="language-bash">quinus run
+# or
+quinus build
+.\build\output.exe
+</code></pre>
+<h2 id="next-steps-1"><a class="header" href="#next-steps-1">Next Steps</a></h2>
+<ul>
+<li><a href="#language-reference">Language Reference</a> — Full syntax</li>
+<li><a href="#standard-library-1">Standard Library</a> — Available modules</li>
+<li><a href="#cli-reference">CLI Reference</a> — All commands</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="quick-reference"><a class="header" href="#quick-reference">Quick Reference</a></h1>
+<p>One-page cheat sheet for QuinusLang.</p>
+<h2 id="project-setup"><a class="header" href="#project-setup">Project Setup</a></h2>
+<pre><code class="language-bash">quinus init
+quinus run
+</code></pre>
+<h2 id="variables"><a class="header" href="#variables">Variables</a></h2>
+<pre><code class="language-q">make x: i32 = 42;        // Immutable
+make shift y: i32 = 0;   // Mutable
+y = y + 1;
+</code></pre>
+<h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
+<pre><code class="language-q">craft add(a: i32, b: i32) -&gt; i32 {
+    send a + b;
+}
+</code></pre>
+<h2 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h2>
+<pre><code class="language-q">check (x &gt; 0) { ... }
+otherwise { ... }
+
+loopwhile (i &lt; 10) { ... }
+foreach item in arr { ... }
+for (make i = 0; i &lt; 10; i = i + 1) { ... }
+</code></pre>
+<h2 id="types"><a class="header" href="#types">Types</a></h2>
+<pre><code class="language-q">i32, u64, f64, bool, str, void
+link T, [T; N], (A, B), Result(Ok, Err)
+</code></pre>
+<h2 id="structs-and-enums"><a class="header" href="#structs-and-enums">Structs and Enums</a></h2>
+<pre><code class="language-q">form Point { x: i32, y: i32 }
+state Color { Red, Green, Blue }
+state Option(T) { None, Some(T) }
+</code></pre>
+<h2 id="modules"><a class="header" href="#modules">Modules</a></h2>
+<pre><code class="language-q">bring "std.fs";
+bring "std.math";
+fs.open_file("x.txt", "r");
+</code></pre>
+<h2 id="pointers"><a class="header" href="#pointers">Pointers</a></h2>
+<pre><code class="language-q">make p: link i32 = mark x;
+make v: i32 = reach p;
+</code></pre>
+<h2 id="unsafe"><a class="header" href="#unsafe">Unsafe</a></h2>
+<pre><code class="language-q">hazard {
+    cblock { " raw C " };
+    machine { "asm" };
+}
+</code></pre>
+<h2 id="cli"><a class="header" href="#cli">CLI</a></h2>
+<pre><code class="language-bash">quinus build [--release] [--emit-c] [--define NAME]
+quinus run
+quinus fmt
+quinus watch
+quinus check
+quinus lsp
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="language-reference"><a class="header" href="#language-reference">Language Reference</a></h1>
+<h2 id="key-concepts"><a class="header" href="#key-concepts">Key concepts</a></h2>
+<ul>
+<li><strong>Variables</strong>: <code>make</code> (immutable), <code>make shift</code> (mutable)</li>
+<li><strong>Functions</strong>: <code>craft name(args) -&gt; return_type { ... }</code></li>
+<li><strong>Control</strong>: <code>check</code>/<code>otherwise</code>, <code>loopwhile</code>, <code>foreach</code>, <code>for</code></li>
+<li><strong>Types</strong>: <code>i32</code>, <code>u64</code>, <code>str</code>, <code>link T</code>, <code>[T; N]</code></li>
+<li><strong>Tuple destructuring</strong>: <code>make (a, b) = fn_returns_tuple();</code></li>
+<li><strong>Cast</strong>: <code>expr as type</code> (e.g. <code>x as usize</code>)</li>
+<li><strong>String interpolation</strong>: <code>`Hello, ${name}!`</code> — backtick strings with <code>${expr}</code></li>
+<li><strong>C FFI</strong>: <code>extern craft name(args) -&gt; ret;</code></li>
+</ul>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><code class="language-q">craft add(a: i32, b: i32) -&gt; i32 {
+    send a + b;
+}
+
+craft main() -&gt; void {
+    make x: i32 = add(1, 2);
+    print(`Result: ${x}`);
+    send;
+}
+</code></pre>
+<h2 id="standard-library"><a class="header" href="#standard-library">Standard Library</a></h2>
+<ul>
+<li><strong>fs</strong> — <code>open_file</code>, <code>close</code>, <code>read_all</code>, <code>exists</code>, <code>write_all</code></li>
+<li><strong>os</strong> — <code>run</code>, <code>getenv</code>, <code>cwd</code></li>
+<li><strong>math</strong> — <code>abs_i32</code>, <code>sqrt_f64</code>, <code>add_checked_i32</code>, etc.</li>
+<li><strong>str</strong> — <code>trim</code>, <code>concat</code></li>
+<li><strong>time</strong> — <code>now</code></li>
+<li><strong>rand</strong> — <code>next</code>, <code>seed</code></li>
+<li><strong>arena</strong> — <code>alloc</code>, <code>dealloc</code></li>
+<li><strong>simd</strong> — <code>loadu_ps</code>, <code>storeu_ps</code>, <code>add_ps</code>, <code>mul_ps</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="keywords-reference"><a class="header" href="#keywords-reference">Keywords Reference</a></h1>
+<p>Complete reference for QuinusLang keywords and their usage.</p>
+<h2 id="variables-and-bindings"><a class="header" href="#variables-and-bindings">Variables and Bindings</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>make</code></td><td>Immutable binding</td><td><code>make x: i32 = 42;</code></td></tr>
+<tr><td><code>make shift</code></td><td>Mutable variable</td><td><code>make shift i: i32 = 0;</code></td></tr>
+<tr><td><code>eternal</code></td><td>Compile-time constant</td><td><code>eternal PI: f64 = 3.14159;</code></td></tr>
+<tr><td><code>anchor</code></td><td>Static variable</td><td><code>anchor count: i32 = 0;</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="functions-1"><a class="header" href="#functions-1">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>craft</code></td><td>Define function</td><td><code>craft add(a: i32, b: i32) -&gt; i32 { ... }</code></td></tr>
+<tr><td><code>send</code></td><td>Return from function</td><td><code>send x + y;</code></td></tr>
+<tr><td><code>extern craft</code></td><td>C FFI declaration</td><td><code>extern craft malloc(size: usize) -&gt; link void;</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="control-flow-1"><a class="header" href="#control-flow-1">Control Flow</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>check</code></td><td>If condition</td><td><code>check (x &gt; 0) { ... }</code></td></tr>
+<tr><td><code>otherwise</code></td><td>Else branch</td><td><code>otherwise { ... }</code></td></tr>
+<tr><td><code>loopwhile</code></td><td>While loop</td><td><code>loopwhile (i &lt; 10) { ... }</code></td></tr>
+<tr><td><code>foreach</code></td><td>For-each loop</td><td><code>foreach item in arr { ... }</code></td></tr>
+<tr><td><code>for</code></td><td>C-style for loop</td><td><code>for (init; cond; step) { ... }</code></td></tr>
+<tr><td><code>stop</code></td><td>Break from loop</td><td><code>stop;</code></td></tr>
+<tr><td><code>skip</code></td><td>Continue to next iteration</td><td><code>skip;</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="types-and-structures"><a class="header" href="#types-and-structures">Types and Structures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>form</code></td><td>Struct definition</td><td><code>form Point { x: i32, y: i32 }</code></td></tr>
+<tr><td><code>state</code></td><td>Enum definition</td><td><code>state Color { Red, Green, Blue }</code></td></tr>
+<tr><td><code>fusion</code></td><td>Union definition</td><td><code>fusion Maybe { value: i32 }</code></td></tr>
+<tr><td><code>alias</code></td><td>Type alias</td><td><code>alias Id = u64;</code></td></tr>
+<tr><td><code>impl</code></td><td>Struct methods</td><td><code>impl Point { craft magnitude(self) -&gt; f64 { ... } }</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="modules-1"><a class="header" href="#modules-1">Modules</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>realm</code></td><td>Module definition</td><td><code>realm math { ... }</code></td></tr>
+<tr><td><code>bring</code></td><td>Import module</td><td><code>bring "std.fs";</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="pointers-and-memory"><a class="header" href="#pointers-and-memory">Pointers and Memory</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>link</code></td><td>Pointer type</td><td><code>link i32</code>, <code>link void</code></td></tr>
+<tr><td><code>mark</code></td><td>Address-of</td><td><code>mark x</code></td></tr>
+<tr><td><code>reach</code></td><td>Dereference</td><td><code>reach p</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="unsafe-and-low-level"><a class="header" href="#unsafe-and-low-level">Unsafe and Low-Level</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>hazard</code></td><td>Unsafe block</td><td><code>hazard { ... }</code></td></tr>
+<tr><td><code>machine</code></td><td>Inline assembly</td><td><code>machine { "mov eax, 1" }</code></td></tr>
+<tr><td><code>cblock</code></td><td>Inline C code</td><td><code>cblock { " int x = 0; " }</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="other"><a class="header" href="#other">Other</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Keyword</th><th>Purpose</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>defer</code></td><td>Run at scope exit</td><td><code>defer { cleanup(); }</code></td></tr>
+<tr><td><code>choose</code></td><td>Pattern matching</td><td><code>choose x { Ok(v) =&gt; ... }</code></td></tr>
+<tr><td><code>move</code></td><td>Move expression</td><td><code>make y = move x;</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="types-1"><a class="header" href="#types-1">Types</a></h1>
+<h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>int</code></td><td>Signed integer (platform-dependent, maps to C <code>long</code>)</td></tr>
+<tr><td><code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></td><td>Signed integers</td></tr>
+<tr><td><code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code></td><td>Unsigned integers</td></tr>
+<tr><td><code>usize</code></td><td>Unsigned size</td></tr>
+<tr><td><code>f32</code>, <code>f64</code></td><td>Floats</td></tr>
+<tr><td><code>bool</code></td><td>Boolean</td></tr>
+<tr><td><code>str</code></td><td>String (char*)</td></tr>
+<tr><td><code>void</code></td><td>Unit type</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td>Pointer</td><td><code>link i32</code>, <code>link str</code>, <code>link void</code></td></tr>
+<tr><td>Array (fixed)</td><td><code>[i32; 5]</code></td></tr>
+<tr><td>Array (unsized)</td><td><code>[i32]</code></td></tr>
+<tr><td>Tuple</td><td><code>(i32, str)</code></td></tr>
+<tr><td>Result</td><td><code>Result(i32, str)</code> — Ok or Err</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="type-aliases"><a class="header" href="#type-aliases">Type Aliases</a></h2>
+<pre><code class="language-q">alias Id = u64;
+alias Buffer = [u8; 256];
+</code></pre>
+<h2 id="cast"><a class="header" href="#cast">Cast</a></h2>
+<pre><code class="language-q">make x: i32 = 42;
+make n: usize = x as usize;
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="expressions"><a class="header" href="#expressions">Expressions</a></h1>
+<p>Operators and expression syntax in QuinusLang.</p>
+<h2 id="arithmetic"><a class="header" href="#arithmetic">Arithmetic</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>+</code></td><td>Addition</td><td><code>a + b</code></td></tr>
+<tr><td><code>-</code></td><td>Subtraction</td><td><code>a - b</code></td></tr>
+<tr><td><code>*</code></td><td>Multiplication</td><td><code>a * b</code></td></tr>
+<tr><td><code>/</code></td><td>Division</td><td><code>a / b</code></td></tr>
+<tr><td><code>%</code></td><td>Modulo</td><td><code>a % b</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="comparison"><a class="header" href="#comparison">Comparison</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>==</code></td><td>Equal</td><td><code>a == b</code></td></tr>
+<tr><td><code>!=</code></td><td>Not equal</td><td><code>a != b</code></td></tr>
+<tr><td><code>&lt;</code></td><td>Less than</td><td><code>a &lt; b</code></td></tr>
+<tr><td><code>&lt;=</code></td><td>Less or equal</td><td><code>a &lt;= b</code></td></tr>
+<tr><td><code>&gt;</code></td><td>Greater than</td><td><code>a &gt; b</code></td></tr>
+<tr><td><code>&gt;=</code></td><td>Greater or equal</td><td><code>a &gt;= b</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="logical"><a class="header" href="#logical">Logical</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;&amp;</code></td><td>And</td><td><code>a &amp;&amp; b</code></td></tr>
+<tr><td><code>||</code></td><td>Or</td><td><code>a || b</code></td></tr>
+<tr><td><code>!</code></td><td>Not</td><td><code>!flag</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="other-operators"><a class="header" href="#other-operators">Other Operators</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>as</code></td><td>Cast</td><td><code>x as usize</code></td></tr>
+<tr><td><code>mark</code></td><td>Address-of</td><td><code>mark x</code></td></tr>
+<tr><td><code>reach</code></td><td>Dereference</td><td><code>reach p</code></td></tr>
+<tr><td><code>move</code></td><td>Move</td><td><code>move x</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="literals"><a class="header" href="#literals">Literals</a></h2>
+<pre><code class="language-q">42           // Integer
+3.14         // Float
+true         // Boolean
+false        // Boolean
+"hello"      // String
+`Hello, ${name}!`  // Interpolated string
+</code></pre>
+<h2 id="compound-expressions"><a class="header" href="#compound-expressions">Compound Expressions</a></h2>
+<p><strong>Array access</strong>: <code>arr[i]</code></p>
+<p><strong>Field access</strong>: <code>point.x</code></p>
+<p><strong>Function call</strong>: <code>add(1, 2)</code></p>
+<p><strong>Tuple</strong>: <code>(1, "a", true)</code></p>
+<p><strong>Range</strong>: <code>0..10</code> (exclusive), used in foreach</p>
+<p><strong>Result constructors</strong>: <code>Ok(value)</code>, <code>Err(error)</code></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="control-flow-2"><a class="header" href="#control-flow-2">Control Flow</a></h1>
+<h2 id="conditionals-check-and-otherwise"><a class="header" href="#conditionals-check-and-otherwise">Conditionals: check and otherwise</a></h2>
+<p>Use <code>check</code> for if and <code>otherwise</code> for else:</p>
+<pre><code class="language-q">check (x &gt; 0) {
+    print("positive");
+}
+otherwise {
+    print("non-positive");
+}
+</code></pre>
+<p>The condition must be a boolean expression in parentheses.</p>
+<h2 id="while-loop-loopwhile"><a class="header" href="#while-loop-loopwhile">While Loop: loopwhile</a></h2>
+<pre><code class="language-q">make shift i: i32 = 0;
+loopwhile (i &lt; 10) {
+    print(i);
+    i = i + 1;
+}
+</code></pre>
+<h2 id="for-loop"><a class="header" href="#for-loop">For Loop</a></h2>
+<p>C-style for loop with init, condition, and step:</p>
+<pre><code class="language-q">for (make shift i: i32 = 0; i &lt; 10; i = i + 1) {
+    print(i);
+}
+</code></pre>
+<h2 id="for-each-loop-foreach"><a class="header" href="#for-each-loop-foreach">For-Each Loop: foreach</a></h2>
+<pre><code class="language-q">foreach item in arr {
+    print(item);
+}
+</code></pre>
+<p><code>item</code> is a new variable in each iteration.</p>
+<h2 id="break-and-continue"><a class="header" href="#break-and-continue">Break and Continue</a></h2>
+<ul>
+<li><code>stop</code> — break out of loop</li>
+<li><code>skip</code> — continue to next iteration</li>
+</ul>
+<pre><code class="language-q">loopwhile (true) {
+    check (done) { stop; }
+    check (skip_this) { skip; }
+}
+</code></pre>
+<h2 id="comparison-operators"><a class="header" href="#comparison-operators">Comparison Operators</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operator</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>==</code></td><td>Equal</td></tr>
+<tr><td><code>!=</code></td><td>Not equal</td></tr>
+<tr><td><code>&lt;</code>, <code>&lt;=</code></td><td>Less than, less or equal</td></tr>
+<tr><td><code>&gt;</code>, <code>&gt;=</code></td><td>Greater than, greater or equal</td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="structs-and-enums-1"><a class="header" href="#structs-and-enums-1">Structs and Enums</a></h1>
+<h2 id="structs-form"><a class="header" href="#structs-form">Structs: form</a></h2>
+<pre><code class="language-q">form Point {
+    x: i32,
+    y: i32
+}
+</code></pre>
+<p>Access with the dot operator:</p>
+<pre><code class="language-q">make shift p: Point;
+p.x = 10;
+p.y = 20;
+make shift px: i32 = p.x;
+</code></pre>
+<h2 id="enums-state"><a class="header" href="#enums-state">Enums: state</a></h2>
+<pre><code class="language-q">state Color {
+    Red,
+    Green,
+    Blue
+}
+</code></pre>
+<p>Variants are implicitly 0, 1, 2, …</p>
+<pre><code class="language-q">make shift c: Color = Red;
+check (c == Green) { ... }
+</code></pre>
+<h2 id="unions-fusion"><a class="header" href="#unions-fusion">Unions: fusion</a></h2>
+<p>All fields share the same memory:</p>
+<pre><code class="language-q">fusion Maybe {
+    value: i32
+}
+</code></pre>
+<h2 id="bitfields"><a class="header" href="#bitfields">Bitfields</a></h2>
+<p>Struct fields can specify a bit width for packed storage:</p>
+<pre><code class="language-q">form StatusReg {
+    flags: u32 : 8,
+    mode: u32 : 4,
+    reserved: u32 : 20
+}
+</code></pre>
+<p>Use <code>: N</code> after the type to allocate N bits. Useful for hardware registers and compact data.</p>
+<h2 id="enum-payloads"><a class="header" href="#enum-payloads">Enum Payloads</a></h2>
+<p>Enums can carry data in variants:</p>
+<pre><code class="language-q">state Option(T) {
+    None,
+    Some(T)
+}
+
+state Result(Ok, Err) {
+    Ok(Ok),
+    Err(Err)
+}
+</code></pre>
+<p>Use <code>choose</code> to pattern match and extract payloads.</p>
+<h2 id="struct-methods-impl"><a class="header" href="#struct-methods-impl">Struct Methods: impl</a></h2>
+<p>Add methods to structs with <code>impl</code> blocks:</p>
+<pre><code class="language-q">form Point {
+    x: f64,
+    y: f64
+}
+
+impl Point {
+    craft magnitude(self: Point) -&gt; f64 {
+        send sqrt(self.x * self.x + self.y * self.y);
+    }
+}
+
+craft main() -&gt; void {
+    make p: Point = ...;
+    make m: f64 = p.magnitude();
+    send;
+}
+</code></pre>
+<h2 id="nested-types"><a class="header" href="#nested-types">Nested Types</a></h2>
+<pre><code class="language-q">form Vec2 { x: f64, y: f64 }
+
+form Entity {
+    pos: Vec2,
+    vel: Vec2,
+    id: i32
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="pointers-and-memory-1"><a class="header" href="#pointers-and-memory-1">Pointers and Memory</a></h1>
+<h2 id="pointer-type-link"><a class="header" href="#pointer-type-link">Pointer Type: link</a></h2>
+<pre><code class="language-q">make shift p: link i32;
+make shift s: link str;
+</code></pre>
+<h2 id="address-of-mark"><a class="header" href="#address-of-mark">Address-of: mark</a></h2>
+<pre><code class="language-q">make shift x: i32 = 42;
+make shift p: link i32 = mark x;
+</code></pre>
+<h2 id="dereference-reach"><a class="header" href="#dereference-reach">Dereference: reach</a></h2>
+<pre><code class="language-q">make shift value: i32 = reach p;   // Read
+reach p = 99;                       // Write
+</code></pre>
+<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<pre><code class="language-q">craft main() -&gt; void {
+    make shift x: i32 = 42;
+    make shift p: link i32 = mark x;
+    print(reach p);   // 42
+    reach p = 100;
+    print(x);         // 100
+    send;
+}
+</code></pre>
+<h2 id="null-pointers"><a class="header" href="#null-pointers">Null Pointers</a></h2>
+<p>Use <code>0</code> or a cast when interfacing with C. Dereferencing null is undefined behavior.</p>
+<h2 id="c-mapping"><a class="header" href="#c-mapping">C Mapping</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>QuinusLang</th><th>C</th></tr>
+</thead>
+<tbody>
+<tr><td><code>link T</code></td><td><code>T*</code></td></tr>
+<tr><td><code>mark x</code></td><td><code>&amp;x</code></td></tr>
+<tr><td><code>reach p</code></td><td><code>*p</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="modules-and-ffi"><a class="header" href="#modules-and-ffi">Modules and FFI</a></h1>
+<h2 id="modules-realm"><a class="header" href="#modules-realm">Modules: realm</a></h2>
+<pre><code class="language-q">realm math {
+    craft add(a: i32, b: i32) -&gt; i32 {
+        send a + b;
+    }
+}
+</code></pre>
+<h2 id="imports-bring"><a class="header" href="#imports-bring">Imports: bring</a></h2>
+<pre><code class="language-q">bring "std.fs";
+bring "std.os";
+
+craft main() -&gt; void {
+    make f = fs.open_file("x.txt", "r");
+    os.run("echo hello");
+    send;
+}
+</code></pre>
+<h2 id="c-ffi-extern-craft"><a class="header" href="#c-ffi-extern-craft">C FFI: extern craft</a></h2>
+<p>Call C library functions:</p>
+<pre><code class="language-q">extern craft fopen(path: str, mode: str) -&gt; link void;
+extern craft fclose(stream: link void) -&gt; i32;
+
+craft main() -&gt; void {
+    make f = fopen("data.txt", "r");
+    check (f != 0) {
+        fclose(f);
+    }
+    send;
+}
+</code></pre>
+<h2 id="passing-structs"><a class="header" href="#passing-structs">Passing Structs</a></h2>
+<p>Structs are passed by value by default. Use <code>link T</code> for pointers when interfacing with C.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="compile-flags"><a class="header" href="#compile-flags">Compile Flags</a></h1>
+<p>Module-level conditional compilation with <code>#define</code>, <code>#if</code>, <code>#ifdef</code>, <code>#ifndef</code>, <code>#else</code>, <code>#endif</code>.</p>
+<h2 id="directives"><a class="header" href="#directives">Directives</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Directive</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>#define NAME</code></td><td>Define a symbol for <code>#if</code> / <code>#ifdef</code></td></tr>
+<tr><td><code>#if SYMBOL</code></td><td>Include block if symbol is defined or equals <code>1</code> / <code>true</code></td></tr>
+<tr><td><code>#ifdef SYMBOL</code></td><td>Include block if symbol is defined</td></tr>
+<tr><td><code>#ifndef SYMBOL</code></td><td>Include block if symbol is not defined</td></tr>
+<tr><td><code>#else</code></td><td>Alternate block when condition is false</td></tr>
+<tr><td><code>#endif</code></td><td>End conditional block</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
+<pre><code class="language-q">#define DEBUG
+
+#if DEBUG
+craft main() -&gt; void {
+    make x: i32 = 1;
+    send;
+}
+#else
+craft main() -&gt; void { send; }
+#endif
+</code></pre>
+<h2 id="command-line-defines"><a class="header" href="#command-line-defines">Command-line defines</a></h2>
+<p>Pass symbols via <code>--define</code> when building:</p>
+<pre><code class="language-bash">quinus build --define DEBUG
+quinus build --define RELEASE --define TRACE
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="string-interpolation"><a class="header" href="#string-interpolation">String Interpolation</a></h1>
+<p>Backtick strings allow embedding expressions with <code>${expr}</code>.</p>
+<h2 id="syntax"><a class="header" href="#syntax">Syntax</a></h2>
+<pre><code class="language-q">`Hello, ${name}!`
+`Result: ${x + y}`
+`Path: ${base}/${file}`
+</code></pre>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<p>String interpolation works with <code>print</code>, <code>write</code>, and <code>writeln</code>:</p>
+<pre><code class="language-q">craft main() -&gt; void {
+    make name: str = "World";
+    print(`Hello, ${name}!`);
+    make x: i32 = 42;
+    writeln(`The answer is ${x}`);
+    send;
+}
+</code></pre>
+<h2 id="escaping"><a class="header" href="#escaping">Escaping</a></h2>
+<p>Inside backtick strings:</p>
+<ul>
+<li><code>${expr}</code> — embed expression</li>
+<li>Use <code>\</code> for escape sequences if needed</li>
+<li>Nested quotes: <code>"nested"</code> inside the expression</li>
+</ul>
+<h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
+<pre><code class="language-q">craft greet(name: str, count: i32) -&gt; void {
+    print(`Hello ${name}, you have ${count} items.`);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="result-type"><a class="header" href="#result-type">Result Type</a></h1>
+<p>The <code>Result(OkType, ErrType)</code> type represents a value that is either success (<code>Ok</code>) or failure (<code>Err</code>).</p>
+<h2 id="syntax-1"><a class="header" href="#syntax-1">Syntax</a></h2>
+<pre><code class="language-q">state Result(Ok, Err) {
+    Ok(Ok),
+    Err(Err)
+}
+</code></pre>
+<p>Use <code>Result(i32, str)</code> for a function that returns either an integer or an error string.</p>
+<h2 id="creating-results"><a class="header" href="#creating-results">Creating Results</a></h2>
+<pre><code class="language-q">craft parse(s: str) -&gt; Result(i32, str) {
+    check (s == 0) {
+        send Err("null string");
+    }
+    // ... parse logic ...
+    send Ok(42);
+}
+</code></pre>
+<h2 id="pattern-matching-with-choose"><a class="header" href="#pattern-matching-with-choose">Pattern Matching with choose</a></h2>
+<pre><code class="language-q">choose parse(input) {
+    Ok(value) =&gt; {
+        print(value);
+    }
+    Err(msg) =&gt; {
+        print(`Error: ${msg}`);
+    }
+}
+</code></pre>
+<h2 id="checked-arithmetic"><a class="header" href="#checked-arithmetic">Checked Arithmetic</a></h2>
+<p>The math module provides checked operations that return <code>Result</code> on overflow:</p>
+<pre><code class="language-q">bring "std.math";
+
+craft main() -&gt; void {
+    choose math.add_checked_i32(2_000_000_000, 2_000_000_000) {
+        Ok(sum) =&gt; print(sum);
+        Err(_) =&gt; print("Overflow!");
+    }
+    send;
+}
+</code></pre>
+<h2 id="built-in-checked-functions"><a class="header" href="#built-in-checked-functions">Built-in Checked Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Returns</th><th>On Overflow</th></tr>
+</thead>
+<tbody>
+<tr><td><code>math.add_checked_i32</code></td><td><code>Result(i32, i32)</code></td><td><code>Err(0)</code></td></tr>
+<tr><td><code>math.sub_checked_i32</code></td><td><code>Result(i32, i32)</code></td><td><code>Err(0)</code></td></tr>
+<tr><td><code>math.mul_checked_i32</code></td><td><code>Result(i32, i32)</code></td><td><code>Err(0)</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="pattern-matching-choose"><a class="header" href="#pattern-matching-choose">Pattern Matching: choose</a></h1>
+<p>The <code>choose</code> expression performs pattern matching on enums, tuples, and values.</p>
+<h2 id="basic-syntax"><a class="header" href="#basic-syntax">Basic Syntax</a></h2>
+<pre><code class="language-q">choose expr {
+    Pattern1 =&gt; { statements }
+    Pattern2 =&gt; { statements }
+}
+</code></pre>
+<h2 id="matching-enums"><a class="header" href="#matching-enums">Matching Enums</a></h2>
+<pre><code class="language-q">state Option(T) {
+    None,
+    Some(T)
+}
+
+choose maybe_value {
+    Some(x) =&gt; {
+        print(x);
+    }
+    None =&gt; {
+        print("No value");
+    }
+}
+</code></pre>
+<h2 id="matching-result"><a class="header" href="#matching-result">Matching Result</a></h2>
+<pre><code class="language-q">choose parse_input() {
+    Ok(value) =&gt; {
+        use(value);
+    }
+    Err(msg) =&gt; {
+        print(`Failed: ${msg}`);
+    }
+}
+</code></pre>
+<h2 id="matching-tuples"><a class="header" href="#matching-tuples">Matching Tuples</a></h2>
+<pre><code class="language-q">make (a, b) = get_pair();
+choose (a, b) {
+    (0, 0) =&gt; { print("origin"); }
+    (x, 0) =&gt; { print(`on x-axis: ${x}`); }
+    (0, y) =&gt; { print(`on y-axis: ${y}`); }
+    (x, y) =&gt; { print(`point: ${x}, ${y}`); }
+}
+</code></pre>
+<h2 id="matching-with-bindings"><a class="header" href="#matching-with-bindings">Matching with Bindings</a></h2>
+<p>Patterns can bind variables for use in the arm body:</p>
+<pre><code class="language-q">choose result {
+    Ok(val) =&gt; { make x = val; ... }   // val bound
+    Err(e) =&gt; { make err = e; ... }   // e bound
+}
+</code></pre>
+<h2 id="exhaustiveness"><a class="header" href="#exhaustiveness">Exhaustiveness</a></h2>
+<p>For enums, the compiler checks that all variants are covered. Missing a variant is a compile error.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="defer"><a class="header" href="#defer">Defer</a></h1>
+<p><code>defer</code> runs a block of code when the current scope exits, whether normally or via early return.</p>
+<h2 id="syntax-2"><a class="header" href="#syntax-2">Syntax</a></h2>
+<pre><code class="language-q">defer {
+    // cleanup code
+}
+</code></pre>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
+<p><strong>Resource cleanup</strong>:</p>
+<pre><code class="language-q">craft process_file(path: str) -&gt; void {
+    make f = fs.open_file(path, "r");
+    defer { fs.close(f); }
+    make content = fs.read_all(f);
+    print(content);
+    send;
+}
+</code></pre>
+<p><strong>Unlock mutex</strong> (when sync primitives exist):</p>
+<pre><code class="language-q">defer { mutex.unlock(); }
+// ... critical section ...
+</code></pre>
+<p><strong>Temporary state</strong>:</p>
+<pre><code class="language-q">defer { restore_state(); }
+set_temp_state();
+// ... use temp state ...
+</code></pre>
+<h2 id="execution-order"><a class="header" href="#execution-order">Execution Order</a></h2>
+<p>Multiple <code>defer</code> blocks in the same scope run in <strong>reverse</strong> order (last deferred runs first):</p>
+<pre><code class="language-q">defer { print("first"); }
+defer { print("second"); }
+// When scope exits: "second" then "first"
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="move-semantics"><a class="header" href="#move-semantics">Move Semantics</a></h1>
+<p>The <code>move</code> keyword explicitly transfers ownership of a value.</p>
+<h2 id="syntax-3"><a class="header" href="#syntax-3">Syntax</a></h2>
+<pre><code class="language-q">make y = move x;
+</code></pre>
+<p>After <code>move x</code>, <code>x</code> is considered moved and should not be used again in that scope.</p>
+<h2 id="use-cases-1"><a class="header" href="#use-cases-1">Use Cases</a></h2>
+<ul>
+<li>Transferring ownership of a value to another binding</li>
+<li>Making intent explicit when passing values to functions that take ownership</li>
+<li>Preparing for future ownership/borrow rules</li>
+</ul>
+<h2 id="example-4"><a class="header" href="#example-4">Example</a></h2>
+<pre><code class="language-q">craft main() -&gt; void {
+    make x: i32 = 42;
+    make y = move x;
+    // x is moved; use y instead
+    print(y);
+    send;
+}
+</code></pre>
+<h2 id="semantic-checking"><a class="header" href="#semantic-checking">Semantic Checking</a></h2>
+<p>The compiler tracks moved variables. Using a variable after it has been moved is an error.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="built-in-functions"><a class="header" href="#built-in-functions">Built-in Functions</a></h1>
+<p>QuinusLang provides built-in functions without importing any module.</p>
+<h2 id="output"><a class="header" href="#output">Output</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>print</code></td><td><code>(args...) -&gt; void</code></td><td>Print to stdout (printf-style)</td></tr>
+<tr><td><code>write</code></td><td><code>(args...) -&gt; void</code></td><td>Print without newline</td></tr>
+<tr><td><code>writeln</code></td><td><code>() -&gt; void</code></td><td>Print newline only</td></tr>
+</tbody>
+</table>
+</div>
+<p>Use string interpolation with <code>print</code> and <code>write</code>: <code>print(\</code>x = ${x}`);`</p>
+<h2 id="input"><a class="header" href="#input">Input</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>read</code></td><td><code>() -&gt; i32</code></td><td>Read integer from stdin (scanf)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="length"><a class="header" href="#length">Length</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>len</code></td><td><code>(arr: [T; N]) -&gt; usize</code></td><td>Array length</td></tr>
+<tr><td><code>strlen</code></td><td><code>(s: str) -&gt; usize</code></td><td>String length</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="abort"><a class="header" href="#abort">Abort</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>panic</code></td><td><code>() -&gt; void</code></td><td>Abort program</td></tr>
+<tr><td><code>assert</code></td><td><code>(cond: bool) -&gt; void</code></td><td>Abort if condition is false</td></tr>
+<tr><td><code>assert</code></td><td><code>(cond: bool, msg: str) -&gt; void</code></td><td>Abort with custom message if condition is false</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-5"><a class="header" href="#example-5">Example</a></h2>
+<pre><code class="language-q">craft main() -&gt; void {
+    print(42);
+    writeln();
+    make x: i32 = read();
+    assert(x &gt;= 0);
+    assert(x &lt; 100, "x must be less than 100");
+    print(`You entered ${x}`);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="numeric-literals"><a class="header" href="#numeric-literals">Numeric Literals</a></h1>
+<h2 id="digit-separators"><a class="header" href="#digit-separators">Digit Separators</a></h2>
+<p>Use <code>_</code> to separate digits in numeric literals for readability:</p>
+<pre><code class="language-q">make million: i32 = 1_000_000;
+make bytes: i64 = 1_234_567_890;
+make count: u32 = 999_999;
+</code></pre>
+<p>Underscores are ignored by the compiler. They do not affect the value.</p>
+<h2 id="integer-literals"><a class="header" href="#integer-literals">Integer Literals</a></h2>
+<pre><code class="language-q">42
+-17
+0
+1_000_000
+</code></pre>
+<h2 id="float-literals"><a class="header" href="#float-literals">Float Literals</a></h2>
+<pre><code class="language-q">3.14
+1.5e10
+2.5e-3
+1_000.5
+</code></pre>
+<h2 id="use-cases-2"><a class="header" href="#use-cases-2">Use Cases</a></h2>
+<ul>
+<li>Large constants: <code>1_000_000</code> instead of <code>1000000</code></li>
+<li>Grouping: <code>999_999</code> for readability</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="standard-library-1"><a class="header" href="#standard-library-1">Standard Library</a></h1>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Module</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="#stdfs">fs</a></td><td>File I/O: open_file, close, read_all, exists, write_all</td></tr>
+<tr><td><a href="#stdos">os</a></td><td>Process execution: run</td></tr>
+<tr><td><a href="#stdio">io</a></td><td>Output: println</td></tr>
+<tr><td><a href="#stdmath">math</a></td><td>Math: abs, sqrt, fmin, fmax</td></tr>
+<tr><td><a href="#stdstr">str</a></td><td>String helpers: trim, concat</td></tr>
+<tr><td><a href="#stdvec">vec</a></td><td>Dynamic vectors</td></tr>
+<tr><td><a href="#stdmap">map</a></td><td>Map/dict</td></tr>
+<tr><td><a href="#stdfmt">fmt</a></td><td>String formatting</td></tr>
+<tr><td><a href="#stdtime">time</a></td><td>Time: now</td></tr>
+<tr><td><a href="#stdrand">rand</a></td><td>Random: next, seed</td></tr>
+<tr><td><a href="#stdarena">arena</a></td><td>Allocator: alloc, dealloc</td></tr>
+<tr><td><a href="#stdsimd">simd</a></td><td>SIMD: loadu_ps, storeu_ps, add_ps, mul_ps</td></tr>
+<tr><td><a href="#stdpath">path</a></td><td>Path: join</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
+<pre><code class="language-q">bring "std.fs";
+bring "std.math";
+
+craft main() -&gt; void {
+    make f = fs.open_file("x.txt", "r");
+    make x: f64 = math.sqrt(16.0);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdfs"><a class="header" href="#stdfs">std.fs</a></h1>
+<p>File system operations.</p>
+<h2 id="functions-2"><a class="header" href="#functions-2">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>open_file</code></td><td><code>(path: str, mode: str) -&gt; link void</code></td><td>Open file. Returns null on failure.</td></tr>
+<tr><td><code>close</code></td><td><code>(stream: link void) -&gt; i32</code></td><td>Close file.</td></tr>
+<tr><td><code>read_all</code></td><td><code>(stream: link void) -&gt; str</code></td><td>Read entire file into string.</td></tr>
+<tr><td><code>exists</code></td><td><code>(path: str) -&gt; bool</code></td><td>Check if file exists.</td></tr>
+<tr><td><code>write_all</code></td><td><code>(path: str, content: str) -&gt; i32</code></td><td>Write string to file. Returns 1 on success.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-6"><a class="header" href="#example-6">Example</a></h2>
+<pre><code class="language-q">bring "std.fs";
+
+craft main() -&gt; void {
+    make f = fs.open_file("data.txt", "r");
+    check (f != 0) {
+        make content = fs.read_all(f);
+        fs.close(f);
+        print(content);
+    }
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdos"><a class="header" href="#stdos">std.os</a></h1>
+<p>Process execution and environment.</p>
+<h2 id="functions-3"><a class="header" href="#functions-3">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>run</code></td><td><code>(cmd: str) -&gt; i32</code></td><td>Execute shell command. Returns exit code.</td></tr>
+<tr><td><code>getenv</code></td><td><code>(name: str) -&gt; str</code></td><td>Get environment variable. Returns empty string if not set.</td></tr>
+<tr><td><code>cwd</code></td><td><code>() -&gt; str</code></td><td>Get current working directory.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
+<pre><code class="language-q">bring "std.os";
+
+craft main() -&gt; void {
+    make code: i32 = os.run("echo hello");
+    make home: str = os.getenv("HOME");
+    make dir: str = os.cwd();
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdmath"><a class="header" href="#stdmath">std.math</a></h1>
+<p>Math operations.</p>
+<h2 id="functions-4"><a class="header" href="#functions-4">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>abs_i32</code></td><td><code>(x: i32) -&gt; i32</code></td><td>Absolute value (integer).</td></tr>
+<tr><td><code>abs_f64</code></td><td><code>(x: f64) -&gt; f64</code></td><td>Absolute value (float).</td></tr>
+<tr><td><code>min_i32</code></td><td><code>(a: i32, b: i32) -&gt; i32</code></td><td>Minimum of two integers.</td></tr>
+<tr><td><code>max_i32</code></td><td><code>(a: i32, b: i32) -&gt; i32</code></td><td>Maximum of two integers.</td></tr>
+<tr><td><code>min_f64</code></td><td><code>(a: f64, b: f64) -&gt; f64</code></td><td>Minimum of two floats.</td></tr>
+<tr><td><code>max_f64</code></td><td><code>(a: f64, b: f64) -&gt; f64</code></td><td>Maximum of two floats.</td></tr>
+<tr><td><code>sqrt_f64</code></td><td><code>(x: f64) -&gt; f64</code></td><td>Square root.</td></tr>
+<tr><td><code>add_checked_i32</code></td><td><code>(a: i32, b: i32) -&gt; Result(i32, i32)</code></td><td>Checked addition; <code>Err(0)</code> on overflow.</td></tr>
+<tr><td><code>sub_checked_i32</code></td><td><code>(a: i32, b: i32) -&gt; Result(i32, i32)</code></td><td>Checked subtraction; <code>Err(0)</code> on overflow.</td></tr>
+<tr><td><code>mul_checked_i32</code></td><td><code>(a: i32, b: i32) -&gt; Result(i32, i32)</code></td><td>Checked multiplication; <code>Err(0)</code> on overflow.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-8"><a class="header" href="#example-8">Example</a></h2>
+<pre><code class="language-q">bring "std.math";
+
+craft main() -&gt; void {
+    make x: f64 = math.sqrt_f64(16.0);
+    make m: i32 = math.min_i32(1, 2);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdstr"><a class="header" href="#stdstr">std.str</a></h1>
+<p>String utilities.</p>
+<h2 id="functions-5"><a class="header" href="#functions-5">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>trim</code></td><td><code>(s: str) -&gt; str</code></td><td>Trim whitespace from both ends.</td></tr>
+<tr><td><code>concat</code></td><td><code>(a: str, b: str) -&gt; str</code></td><td>Concatenate two strings.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-9"><a class="header" href="#example-9">Example</a></h2>
+<pre><code class="language-q">bring "std.str";
+
+craft main() -&gt; void {
+    make s: str = str.trim("  hello  ");
+    make t: str = str.concat("a", "b");
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdio"><a class="header" href="#stdio">std.io</a></h1>
+<p>Output helpers.</p>
+<h2 id="functions-6"><a class="header" href="#functions-6">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>println</code></td><td><code>(...) -&gt; void</code></td><td>Print to stdout with newline.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-10"><a class="header" href="#example-10">Example</a></h2>
+<pre><code class="language-q">bring "std.io";
+
+craft main() -&gt; void {
+    io.println("Hello");
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdvec"><a class="header" href="#stdvec">std.vec</a></h1>
+<p>Dynamic vectors (growable arrays).</p>
+<h2 id="functions-7"><a class="header" href="#functions-7">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ptr_new</code></td><td><code>() -&gt; link void</code></td><td>Create new vector of pointers.</td></tr>
+<tr><td><code>ptr_push</code></td><td><code>(v: link void, ptr: link void) -&gt; void</code></td><td>Push element.</td></tr>
+<tr><td><code>ptr_get</code></td><td><code>(v: link void, i: usize) -&gt; link void</code></td><td>Get element at index.</td></tr>
+<tr><td><code>ptr_len</code></td><td><code>(v: link void) -&gt; usize</code></td><td>Length.</td></tr>
+<tr><td><code>ptr_clear</code></td><td><code>(v: link void) -&gt; void</code></td><td>Clear vector.</td></tr>
+<tr><td><code>ptr_free</code></td><td><code>(v: link void) -&gt; void</code></td><td>Free vector.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Similar <code>u8_*</code> variants exist for byte vectors.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdmap"><a class="header" href="#stdmap">std.map</a></h1>
+<p>Map/dictionary (string keys, pointer values).</p>
+<h2 id="functions-8"><a class="header" href="#functions-8">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>str_ptr_new</code></td><td><code>() -&gt; link void</code></td><td>Create new map.</td></tr>
+<tr><td><code>str_ptr_put</code></td><td><code>(m: link void, key: str, value: link void) -&gt; void</code></td><td>Insert or update.</td></tr>
+<tr><td><code>str_ptr_get</code></td><td><code>(m: link void, key: str) -&gt; link void</code></td><td>Get value.</td></tr>
+<tr><td><code>str_ptr_has</code></td><td><code>(m: link void, key: str) -&gt; bool</code></td><td>Check if key exists.</td></tr>
+<tr><td><code>str_ptr_len</code></td><td><code>(m: link void) -&gt; usize</code></td><td>Number of entries.</td></tr>
+<tr><td><code>str_ptr_free</code></td><td><code>(m: link void) -&gt; void</code></td><td>Free map.</td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdfmt"><a class="header" href="#stdfmt">std.fmt</a></h1>
+<p>String formatting (sprintf-style). Uses C printf format specifiers (<code>%d</code>, <code>%s</code>, etc.).</p>
+<h2 id="buffer-based-write-to-existing-buffer"><a class="header" href="#buffer-based-write-to-existing-buffer">Buffer-Based (write to existing buffer)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>sprintf_i</code></td><td><code>(buf: str, size: usize, fmt: str, a: i64) -&gt; i32</code></td><td>Format integer into buffer.</td></tr>
+<tr><td><code>sprintf_s</code></td><td><code>(buf: str, size: usize, fmt: str, s: str) -&gt; i32</code></td><td>Format string into buffer.</td></tr>
+<tr><td><code>sprintf_ii</code></td><td><code>(buf, size, fmt, a: i64, b: i64) -&gt; i32</code></td><td>Format two integers.</td></tr>
+<tr><td><code>sprintf_si</code></td><td><code>(buf, size, fmt, s: str, a: i64) -&gt; i32</code></td><td>Format string and integer.</td></tr>
+<tr><td><code>sprintf_ss</code></td><td><code>(buf, size, fmt, a: str, b: str) -&gt; i32</code></td><td>Format two strings.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="allocating-returns-new-string"><a class="header" href="#allocating-returns-new-string">Allocating (returns new string)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>alloc_i</code></td><td><code>(fmt: str, a: i64) -&gt; str</code></td><td>Format integer, allocate result.</td></tr>
+<tr><td><code>alloc_s</code></td><td><code>(fmt: str, s: str) -&gt; str</code></td><td>Format string, allocate result.</td></tr>
+<tr><td><code>alloc_si</code></td><td><code>(fmt: str, s: str, a: i64) -&gt; str</code></td><td>Format string and integer.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-11"><a class="header" href="#example-11">Example</a></h2>
+<pre><code class="language-q">bring "std.fmt";
+
+craft main() -&gt; void {
+    make s: str = fmt.alloc_i("%d", 42);
+    print(s);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdtime"><a class="header" href="#stdtime">std.time</a></h1>
+<p>Time operations.</p>
+<h2 id="functions-9"><a class="header" href="#functions-9">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>now</code></td><td><code>() -&gt; i64</code></td><td>Seconds since Unix epoch.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-12"><a class="header" href="#example-12">Example</a></h2>
+<pre><code class="language-q">bring "std.time";
+
+craft main() -&gt; void {
+    make t: i64 = time.now();
+    print(t);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdrand"><a class="header" href="#stdrand">std.rand</a></h1>
+<p>Pseudorandom number generation (uses C rand/srand).</p>
+<h2 id="functions-10"><a class="header" href="#functions-10">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>next</code></td><td><code>() -&gt; i32</code></td><td>Next random integer (0 to RAND_MAX).</td></tr>
+<tr><td><code>seed</code></td><td><code>(s: u32) -&gt; void</code></td><td>Seed the generator.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-13"><a class="header" href="#example-13">Example</a></h2>
+<pre><code class="language-q">bring "std.rand";
+
+craft main() -&gt; void {
+    rand.seed(42);
+    make r: i32 = rand.next();
+    print(r);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdarena"><a class="header" href="#stdarena">std.arena</a></h1>
+<p>Simple allocator wrappers (malloc/free).</p>
+<h2 id="functions-11"><a class="header" href="#functions-11">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>alloc</code></td><td><code>(size: usize) -&gt; link void</code></td><td>Allocate bytes</td></tr>
+<tr><td><code>dealloc</code></td><td><code>(ptr: link void) -&gt; void</code></td><td>Free allocation</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-14"><a class="header" href="#example-14">Example</a></h2>
+<pre><code class="language-q">bring "std.arena";
+
+craft main() -&gt; void {
+    make p: link void = arena.alloc(64);
+    arena.dealloc(p);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdsimd"><a class="header" href="#stdsimd">std.simd</a></h1>
+<p>SIMD intrinsics (SSE). Wraps <code>xmmintrin.h</code>.</p>
+<h2 id="functions-12"><a class="header" href="#functions-12">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>loadu_ps(p)</code></td><td>Load 4 floats from unaligned pointer</td></tr>
+<tr><td><code>storeu_ps(p, a)</code></td><td>Store 4 floats to unaligned pointer</td></tr>
+<tr><td><code>add_ps(a, b)</code></td><td>Add 4 floats</td></tr>
+<tr><td><code>mul_ps(a, b)</code></td><td>Multiply 4 floats</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-15"><a class="header" href="#example-15">Example</a></h2>
+<pre><code class="language-q">bring "std.simd";
+
+craft main() -&gt; void {
+    hazard {
+        cblock { " float buf[4] = {1.0f, 2.0f, 3.0f, 4.0f}; " }
+    }
+    // Use simd.loadu_ps, add_ps, mul_ps, storeu_ps with hazard/cblock for setup
+    send;
+}
+</code></pre>
+<p>SIMD requires <code>hazard</code> blocks for buffer setup. The compiler adds <code>#include &lt;xmmintrin.h&gt;</code> when simd is used.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="stdpath"><a class="header" href="#stdpath">std.path</a></h1>
+<p>Path manipulation utilities.</p>
+<h2 id="functions-13"><a class="header" href="#functions-13">Functions</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Signature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>join</code></td><td><code>(a: str, b: str) -&gt; str</code></td><td>Join two path segments with <code>/</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="example-16"><a class="header" href="#example-16">Example</a></h2>
+<pre><code class="language-q">bring "path";
+
+craft main() -&gt; void {
+    make p: str = path.join("usr", "local");
+    make full: str = path.join(p, "bin");
+    print(full);
+    send;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="cli-reference"><a class="header" href="#cli-reference">CLI Reference</a></h1>
+<h2 id="build-and-run"><a class="header" href="#build-and-run">Build and Run</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>quinus build [path]</code></td><td>Compile to executable (default: <code>.</code>)</td></tr>
+<tr><td><code>quinus build --release</code></td><td>Optimized build</td></tr>
+<tr><td><code>quinus build --emit-c</code></td><td>Emit C only, do not compile</td></tr>
+<tr><td><code>quinus build --define NAME</code></td><td>Define for <code>#if</code> / <code>#ifdef</code> (repeatable)</td></tr>
+<tr><td><code>quinus run [path]</code></td><td>Build and run</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="package-management"><a class="header" href="#package-management">Package Management</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>quinus init [path]</code></td><td>Create new package</td></tr>
+<tr><td><code>quinus add NAME [--git URL]</code></td><td>Add dependency</td></tr>
+<tr><td><code>quinus remove NAME</code></td><td>Remove dependency</td></tr>
+<tr><td><code>quinus update</code></td><td>Update dependencies</td></tr>
+<tr><td><code>quinus publish</code></td><td>Publish to registry (validate and tag)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="development"><a class="header" href="#development">Development</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>quinus fmt [path]</code></td><td>Format source files</td></tr>
+<tr><td><code>quinus watch [path]</code></td><td>Rebuild on file changes</td></tr>
+<tr><td><code>quinus check [path]</code></td><td>Parse and type-check only (no codegen)</td></tr>
+<tr><td><code>quinus repl</code></td><td>Interactive REPL (parse and show AST)</td></tr>
+<tr><td><code>quinus lsp</code></td><td>Language Server Protocol (IDE support)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="debug"><a class="header" href="#debug">Debug</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>quinus parse PATH</code></td><td>Parse file and show AST</td></tr>
+<tr><td><code>quinus preprocess PATH</code></td><td>Resolve imports, output flattened source</td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="c-ffi"><a class="header" href="#c-ffi">C FFI</a></h1>
+<p>QuinusLang compiles to C, so calling C is straightforward.</p>
+<h2 id="extern-craft"><a class="header" href="#extern-craft">extern craft</a></h2>
+<p>Declare C functions:</p>
+<pre><code class="language-q">extern craft fopen(path: str, mode: str) -&gt; link void;
+extern craft fclose(stream: link void) -&gt; i32;
+extern craft malloc(size: usize) -&gt; link void;
+extern craft free(ptr: link void) -&gt; void;
+</code></pre>
+<h2 id="calling-conventions"><a class="header" href="#calling-conventions">Calling Conventions</a></h2>
+<ul>
+<li><code>str</code> maps to <code>char*</code></li>
+<li><code>link T</code> maps to <code>T*</code></li>
+<li>Structs are passed by value; use <code>link StructName</code> for pointers</li>
+<li>Return types follow C ABI</li>
+</ul>
+<h2 id="passing-structs-1"><a class="header" href="#passing-structs-1">Passing Structs</a></h2>
+<pre><code class="language-q">form Point { x: i32, y: i32 }
+
+extern craft c_use_point(p: link Point) -&gt; void;
+
+craft main() -&gt; void {
+    make shift pt: Point = ...;
+    c_use_point(mark pt);
+    send;
+}
+</code></pre>
+<h2 id="common-c-types"><a class="header" href="#common-c-types">Common C Types</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>QuinusLang</th><th>C</th></tr>
+</thead>
+<tbody>
+<tr><td><code>i32</code></td><td><code>int32_t</code></td></tr>
+<tr><td><code>u64</code></td><td><code>uint64_t</code></td></tr>
+<tr><td><code>str</code></td><td><code>char*</code></td></tr>
+<tr><td><code>link void</code></td><td><code>void*</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="hazard-and-unsafe"><a class="header" href="#hazard-and-unsafe">Hazard and Unsafe</a></h1>
+<p>Operations that bypass safety must be inside a <code>hazard</code> block.</p>
+<h2 id="hazard-blocks"><a class="header" href="#hazard-blocks">Hazard Blocks</a></h2>
+<pre><code class="language-q">hazard {
+    reach raw_ptr = value;
+    // Unsafe code
+}
+</code></pre>
+<p>This makes it explicit that the code may have undefined behavior if used incorrectly.</p>
+<h2 id="inline-assembly-machine"><a class="header" href="#inline-assembly-machine">Inline Assembly: machine</a></h2>
+<p>Emit raw assembly inside <code>hazard</code>:</p>
+<pre><code class="language-q">hazard {
+    machine { "mov eax, 1" };
+    machine { "nop" };
+}
+</code></pre>
+<p>Each string is one instruction. Syntax is GCC-style (<code>__asm__ __volatile__</code>).</p>
+<h2 id="inline-c-cblock"><a class="header" href="#inline-c-cblock">Inline C: cblock</a></h2>
+<p>Emit raw C code inside <code>hazard</code>:</p>
+<pre><code class="language-q">hazard {
+    cblock { " int x = 0; " };
+    cblock { " printf(\"x = %d\\n\", x); " };
+}
+</code></pre>
+<p>Use for low-level C interop, SIMD setup, or when you need exact control over emitted code.</p>
+<h2 id="platform-support"><a class="header" href="#platform-support">Platform Support</a></h2>
+<ul>
+<li><strong>GCC / Clang</strong>: Full inline assembly support</li>
+<li><strong>MSVC x64</strong>: Inline assembly not supported; instruction is skipped</li>
+</ul>
+<p>Use MinGW or Clang on Windows for assembly.</p>
+<h2 id="use-cases-3"><a class="header" href="#use-cases-3">Use Cases</a></h2>
+<ul>
+<li>Direct hardware access (memory-mapped I/O)</li>
+<li>CPU-specific instructions (SIMD, crypto)</li>
+<li>Kernel and bootloader code</li>
+<li>Performance-critical inner loops</li>
+</ul>
+<h2 id="safety"><a class="header" href="#safety">Safety</a></h2>
+<p>No runtime checks in hazard blocks. Document constraints and invariants.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="embedded-development"><a class="header" href="#embedded-development">Embedded Development</a></h1>
+<p>QuinusLang targets systems programming: kernels, bootloaders, firmware, embedded.</p>
+<h2 id="zero-hidden-runtime"><a class="header" href="#zero-hidden-runtime">Zero Hidden Runtime</a></h2>
+<ul>
+<li>No mandatory allocator</li>
+<li>No hidden initialization</li>
+<li>Compiles to C, then to native</li>
+</ul>
+<h2 id="considerations"><a class="header" href="#considerations">Considerations</a></h2>
+<h3 id="custom-allocators"><a class="header" href="#custom-allocators">Custom Allocators</a></h3>
+<p>Use <code>malloc</code>/<code>free</code> via FFI, or implement your own allocator. No built-in heap required.</p>
+<h3 id="compile-flags-1"><a class="header" href="#compile-flags-1">Compile Flags</a></h3>
+<p>Use conditional compilation (when available) for target-specific code:</p>
+<pre><code class="language-q">#if TARGET == "arm"
+    // ARM-specific
+#endif
+</code></pre>
+<h3 id="bitfields-1"><a class="header" href="#bitfields-1">Bitfields</a></h3>
+<p>For hardware registers, use structs with explicit bit width:</p>
+<pre><code class="language-q">form StatusReg {
+    flags: u32 : 8,
+    mode: u32 : 4,
+    reserved: u32 : 20,
+}
+</code></pre>
+<h3 id="minimal-stdlib"><a class="header" href="#minimal-stdlib">Minimal Stdlib</a></h3>
+<p>Import only what you need. <code>bring "std.fs"</code> pulls in file I/O; omit it for bare-metal.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="contributing-to-quinuslang"><a class="header" href="#contributing-to-quinuslang">Contributing to QuinusLang</a></h1>
+<p>Thank you for your interest in contributing to QuinusLang!</p>
+<h2 id="building"><a class="header" href="#building">Building</a></h2>
+<h3 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h3>
+<ul>
+<li><strong>Rust</strong> — Install from <a href="https://rustup.rs">rustup.rs</a></li>
+<li><strong>C compiler</strong> — GCC, Clang, or MSVC (for compiling emitted C code)</li>
+</ul>
+<h3 id="build"><a class="header" href="#build">Build</a></h3>
+<pre><code class="language-bash">cargo build
+</code></pre>
+<p>Release build:</p>
+<pre><code class="language-bash">cargo build --release
+</code></pre>
+<p>The compiler binary will be at <code>target/release/quinus</code> (or <code>quinus.exe</code> on Windows).</p>
+<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
+<pre><code class="language-bash">cargo test
+</code></pre>
+<h2 id="development-workflow"><a class="header" href="#development-workflow">Development Workflow</a></h2>
+<ol>
+<li><strong>Fork</strong> the repository</li>
+<li><strong>Create a branch</strong> — <code>feature/your-feature</code> or <code>fix/your-fix</code></li>
+<li><strong>Make changes</strong> — Follow existing code style</li>
+<li><strong>Run tests</strong> — <code>cargo test</code></li>
+<li><strong>Submit a PR</strong> — Describe your changes clearly</li>
+</ol>
+<h2 id="commit-conventions"><a class="header" href="#commit-conventions">Commit Conventions</a></h2>
+<p>We use <a href="https://www.conventionalcommits.org/">Conventional Commits</a>:</p>
+<ul>
+<li><code>feat:</code> — New feature</li>
+<li><code>fix:</code> — Bug fix</li>
+<li><code>docs:</code> — Documentation only</li>
+<li><code>test:</code> — Adding or updating tests</li>
+<li><code>refactor:</code> — Code change that neither fixes a bug nor adds a feature</li>
+<li><code>chore:</code> — Maintenance tasks</li>
+</ul>
+<p>Example: <code>feat(parser): add extern declarations</code></p>
+<h2 id="code-style"><a class="header" href="#code-style">Code Style</a></h2>
+<ul>
+<li>Follow Rust standard formatting: <code>cargo fmt</code></li>
+<li>Run clippy: <code>cargo clippy</code></li>
+</ul>
+<h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
+<ul>
+<li><code>src/</code> — Compiler source (lexer, parser, semantic, codegen)</li>
+<li><code>stdlib/</code> — Standard library modules (fs, os, math, arena, simd, etc.)</li>
+<li><code>docs/</code> — Documentation</li>
+<li><code>tests/</code> — Integration tests</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="quinuslang-architecture"><a class="header" href="#quinuslang-architecture">QuinusLang Architecture</a></h1>
+<h2 id="compiler-pipeline"><a class="header" href="#compiler-pipeline">Compiler Pipeline</a></h2>
+<ol>
+<li><strong>Lexer</strong> - Tokenizes source into tokens (identifiers, keywords, literals, operators)</li>
+<li><strong>Parser</strong> - Builds AST from token stream (recursive descent)</li>
+<li><strong>Semantic Analysis</strong> - Type checking, symbol resolution</li>
+<li><strong>Code Generator</strong> - Emits C code (primary backend)</li>
+</ol>
+<h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
+<ul>
+<li><strong>C backend</strong> - Transpiles to portable C, compiled with system compiler (GCC, Clang, MSVC)</li>
+<li>Emits C source to <code>build/output.c</code>, then invokes the C compiler to produce executables</li>
+</ul>
+<h2 id="package-manager"><a class="header" href="#package-manager">Package Manager</a></h2>
+<ul>
+<li><code>quinus.toml</code> - Manifest with package metadata and dependencies</li>
+<li><code>quinus.lock</code> - Lock file for reproducible builds</li>
+<li>Resolves dependencies from registry or Git</li>
+</ul>
+<h2 id="output-1"><a class="header" href="#output-1">Output</a></h2>
+<ul>
+<li>Compiles to C, then to native executables via system C compiler</li>
+<li>No NASM or separate linker required</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-c2a407aa.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>
