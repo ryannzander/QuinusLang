@@ -77,9 +77,65 @@ realm ast_helpers {
 }
 
 realm parser {
-    // parse_expr: top level, delegates to parse_compare
+    // parse_expr: top level, delegates to parse_logical_or
     craft parse_expr(toks: link void, i: usize) -> link void {
-        send parse_compare(toks, i);
+        send parse_logical_or(toks, i);
+    }
+
+    // parse_logical_or: logical_and || logical_and | ...
+    craft parse_logical_or(toks: link void, i: usize) -> link void {
+        make left_result: link void = parse_logical_and(toks, i);
+        check (left_result == 0) {
+            send 0;
+        }
+        make shift left: link void = vec.ptr_get(left_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx + (1 as usize) < n) {
+            make tok_op: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(tok_op) != tokens.OROR) {
+                stop;
+            }
+            make right_result: link void = parse_logical_and(toks, idx + (1 as usize));
+            check (right_result == 0) {
+                stop;
+            }
+            make right: link void = vec.ptr_get(right_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(right_result, 1));
+            left = ast_helpers.new_expr_binary(left, tokens.OROR, right);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
+    }
+
+    // parse_logical_and: compare && compare | ...
+    craft parse_logical_and(toks: link void, i: usize) -> link void {
+        make left_result: link void = parse_compare(toks, i);
+        check (left_result == 0) {
+            send 0;
+        }
+        make shift left: link void = vec.ptr_get(left_result, 0);
+        make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
+        make n: usize = vec.ptr_len(toks);
+        loopwhile (idx + (1 as usize) < n) {
+            make tok_op: link void = vec.ptr_get(toks, idx);
+            check (lexer.token_ty(tok_op) != tokens.ANDAND) {
+                stop;
+            }
+            make right_result: link void = parse_compare(toks, idx + (1 as usize));
+            check (right_result == 0) {
+                stop;
+            }
+            make right: link void = vec.ptr_get(right_result, 0);
+            idx = ql_ptr_to_usize(vec.ptr_get(right_result, 1));
+            left = ast_helpers.new_expr_binary(left, tokens.ANDAND, right);
+        }
+        make result: link void = vec.ptr_new();
+        vec.ptr_push(result, left);
+        vec.ptr_push(result, ql_usize_to_ptr(idx));
+        send result;
     }
 
     // parse_compare: add == add | add != add | add < add | etc.
@@ -596,13 +652,38 @@ realm parser {
                 send 0;
             }
             make body: link void = vec.ptr_get(block_result, 1);
+            make shift next_idx: usize = ql_ptr_to_usize(vec.ptr_get(block_result, 0));
             make stmt: link void = vec.ptr_new();
             vec.ptr_push(stmt, ql_usize_to_ptr((ast.STMT_IF as i64) as usize));
             vec.ptr_push(stmt, cond);
             vec.ptr_push(stmt, body);
+            check (next_idx + (1 as usize) < n) {
+                make tok_next: link void = vec.ptr_get(toks, next_idx);
+                check (lexer.token_ty(tok_next) == tokens.OTHERWISE) {
+                    check (next_idx + (4 as usize) >= n) {
+                        make result: link void = vec.ptr_new();
+                        vec.ptr_push(result, stmt);
+                        vec.ptr_push(result, ql_usize_to_ptr(next_idx));
+                        send result;
+                    }
+                    make obrace: link void = vec.ptr_get(toks, next_idx + (1 as usize));
+                    check (lexer.token_ty(obrace) != tokens.LBRACE) {
+                        make result: link void = vec.ptr_new();
+                        vec.ptr_push(result, stmt);
+                        vec.ptr_push(result, ql_usize_to_ptr(next_idx));
+                        send result;
+                    }
+                    make else_result: link void = parse_block(toks, next_idx + (2 as usize));
+                    check (else_result != 0) {
+                        make else_body: link void = vec.ptr_get(else_result, 1);
+                        vec.ptr_push(stmt, else_body);
+                        next_idx = ql_ptr_to_usize(vec.ptr_get(else_result, 0));
+                    }
+                }
+            }
             make result: link void = vec.ptr_new();
             vec.ptr_push(result, stmt);
-            vec.ptr_push(result, ql_usize_to_ptr(ql_ptr_to_usize(vec.ptr_get(block_result, 0))));
+            vec.ptr_push(result, ql_usize_to_ptr(next_idx));
             send result;
         }
         check (ty == tokens.LOOPWHILE) {
@@ -792,19 +873,61 @@ realm parser {
             send 0;
         }
         make name: str = lexer.token_str(t1);
+        make params: link void = vec.ptr_new();
         make shift j: usize = i + (3 as usize);
-        make shift depth: i32 = 1;
-        loopwhile (j < n && depth > 0) {
-            make tj: link void = vec.ptr_get(toks, j);
-            make ty: i32 = lexer.token_ty(tj);
-            check (ty == tokens.LPAREN) {
-                depth = depth + 1;
+        make t_j: link void = vec.ptr_get(toks, j);
+        check (lexer.token_ty(t_j) != tokens.RPAREN) {
+            loopwhile (j < n) {
+                make tp: link void = vec.ptr_get(toks, j);
+                check (lexer.token_ty(tp) != tokens.IDENT) {
+                    stop;
+                }
+                make pname: str = lexer.token_str(tp);
+                j = j + (1 as usize);
+                check (j >= n || lexer.token_ty(vec.ptr_get(toks, j)) != tokens.COLON) {
+                    stop;
+                }
+                j = j + (1 as usize);
+                make shift ty_parts: link void = vec.ptr_new();
+                loopwhile (j < n) {
+                    make tt: link void = vec.ptr_get(toks, j);
+                    make ty_t: i32 = lexer.token_ty(tt);
+                    check (ty_t == tokens.COMMA || ty_t == tokens.RPAREN) {
+                        stop;
+                    }
+                    check (ty_t == tokens.LINK || ty_t == tokens.IDENT) {
+                        vec.ptr_push(ty_parts, lexer.token_str(tt));
+                        j = j + (1 as usize);
+                        skip;
+                    }
+                    stop;
+                }
+                make shift pty: str = vec.ptr_get(ty_parts, 0) as str;
+                check (vec.ptr_len(ty_parts) == 2) {
+                    pty = str.concat(vec.ptr_get(ty_parts, 0) as str, str.concat(" ", vec.ptr_get(ty_parts, 1) as str));
+                }
+                make pair: link void = vec.ptr_new();
+                vec.ptr_push(pair, pname);
+                vec.ptr_push(pair, pty);
+                vec.ptr_push(params, pair);
+                check (j >= n) {
+                    stop;
+                }
+                make t_comma: link void = vec.ptr_get(toks, j);
+                check (lexer.token_ty(t_comma) != tokens.COMMA) {
+                    stop;
+                }
+                j = j + (1 as usize);
             }
-            check (ty == tokens.RPAREN) {
-                depth = depth - 1;
-            }
-            j = j + (1 as usize);
         }
+        check (j >= n) {
+            send 0;
+        }
+        make t_rp: link void = vec.ptr_get(toks, j);
+        check (lexer.token_ty(t_rp) != tokens.RPAREN) {
+            send 0;
+        }
+        j = j + (1 as usize);
         check (j + (3 as usize) >= n) {
             send 0;
         }
@@ -845,6 +968,7 @@ realm parser {
         make fn_def: link void = vec.ptr_new();
         vec.ptr_push(fn_def, name);
         vec.ptr_push(fn_def, ret_ty);
+        vec.ptr_push(fn_def, params);
         vec.ptr_push(fn_def, body);
         make result: link void = vec.ptr_new();
         vec.ptr_push(result, fn_def);

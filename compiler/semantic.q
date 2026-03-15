@@ -171,6 +171,12 @@ realm semantic {
                 check (!check_block(body, names, types)) {
                     send false;
                 }
+                check (vec.ptr_len(stmt) >= 4) {
+                    make else_body: link void = vec.ptr_get(stmt, 3);
+                    check (!check_block(else_body, names, types)) {
+                        send false;
+                    }
+                }
             }
             check (tag_val == 13) {
                 make cond: link void = vec.ptr_get(stmt, 1);
