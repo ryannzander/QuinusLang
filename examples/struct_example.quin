@@ -1,0 +1,9 @@
+struct Point {
+    x: int,
+    y: int
+}
+
+fn main() -> void {
+    var x: int = 0;
+    return;
+}

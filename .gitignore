@@ -1,0 +1,14 @@
+/target
+/build
+*.exe
+*.o
+*.obj
+*.asm
+*.s
+Cargo.lock
+.idea/
+.vscode/
+*.log
+
+# Package manager
+packages/

@@ -1,0 +1,16 @@
+[package]
+name = "quinuslang"
+version = "0.1.0"
+edition = "2021"
+authors = ["QuinusLang"]
+description = "A fully functional compilable programming language"
+
+[[bin]]
+name = "quinus"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+thiserror = "1.0"
+anyhow = "1.0"
+logos = "0.14"
