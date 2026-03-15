@@ -8,6 +8,7 @@ use std::process::Command;
 #[derive(Parser)]
 #[command(name = "quinus")]
 #[command(about = "QuinusLang compiler and package manager")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
