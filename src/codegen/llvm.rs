@@ -591,9 +591,9 @@ fn emit_builtin_call<'ctx>(
             };
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let init = ctx.context.const_string(fmt.as_bytes(), true);
-            let fmt_global =
-                ctx.module
-                    .add_global(init.get_type(), None, &format!("fmt_{}", n));
+            let fmt_global = ctx
+                .module
+                .add_global(init.get_type(), None, &format!("fmt_{}", n));
             fmt_global.set_constant(true);
             fmt_global.set_initializer(&init);
             let fmt_ptr =
