@@ -5,6 +5,7 @@
 bring "vec";
 bring "compiler.ast";
 bring "compiler.lexer";
+bring "compiler.tokens";
 
 extern craft ql_ast_expr_tag(p: link void) -> i32;
 extern craft ql_ptr_to_usize(p: link void) -> usize;
@@ -60,6 +61,7 @@ realm semantic {
         check (tag == ast.EXPR_BINARY) {
             make left: link void = ql_ast_expr_left(expr);
             make right: link void = ql_ast_expr_right(expr);
+            make op: i32 = ql_ast_expr_int(expr) as i32;
             make lt: str = check_expr(left, names, types);
             make rt: str = check_expr(right, names, types);
             check (strlen(lt) == 0 || strlen(rt) == 0) {
@@ -67,6 +69,16 @@ realm semantic {
             }
             check (lexer.str_eq(lt, rt)) {
                 send lt;
+            }
+            check (op == tokens.EQEQ || op == tokens.NE || op == tokens.LT || op == tokens.LE || op == tokens.GT || op == tokens.GE) {
+                send "i64";
+            }
+            check (op == tokens.PLUS || op == tokens.MINUS || op == tokens.STAR || op == tokens.SLASH) {
+                check (lexer.str_eq(lt, "i64") || lexer.str_eq(lt, "int") || lexer.str_eq(lt, "usize")) {
+                    check (lexer.str_eq(rt, "i64") || lexer.str_eq(rt, "int") || lexer.str_eq(rt, "usize")) {
+                        send "i64";
+                    }
+                }
             }
             send "";
         }

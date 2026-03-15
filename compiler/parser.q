@@ -133,7 +133,6 @@ realm parser {
         }
         make shift left: link void = vec.ptr_get(left_result, 0);
         make shift idx: usize = ql_ptr_to_usize(vec.ptr_get(left_result, 1));
-        make n: usize = vec.ptr_len(toks);
         loopwhile (idx + (1 as usize) < n) {
             make tok_op: link void = vec.ptr_get(toks, idx);
             make ty_op: i32 = lexer.token_ty(tok_op);
