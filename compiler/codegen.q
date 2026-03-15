@@ -7,6 +7,7 @@ bring "fmt";
 bring "str";
 bring "compiler.ast";
 bring "compiler.lexer";
+bring "compiler.runtime";
 
 extern craft ql_ast_expr_tag(p: link void) -> i32;
 extern craft ql_ptr_to_usize(p: link void) -> usize;
@@ -17,6 +18,7 @@ extern craft ql_ast_expr_right(p: link void) -> link void;
 extern craft ql_ast_expr_args(p: link void) -> link void;
 extern craft ql_ptr_to_usize(p: link void) -> usize;
 extern craft strlen(s: str) -> usize;
+extern craft ql_str_at(s: str, i: usize) -> i32;
 
 realm codegen {
     craft op_to_c(op: i32) -> str {
@@ -65,6 +67,14 @@ realm codegen {
         check (tag == ast.EXPR_CALL) {
             make callee: link void = ql_ast_expr_left(expr);
             make args: link void = ql_ast_expr_args(expr);
+            check (ql_ast_expr_tag(callee) == ast.EXPR_IDENT && lexer.str_eq(ql_ast_expr_str(callee), "__ql_null_at")) {
+                check (vec.ptr_len(args) >= 2) {
+                    make buf_s: str = emit_expr(vec.ptr_get(args, 0));
+                    make pos_s: str = emit_expr(vec.ptr_get(args, 1));
+                    make suffix: str = "] = 0)";
+                    send str.concat("((char*)(", str.concat(buf_s, str.concat("))[", str.concat(pos_s, suffix))));
+                }
+            }
             make callee_s: str = emit_callee(callee);
             make args_s: str = emit_call_args(args);
             send str.concat(callee_s, str.concat("(", str.concat(args_s, ")")));
@@ -132,7 +142,19 @@ realm codegen {
         send out;
     }
 
+    craft name_is_ql_runtime(name: str) -> bool {
+        check (strlen(name) < 3) { send false; }
+        check (ql_str_at(name, 0) != 113) { send false; }
+        check (ql_str_at(name, 1) != 108) { send false; }
+        check (ql_str_at(name, 2) != 95) { send false; }
+        send true;
+    }
+
     craft emit_externs(externs: link void) -> str {
+        send emit_externs_filtered(externs, false);
+    }
+
+    craft emit_externs_filtered(externs: link void, skip_runtime: bool) -> str {
         check (externs == 0) {
             send "";
         }
@@ -142,6 +164,10 @@ realm codegen {
         loopwhile (i < n) {
             make ext: link void = vec.ptr_get(externs, i);
             make name: str = vec.ptr_get(ext, 0) as str;
+            check (skip_runtime && name_is_ql_runtime(name)) {
+                i = i + (1 as usize);
+                skip;
+            }
             make ret_ty: str = vec.ptr_get(ext, 1) as str;
             make shift c_ret: str = "void";
             check (lexer.str_eq(ret_ty, "usize")) {
@@ -276,13 +302,15 @@ realm codegen {
 
     // emit_program_full: emit C for full program (realms + crafts). Prefixes functions with realm name.
     craft emit_program_full(externs: link void, items: link void) -> str {
-        make ext_s: str = emit_externs(externs);
         make header: str = "#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 ";
-        make shift out: str = str.concat(header, ext_s);
+        make rt: str = runtime.emit();
+        make ext_s: str = emit_externs_filtered(externs, true);
+        make shift out: str = str.concat(header, rt);
+        out = str.concat(out, ext_s);
         make n: usize = vec.ptr_len(items);
         make shift i: usize = 0;
         loopwhile (i < n) {
