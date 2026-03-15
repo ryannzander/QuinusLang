@@ -12,43 +12,46 @@ A systems programming language with assembly-level control and readable syntax. 
 
 ---
 
-## Installation
+## Get started (easiest)
 
-### From source
+| Option | Steps |
+|--------|-------|
+| **Installer** | Download `QuinusLang-Setup.exe` from [releases](https://github.com/ryannzander/QuinusLang/releases) → Run it → Check "Add to PATH" → Done. Run `quinus` from any terminal. |
+| **Portable** | Download `QuinusLang-portable.zip` → Extract anywhere → Run `quinus.exe` from that folder. |
+| **Build from source** | `git clone` → `.\build.ps1` → Done. |
 
-**First build (requires Rust for bootstrap):**
-
-```bash
-git clone https://github.com/ryannzander/QuinusLang.git
-cd QuinusLang
-./build.ps1   # Windows
-# or
-./build.sh    # Linux/macOS
+**To compile `.q` files** you need a C compiler (one command):
+```powershell
+winget install mingw
 ```
 
-The build script uses Rust once to produce the initial `quinus.exe`, then uses the Q-built compiler. Alternatively:
+---
 
-```bash
-cargo build --release
-quinus build compiler/main.q
-# Output: compiler/build/output.exe (copy to quinus.exe if desired)
-```
-
-**Q-only build (after you have quinus.exe):** Download a pre-built `quinus.exe` from [releases](https://github.com/ryannzander/QuinusLang/releases), then run `quinus build compiler/main.q`. No Rust required.
+## Installation (detailed)
 
 ### Windows installer
 
-1. Run `.\build-installer.ps1` (requires [Inno Setup 6](https://jrsoftware.org/isdl.php))
-2. The installer is created in `installer_output/QuinusLang-Setup-0.1.0.exe`
-3. Run the installer to install QuinusLang to `C:\Program Files\QuinusLang\`
-
-### Install globally (add to PATH)
-
-```bash
-cargo install --path .
+Download from [releases](https://github.com/ryannzander/QuinusLang/releases) or build locally:
+```powershell
+.\build-installer.ps1   # Requires Inno Setup 6
 ```
+Installer adds to PATH by default so you can run `quinus` from anywhere.
 
-This installs `quinus` to `~/.cargo/bin/` (already on PATH if you have Rust).
+### Portable zip (no install)
+
+```powershell
+.\make-portable.ps1     # Creates QuinusLang-portable.zip
+```
+Extract and run `quinus.exe`. No admin, no PATH changes.
+
+### From source
+
+```powershell
+git clone https://github.com/ryannzander/QuinusLang.git
+cd QuinusLang
+.\build.ps1             # Windows - needs Rust + C compiler
+./build.sh              # Linux/macOS
+```
 
 ---
 
@@ -294,8 +297,8 @@ entry = "src/main.q"
 
 ## Requirements
 
-- **C compiler** — MSVC Build Tools (`winget install Microsoft.VisualStudio.2022.BuildTools`)
-- **Rust** — Only for first-time bootstrap (or use a pre-built `quinus.exe` from releases)
+- **C compiler** — To compile `.q` files. Easiest: `winget install mingw`. Or MSVC Build Tools.
+- **Rust** — Only if building from source (or use pre-built installer/zip from releases)
 
 ---
 

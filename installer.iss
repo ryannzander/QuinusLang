@@ -27,6 +27,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "addpath"; Description: "Add QuinusLang to PATH (run quinus from any folder)"; GroupDescription: "Options:"; Flags: checkedonce
 
 [Files]
 Source: "quinus.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -39,5 +40,52 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[Code]
+const
+  PathKey = 'Environment';
+
+procedure EnvAddPath(Path: string);
+var
+  Paths: string;
+  RootKey: Integer;
+begin
+  RootKey := HKEY_CURRENT_USER;
+  if not RegQueryStringValue(RootKey, PathKey, 'Path', Paths) then Paths := '';
+  if Pos(';' + Path + ';', ';' + Paths + ';') > 0 then Exit;
+  Paths := Paths + ';' + Path;
+  RegWriteStringValue(RootKey, PathKey, 'Path', Paths);
+end;
+
+procedure EnvRemovePath(Path: string);
+var
+  Paths, NewPaths: string;
+  P: Integer;
+  RootKey: Integer;
+begin
+  RootKey := HKEY_CURRENT_USER;
+  if not RegQueryStringValue(RootKey, PathKey, 'Path', Paths) then Exit;
+  NewPaths := Paths;
+  P := Pos(';' + Path + ';', ';' + NewPaths + ';');
+  if P = 0 then
+    P := Pos(';' + Path, ';' + NewPaths + ';');
+  if P > 0 then
+  begin
+    Delete(NewPaths, P, Length(Path) + 1);
+    RegWriteStringValue(RootKey, PathKey, 'Path', NewPaths);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssPostInstall) and WizardIsTaskSelected('addpath') then
+    EnvAddPath(ExpandConstant('{app}'));
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    EnvRemovePath(ExpandConstant('{app}'));
+end;
+
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Run quinus --help"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--help"; Description: "Show quinus help"; Flags: nowait postinstall skipifsilent
