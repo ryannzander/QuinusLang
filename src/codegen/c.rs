@@ -200,6 +200,7 @@ pub fn generate(program: &AnnotatedProgram) -> Result<String> {
     out.push_str("#include <stdint.h>\n");
     out.push_str("#include <stdio.h>\n");
     out.push_str("#include <string.h>\n");
+    out.push_str("#include <math.h>\n");
 
     let mut tuple_typedefs: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &program.program.items {
@@ -296,7 +297,7 @@ fn emit_top_level_with_prefix(out: &mut String, item: &TopLevelItem, ctx: &mut C
         TopLevelItem::Import(_) => {}
         TopLevelItem::Alias(_) => {}
         TopLevelItem::Extern(e) => {
-            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system"];
+            const STDLIB_FUNCS: &[&str] = &["fopen", "fclose", "fread", "fwrite", "malloc", "free", "fseek", "ftell", "system", "abs", "fabs", "sqrt", "fmin", "fmax"];
             if STDLIB_FUNCS.contains(&e.name.as_str()) {
                 return Ok(());
             }
