@@ -8,10 +8,10 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::targets::{
-    CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
+    CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use inkwell::types::{BasicMetadataTypeEnum, BasicType};
-use inkwell::values::{BasicValue, BasicValueEnum};
+use inkwell::values::BasicValueEnum;
 use inkwell::OptimizationLevel;
 use std::collections::HashMap;
 use std::path::Path;
@@ -27,37 +27,37 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
 
     declare_builtins(&context, &module);
 
-    {
-        let mut ctx = LlvmCtx {
-            context: &context,
-            module: &module,
-            builder: &builder,
-            vars: HashMap::new(),
-            var_types: HashMap::new(),
-            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-        };
-        for item in &program.program.items {
-            if let TopLevelItem::Fn(f) = item {
-                emit_fn(&mut ctx, f)?;
-            }
+    let mut ctx = LlvmCtx {
+        context: &context,
+        module,
+        builder,
+        vars: HashMap::new(),
+        var_types: HashMap::new(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+    };
+    for item in &program.program.items {
+        if let TopLevelItem::Fn(f) = item {
+            emit_fn(&mut ctx, f)?;
         }
     }
 
     // Emit main wrapper: i32 main() { call void @_ql_main(); ret i32 0 }
     let i32_type = context.i32_type();
     let main_type = i32_type.fn_type(&[], false);
-    let main_fn = module.add_function("main", main_type, None);
+    let main_fn = ctx.module.add_function("main", main_type, None);
     let entry = context.append_basic_block(main_fn, "entry");
-    builder.position_at_end(entry);
+    ctx.builder.position_at_end(entry);
 
-    let ql_main = module
+    let ql_main = ctx
+        .module
         .get_function("_ql_main")
         .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
-    builder.build_call(ql_main, &[], "call_main")?;
-    builder.build_return(Some(&i32_type.const_int(0, false)))?;
+    ctx.builder.build_call(ql_main, &[], "call_main")?;
+    ctx.builder
+        .build_return(Some(&i32_type.const_int(0, false)))?;
 
     // Verify and write object file
-    module.verify()?;
+    ctx.module.verify()?;
     let triple = TargetMachine::get_default_triple();
     let target = Target::from_triple(&triple)?;
     let target_machine = target
@@ -71,7 +71,7 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
         )
         .ok_or_else(|| crate::error::semantic_err("Failed to create target machine"))?;
 
-    target_machine.write_to_file(&module, FileType::Object, obj_path)?;
+    target_machine.write_to_file(&ctx.module, FileType::Object, obj_path)?;
     Ok(())
 }
 
@@ -85,36 +85,36 @@ pub fn compile_to_ir(program: &AnnotatedProgram, ir_path: &Path) -> Result<()> {
 
     declare_builtins(&context, &module);
 
-    {
-        let mut ctx = LlvmCtx {
-            context: &context,
-            module: &module,
-            builder: &builder,
-            vars: HashMap::new(),
-            var_types: HashMap::new(),
-            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-        };
-        for item in &program.program.items {
-            if let TopLevelItem::Fn(f) = item {
-                emit_fn(&mut ctx, f)?;
-            }
+    let mut ctx = LlvmCtx {
+        context: &context,
+        module,
+        builder,
+        vars: HashMap::new(),
+        var_types: HashMap::new(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+    };
+    for item in &program.program.items {
+        if let TopLevelItem::Fn(f) = item {
+            emit_fn(&mut ctx, f)?;
         }
     }
 
     let i32_type = context.i32_type();
     let main_type = i32_type.fn_type(&[], false);
-    let main_fn = module.add_function("main", main_type, None);
+    let main_fn = ctx.module.add_function("main", main_type, None);
     let entry = context.append_basic_block(main_fn, "entry");
-    builder.position_at_end(entry);
+    ctx.builder.position_at_end(entry);
 
-    let ql_main = module
+    let ql_main = ctx
+        .module
         .get_function("_ql_main")
         .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
-    builder.build_call(ql_main, &[], "call_main")?;
-    builder.build_return(Some(&i32_type.const_int(0, false)))?;
+    ctx.builder.build_call(ql_main, &[], "call_main")?;
+    ctx.builder
+        .build_return(Some(&i32_type.const_int(0, false)))?;
 
-    module.verify()?;
-    module
+    ctx.module.verify()?;
+    ctx.module
         .print_to_file(ir_path)
         .map_err(|e| crate::error::semantic_err(format!("Failed to write IR: {}", e)))?;
     Ok(())
@@ -130,36 +130,36 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
 
     declare_builtins(&context, &module);
 
-    {
-        let mut ctx = LlvmCtx {
-            context: &context,
-            module: &module,
-            builder: &builder,
-            vars: HashMap::new(),
-            var_types: HashMap::new(),
-            symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
-        };
-        for item in &program.program.items {
-            if let TopLevelItem::Fn(f) = item {
-                emit_fn(&mut ctx, f)?;
-            }
+    let mut ctx = LlvmCtx {
+        context: &context,
+        module,
+        builder,
+        vars: HashMap::new(),
+        var_types: HashMap::new(),
+        symbol_table: Some(std::sync::Arc::new(program.symbol_table.clone())),
+    };
+    for item in &program.program.items {
+        if let TopLevelItem::Fn(f) = item {
+            emit_fn(&mut ctx, f)?;
         }
     }
 
     let i32_type = context.i32_type();
     let main_type = i32_type.fn_type(&[], false);
-    let main_fn = module.add_function("main", main_type, None);
+    let main_fn = ctx.module.add_function("main", main_type, None);
     let entry = context.append_basic_block(main_fn, "entry");
-    builder.position_at_end(entry);
+    ctx.builder.position_at_end(entry);
 
-    let ql_main = module
+    let ql_main = ctx
+        .module
         .get_function("_ql_main")
         .ok_or_else(|| crate::error::semantic_err("main() not found"))?;
-    builder.build_call(ql_main, &[], "call_main")?;
-    builder.build_return(Some(&i32_type.const_int(0, false)))?;
+    ctx.builder.build_call(ql_main, &[], "call_main")?;
+    ctx.builder
+        .build_return(Some(&i32_type.const_int(0, false)))?;
 
-    module.verify()?;
-    Ok(module.print_to_string().to_string())
+    ctx.module.verify()?;
+    Ok(ctx.module.print_to_string().to_string())
 }
 
 fn declare_builtins<'ctx>(context: &'ctx Context, module: &Module<'ctx>) {
@@ -192,8 +192,8 @@ static STRING_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 struct LlvmCtx<'ctx> {
     context: &'ctx Context,
-    module: &'ctx Module<'ctx>,
-    builder: &'ctx Builder<'ctx>,
+    module: Module<'ctx>,
+    builder: Builder<'ctx>,
     vars: HashMap<String, BasicValueEnum<'ctx>>,
     var_types: HashMap<String, Type>,
     symbol_table: Option<std::sync::Arc<crate::semantic::SymbolTable>>,
@@ -776,10 +776,6 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                         Err(crate::error::semantic_err("Type mismatch in ||"))
                     }
                 }
-                _ => Err(crate::error::semantic_err(format!(
-                    "Unsupported op: {:?}",
-                    op
-                ))),
             }
         }
         Expr::Unary { op, operand } => {
