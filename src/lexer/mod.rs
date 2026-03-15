@@ -237,6 +237,7 @@ pub struct TokenStream {
 
 impl TokenStream {
     pub fn new(source: &str) -> Result<Self> {
+        let source = source.strip_prefix('\u{feff}').unwrap_or(source);
         let mut tokens = Vec::new();
         let mut lexer = Token::lexer(source);
 

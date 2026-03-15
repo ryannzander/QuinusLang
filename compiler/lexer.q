@@ -34,6 +34,9 @@ realm lexer {
         }
         make n: usize = strlen(source);
         make shift i: usize = 0;
+        check (n >= 3 && ql_str_at(source, 0) == 239 && ql_str_at(source, 1) == 187 && ql_str_at(source, 2) == 191) {
+            i = 3 as usize;
+        }
         make shift line: usize = 1;
         make shift col: usize = 1;
         loopwhile (i < n) {
@@ -176,6 +179,7 @@ realm lexer {
             check (c == 34) {
                 make start: usize = i + (1 as usize);
                 i = i + (1 as usize);
+                make shift found: bool = false;
                 loopwhile (i < n) {
                     make cc: i32 = ql_str_at(source, i);
                     check (cc == 34) {
@@ -183,6 +187,7 @@ realm lexer {
                         make lit: str = ql_str_sub(source, start, i - (1 as usize));
                         vec.ptr_push(tok_list, ql_token_create(tokens.STR, line, col, lit, 0));
                         col = col + (i - start) + (2 as usize);
+                        found = true;
                         stop;
                     }
                     check (cc == 92) {
@@ -191,7 +196,9 @@ realm lexer {
                     }
                     i = i + (1 as usize);
                 }
-                vec.ptr_push(tok_list, ql_token_create(tokens.STR, line, col, "", 0));
+                check (!found) {
+                    vec.ptr_push(tok_list, ql_token_create(tokens.STR, line, col, "", 0));
+                }
                 skip;
             }
             check (c >= 48 && c <= 57) {
@@ -257,6 +264,8 @@ realm lexer {
         check (str_eq(s, "state")) { send tokens.STATE; }
         check (str_eq(s, "bring")) { send tokens.BRING; }
         check (str_eq(s, "extern")) { send tokens.EXTERN; }
+        check (str_eq(s, "realm")) { send tokens.REALM; }
+        check (str_eq(s, "link")) { send tokens.LINK; }
         check (str_eq(s, "true")) { send tokens.BOOL; }
         check (str_eq(s, "false")) { send tokens.BOOL; }
         send -1;

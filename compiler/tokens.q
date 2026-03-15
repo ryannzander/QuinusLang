@@ -40,4 +40,6 @@ realm tokens {
     eternal ARROW: i32 = 35;
     eternal DOT: i32 = 36;
     eternal EXTERN: i32 = 37;
+    eternal REALM: i32 = 38;
+    eternal LINK: i32 = 39;
 }

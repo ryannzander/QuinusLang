@@ -145,8 +145,14 @@ realm codegen {
             check (lexer.str_eq(ret_ty, "i32")) {
                 c_ret = "int";
             }
+            check (lexer.str_eq(ret_ty, "i64")) {
+                c_ret = "long";
+            }
             check (lexer.str_eq(ret_ty, "str")) {
                 c_ret = "char*";
+            }
+            check (lexer.str_eq(ret_ty, "link void")) {
+                c_ret = "void*";
             }
             make line: str = str.concat("extern ", str.concat(c_ret, str.concat(" ", str.concat(name, "(); "))));
             out = str.concat(out, line);
@@ -179,6 +185,70 @@ realm codegen {
         make end: str = str.concat(assign, "printf(\"%ld\\n\", _r); return 0; }
 ");
         send str.concat(mid, end);
+    }
+
+    // emit_fn_with_prefix: emit C function with optional realm prefix (prefix_name)
+    craft emit_fn_with_prefix(externs: link void, fn_def: link void, prefix: str) -> str {
+        make name: str = vec.ptr_get(fn_def, 0) as str;
+        make shift c_name: str = name;
+        check (strlen(prefix) > 0) {
+            c_name = str.concat(prefix, str.concat("_", name));
+        }
+        make ret_ty: str = vec.ptr_get(fn_def, 1) as str;
+        make body: link void = vec.ptr_get(fn_def, 2);
+        make shift ret_c: str = "void";
+        check (lexer.str_eq(ret_ty, "i64")) {
+            ret_c = "long";
+        }
+        check (lexer.str_eq(ret_ty, "usize")) {
+            ret_c = "size_t";
+        }
+        check (lexer.str_eq(ret_ty, "i32")) {
+            ret_c = "int";
+        }
+        check (lexer.str_eq(ret_ty, "str")) {
+            ret_c = "char*";
+        }
+        make body_c: str = emit_block(body);
+        make sig: str = str.concat(ret_c, str.concat(" ", str.concat(c_name, "(void) { ")));
+        make end: str = str.concat(body_c, " }
+");
+        send str.concat(sig, end);
+    }
+
+    // emit_program_full: emit C for full program (realms + crafts). Prefixes functions with realm name.
+    craft emit_program_full(externs: link void, items: link void) -> str {
+        make ext_s: str = emit_externs(externs);
+        make header: str = "#include <stdio.h>
+";
+        make shift out: str = str.concat(header, ext_s);
+        make n: usize = vec.ptr_len(items);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make item: link void = vec.ptr_get(items, i);
+            make tag: str = vec.ptr_get(item, 0) as str;
+            check (lexer.str_eq(tag, "realm")) {
+                make realm_name: str = vec.ptr_get(item, 1) as str;
+                make crafts: link void = vec.ptr_get(item, 2);
+                make nc: usize = vec.ptr_len(crafts);
+                make shift j: usize = 0;
+                loopwhile (j < nc) {
+                    make fn_def: link void = vec.ptr_get(crafts, j);
+                    make fn_s: str = emit_fn_with_prefix(externs, fn_def, realm_name);
+                    out = str.concat(out, str.concat(fn_s, "
+"));
+                    j = j + (1 as usize);
+                }
+            }
+            check (lexer.str_eq(tag, "craft")) {
+                make fn_def: link void = vec.ptr_get(item, 1);
+                make fn_s: str = emit_fn_with_prefix(externs, fn_def, "");
+                out = str.concat(out, str.concat(fn_s, "
+"));
+            }
+            i = i + (1 as usize);
+        }
+        send out;
     }
 
     // emit_fn_program: emit C for craft main() -> void { body }

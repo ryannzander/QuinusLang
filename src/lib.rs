@@ -7,6 +7,7 @@ pub mod fmt;
 pub mod lexer;
 pub mod package;
 pub mod parser;
+pub mod preprocess;
 pub mod semantic;
 
 pub use error::{Error, Result};

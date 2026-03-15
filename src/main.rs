@@ -1,7 +1,7 @@
 //! QuinusLang compiler CLI
 
 use clap::{Parser, Subcommand};
-use quinuslang::{analyze, codegen, fmt, parse, parse_with_imports, package};
+use quinuslang::{analyze, codegen, fmt, parse, preprocess, package};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -75,6 +75,13 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
     },
+    /// Preprocess: resolve brings and output flattened .q (for debugging)
+    Preprocess {
+        path: PathBuf,
+        /// Write output to file instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -93,6 +100,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Repl => cmd_repl(),
         Commands::Lsp => cmd_lsp(),
         Commands::Check { path } => cmd_check(&path),
+        Commands::Preprocess { path, output } => cmd_preprocess(&path, output.as_ref()),
     }
 }
 
@@ -114,8 +122,8 @@ fn cmd_build(path: &PathBuf, release: bool, emit_c_only: bool) -> anyhow::Result
     } else {
         (path.clone(), path.clone())
     };
-    let packages = resolve_build_packages(base_dir.as_path());
-    let program = parse_with_imports(&source, base_dir.as_path(), &packages)?;
+    let flattened = preprocess::preprocess(&source, base_dir.as_path())?;
+    let program = parse(&flattened)?;
     let annotated = analyze(&program)?;
     let c_code = codegen::c::generate(&annotated)?;
 
@@ -218,10 +226,40 @@ fn cmd_check(path: &PathBuf) -> anyhow::Result<()> {
     };
     let base_dir = base.as_path();
     let (source, _entry_path) = find_entry(&base)?;
-    let packages = resolve_build_packages(base_dir);
-    let program = parse_with_imports(&source, base_dir, &packages)?;
+    let flattened = preprocess::preprocess(&source, base_dir)?;
+    let program = parse(&flattened)?;
     let _annotated = analyze(&program)?;
     println!("Check passed.");
+    Ok(())
+}
+
+fn cmd_preprocess(path: &PathBuf, output: Option<&PathBuf>) -> anyhow::Result<()> {
+    let (source, base_dir) = if path.is_file() {
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("Failed to read {}: {}", path.display(), e))?;
+        let parent = path.parent().unwrap_or(path).to_path_buf();
+        let mut project_root = parent.clone();
+        let search = parent.canonicalize().unwrap_or(parent.clone());
+        let mut p = search.as_path();
+        while let Some(next) = p.parent() {
+            if next.join("stdlib").exists() || next.join("quinus.toml").exists() {
+                project_root = next.to_path_buf();
+                break;
+            }
+            p = next;
+        }
+        (source, project_root)
+    } else {
+        let (source, _) = find_entry(path)?;
+        (source, path.clone())
+    };
+    let flattened = preprocess::preprocess(&source, base_dir.as_path())?;
+    if let Some(out_path) = output {
+        std::fs::write(out_path, &flattened)?;
+        println!("Wrote {}", out_path.display());
+    } else {
+        println!("{}", flattened);
+    }
     Ok(())
 }
 
@@ -316,9 +354,9 @@ fn cmd_publish() -> anyhow::Result<()> {
 
     // Build to validate
     let base = PathBuf::from(".");
-    let packages = resolve_build_packages(base.as_path());
     let (source, _) = find_entry(&base)?;
-    let program = parse_with_imports(&source, base.as_path(), &packages)?;
+    let flattened = preprocess::preprocess(&source, base.as_path())?;
+    let program = parse(&flattened)?;
     let _annotated = analyze(&program)?;
 
     let tag = format!("v{}", version);

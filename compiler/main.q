@@ -39,6 +39,39 @@ craft main() -> void {
         }
         c_code = codegen.emit_fn_program(externs, fn_def);
     }
+    check (lexer.str_eq(kind, "program")) {
+        make items: link void = vec.ptr_get(parsed, 2);
+        make n: usize = vec.ptr_len(items);
+        make shift i: usize = 0;
+        loopwhile (i < n) {
+            make item: link void = vec.ptr_get(items, i);
+            make tag: str = vec.ptr_get(item, 0) as str;
+            check (lexer.str_eq(tag, "realm")) {
+                make crafts: link void = vec.ptr_get(item, 2);
+                make nc: usize = vec.ptr_len(crafts);
+                make shift j: usize = 0;
+                loopwhile (j < nc) {
+                    make fn_def: link void = vec.ptr_get(crafts, j);
+                    make ok: bool = semantic.check_fn(fn_def);
+                    check (!ok) {
+                        writeln("Semantic check failed (realm)");
+                        send;
+                    }
+                    j = j + (1 as usize);
+                }
+            }
+            check (lexer.str_eq(tag, "craft")) {
+                make fn_def: link void = vec.ptr_get(item, 1);
+                make ok: bool = semantic.check_fn(fn_def);
+                check (!ok) {
+                    writeln("Semantic check failed (craft)");
+                    send;
+                }
+            }
+            i = i + (1 as usize);
+        }
+        c_code = codegen.emit_program_full(externs, items);
+    }
     otherwise {
         make stmts: link void = vec.ptr_get(parsed, 2);
         make result_expr: link void = vec.ptr_get(parsed, 3);
