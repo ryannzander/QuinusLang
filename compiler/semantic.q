@@ -73,6 +73,9 @@ realm semantic {
             check (op == tokens.EQEQ || op == tokens.NE || op == tokens.LT || op == tokens.LE || op == tokens.GT || op == tokens.GE) {
                 send "i64";
             }
+            check (op == tokens.ANDAND || op == tokens.OROR) {
+                send "i64";
+            }
             check (op == tokens.PLUS || op == tokens.MINUS || op == tokens.STAR || op == tokens.SLASH) {
                 check (lexer.str_eq(lt, "i64") || lexer.str_eq(lt, "int") || lexer.str_eq(lt, "usize")) {
                     check (lexer.str_eq(rt, "i64") || lexer.str_eq(rt, "int") || lexer.str_eq(rt, "usize")) {
@@ -117,9 +120,22 @@ realm semantic {
         check (fn_def == 0) {
             send false;
         }
-        make body: link void = vec.ptr_get(fn_def, 2);
+        make params: link void = vec.ptr_get(fn_def, 2);
+        make body: link void = vec.ptr_get(fn_def, 3);
         make names: link void = vec.ptr_new();
         make types: link void = vec.ptr_new();
+        make shift np: usize = 0;
+        check (params != 0) {
+            np = vec.ptr_len(params);
+        }
+        make shift i: usize = 0;
+        loopwhile (i < np) {
+            make pair: link void = vec.ptr_get(params, i);
+            make pname: str = vec.ptr_get(pair, 0) as str;
+            make pty: str = vec.ptr_get(pair, 1) as str;
+            symtab_put(names, types, pname, pty);
+            i = i + (1 as usize);
+        }
         make ok: bool = check_block(body, names, types);
         send ok;
     }
