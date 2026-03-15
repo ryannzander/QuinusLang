@@ -25,7 +25,8 @@ Write-Host "Building runtime..."
 if (Test-Path "dist-runtime\runtime.obj") {
     Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
 }
-$llvmPath = $env:LLVM_SYS_170_PREFIX
+$llvmPath = $env:LLVM_SYS_181_PREFIX
+if (-not $llvmPath) { $llvmPath = $env:LLVM_SYS_170_PREFIX }
 if (-not $llvmPath) { $llvmPath = "C:\Program Files\LLVM" }
 $lldLink = Join-Path $llvmPath "bin\lld-link.exe"
 if (Test-Path $lldLink) {

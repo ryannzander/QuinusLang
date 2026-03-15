@@ -24,11 +24,11 @@ The portable zip includes quinus.exe (with LLVM built in), `lld-link.exe`, and `
 
 ## From Source
 
-Requires **Rust** and **LLVM 17** (for building the compiler).
+Requires **Rust** and **LLVM 18** (for building the compiler).
 
 ```powershell
 # Windows
-choco install llvm --version=17.0.6
+choco install llvm
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
 cargo build --release
@@ -36,7 +36,7 @@ cargo build --release
 
 ```bash
 # Linux / macOS
-# Install LLVM 17 (e.g. apt install llvm-17-dev or brew install llvm@17)
+# Install LLVM 18 (e.g. apt install llvm-18-dev or brew install llvm@18)
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
 cargo build --release

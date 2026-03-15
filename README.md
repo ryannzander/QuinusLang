@@ -48,7 +48,7 @@ Extract and run `quinus.exe`. No admin, no PATH changes.
 ```powershell
 git clone https://github.com/ryannzander/QuinusLang.git
 cd QuinusLang
-.\build.ps1             # Windows - needs Rust + LLVM 17
+.\build.ps1             # Windows - needs Rust + LLVM 18
 ./build.sh              # Linux/macOS
 ```
 

@@ -7,7 +7,7 @@ Thank you for your interest in contributing to QuinusLang!
 ### Prerequisites
 
 - **Rust** — Install from [rustup.rs](https://rustup.rs)
-- **LLVM 17** — For building the compiler (inkwell). Windows: `choco install llvm`; Linux: `apt install llvm-17-dev`; macOS: `brew install llvm@17`
+- **LLVM 18** — For building the compiler (inkwell). Windows: download tarball from [llvm.org](https://llvm.org/) or `choco install llvm`; Linux: `apt install llvm-18-dev`; macOS: `brew install llvm@18`
 
 ### Build
 

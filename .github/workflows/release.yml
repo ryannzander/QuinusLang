@@ -19,15 +19,16 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y
 
-      - name: Install LLVM 17
+      - name: Install LLVM 18
         shell: pwsh
         run: |
-          $installer = "$env:TEMP\LLVM-17.0.6-win64.exe"
-          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe" -OutFile $installer -UseBasicParsing
-          Start-Process -FilePath $installer -ArgumentList "/S" -Wait -NoNewWindow
-          $llvmPath = "C:\Program Files\LLVM"
-          if (-not (Test-Path "$llvmPath\bin\llvm-config.exe")) { throw "LLVM install failed: llvm-config.exe not found at $llvmPath" }
-          "LLVM_SYS_170_PREFIX=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $llvmPath = "C:\LLVM"
+          $archive = "$env:TEMP\llvm-18.1.8.tar.xz"
+          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-pc-windows-msvc.tar.xz" -OutFile $archive -UseBasicParsing
+          New-Item -ItemType Directory -Path $llvmPath -Force | Out-Null
+          tar -xf $archive -C $llvmPath --strip-components=1
+          if (-not (Test-Path "$llvmPath\bin\llvm-config.exe")) { throw "LLVM install failed: llvm-config.exe not found" }
+          "LLVM_SYS_181_PREFIX=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
           "LLVM_PATH=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "$llvmPath\bin" >> $env:GITHUB_PATH
           Write-Host "LLVM installed at $llvmPath"
@@ -52,7 +53,7 @@ jobs:
 
       - name: Build
         env:
-          LLVM_SYS_170_PREFIX: "C:/Program Files/LLVM"
+          LLVM_SYS_181_PREFIX: "C:/LLVM"
         run: cargo build --release
 
       - name: Build runtime

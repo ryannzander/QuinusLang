@@ -17,10 +17,10 @@ If you downloaded the installer or portable zip: **no additional setup required*
 
 ### Prerequisites
 
-1. **LLVM 17** — Development libraries must be installed.
-   - **Windows**: `winget install LLVM.LLVM` or `choco install llvm` or download from [llvm.org](https://llvm.org/)
-   - **macOS**: `brew install llvm@17`
-   - **Linux**: `apt install llvm-17-dev` (or equivalent)
+1. **LLVM 18** — Development libraries must be installed.
+   - **Windows**: Download the official tarball from [llvm.org](https://llvm.org/) or `choco install llvm`; set `LLVM_SYS_181_PREFIX` to the install path
+   - **macOS**: `brew install llvm@18`
+   - **Linux**: `apt install llvm-18-dev` (or equivalent)
 
 2. **Build the compiler**:
    ```bash
