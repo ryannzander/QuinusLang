@@ -12,4 +12,4 @@ pub mod semantic;
 pub use error::{Error, Result};
 pub use lexer::tokenize;
 pub use parser::{parse, parse_from_stream, parse_with_imports};
-pub use semantic::analyze;
+pub use semantic::{analyze, type_of_expr};
