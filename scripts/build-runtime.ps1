@@ -37,16 +37,16 @@ if (-not $compiler) {
 Write-Host "Building runtime with $compiler..."
 
 $src = Join-Path $runtimeDir "runtime.c"
-$args = @("-c", "-O2", "-o", $outPath, $src)
+$compileArgs = @("-c", "-O2", "-o", $outPath, $src)
 
-# Windows: use MSVC-compatible object format for lld-link
 if ($isWindows) {
-    $args += @("-fno-exceptions", "-fno-rtti")
+    $compileArgs += @("-fno-exceptions")
 }
 
-& $compiler @args
+Write-Host "Running: $compiler $($compileArgs -join ' ')"
+& $compiler @compileArgs
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Runtime build failed"
+    Write-Error "Runtime build failed with exit code $LASTEXITCODE"
 }
 
 Write-Host "Built: $outPath"

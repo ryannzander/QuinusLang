@@ -33,8 +33,24 @@ jobs:
       - name: Clippy
         run: cargo clippy
 
+      - name: Debug LLVM setup
+        run: |
+          echo "=== llvm-config --version ==="
+          llvm-config --version || true
+          echo "=== llvm-config --shared-mode ==="
+          llvm-config --shared-mode || true
+          echo "=== llvm-config --libs all ==="
+          llvm-config --libs all 2>&1 | head -5 || true
+          echo "=== llvm-config --system-libs ==="
+          llvm-config --system-libs 2>&1 || true
+          echo "=== LLVM_SYS_181_PREFIX ==="
+          echo "$LLVM_SYS_181_PREFIX"
+          echo "=== ls LLVM lib ==="
+          ls /usr/lib/llvm-18/lib/*.so* 2>/dev/null | head -10 || echo "No .so files found"
+          ls /usr/lib/llvm-18/lib/*.a 2>/dev/null | head -10 || echo "No .a files found"
+
       - name: Build
-        run: cargo build --release
+        run: cargo build --release 2>&1 || { echo "BUILD FAILED - showing last 100 lines of verbose output:"; cargo build --release -vv 2>&1 | tail -100; exit 1; }
 
       - name: Test
         run: cargo test
