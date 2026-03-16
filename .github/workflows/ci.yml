@@ -17,7 +17,7 @@ jobs:
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-18 main" | sudo tee /etc/apt/sources.list.d/llvm-18.list
           sudo apt-get update
-          sudo apt-get install -y build-essential libxml2-dev llvm-18-dev libclang-18-dev
+          sudo apt-get install -y build-essential libxml2-dev llvm-18-dev libclang-18-dev zlib1g-dev libzstd-dev libncurses-dev
           echo "LLVM_SYS_181_PREFIX=/usr/lib/llvm-18" >> $GITHUB_ENV
           echo "/usr/lib/llvm-18/bin" >> $GITHUB_PATH
           /usr/lib/llvm-18/bin/llvm-config --version
