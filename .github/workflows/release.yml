@@ -30,7 +30,7 @@ jobs:
           if (-not (Test-Path "$llvmPath\bin\llvm-config.exe")) { throw "LLVM install failed: llvm-config.exe not found" }
           "LLVM_SYS_181_PREFIX=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
           "LLVM_PATH=$llvmPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "$llvmPath\bin" >> $env:GITHUB_PATH
+          "$llvmPath\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           Write-Host "LLVM installed at $llvmPath"
 
       - name: Install libxml2 (needed by LLVM static linking)
@@ -66,7 +66,11 @@ jobs:
         run: cargo build --release
 
       - name: Build runtime
-        run: .\scripts\build-runtime.ps1
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\LLVM\bin;$env:PATH"
+          Write-Host "clang location: $(Get-Command clang -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
+          .\scripts\build-runtime.ps1
 
       - name: Copy LLVM tools
         shell: pwsh

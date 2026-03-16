@@ -12,22 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install LLVM 18 and build dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y build-essential libxml2-dev
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
-
-      - name: Install LLVM 18
-        uses: KyleMayes/install-llvm-action@v2
-        with:
-          version: "18"
-
-      - name: Setup LLVM env
-        run: |
-          echo "LLVM_SYS_181_PREFIX=$LLVM_PATH" >> $GITHUB_ENV
-          echo "$LLVM_PATH/bin" >> $GITHUB_PATH
-          ls -la $LLVM_PATH/bin/llvm-config || true
-          $LLVM_PATH/bin/llvm-config --version
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-18 main" | sudo tee /etc/apt/sources.list.d/llvm-18.list
+          sudo apt-get update
+          sudo apt-get install -y build-essential libxml2-dev llvm-18-dev libclang-18-dev
+          echo "LLVM_SYS_181_PREFIX=/usr/lib/llvm-18" >> $GITHUB_ENV
+          echo "/usr/lib/llvm-18/bin" >> $GITHUB_PATH
+          /usr/lib/llvm-18/bin/llvm-config --version
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
