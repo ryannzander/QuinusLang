@@ -50,7 +50,20 @@ jobs:
           ls /usr/lib/llvm-18/lib/*.a 2>/dev/null | head -10 || echo "No .a files found"
 
       - name: Build
-        run: cargo build --release 2>&1 || { echo "BUILD FAILED - showing last 100 lines of verbose output:"; cargo build --release -vv 2>&1 | tail -100; exit 1; }
+        run: |
+          cargo build --release 2>&1 | tee /tmp/build-output.txt || true
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "=== BUILD FAILED, retrying with -vv ==="
+            cargo build --release -vv 2>&1 | tail -200 | tee -a /tmp/build-output.txt
+            exit 1
+          fi
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build-output.txt
 
       - name: Test
         run: cargo test
