@@ -88,13 +88,42 @@ jobs:
           Copy-Item "$env:LLVM_PATH\bin\lld-link.exe" "lld-link.exe" -Force
           Copy-Item "dist-runtime\runtime.obj" "runtime.obj" -Force
 
+      - name: Stage release files
+        shell: pwsh
+        run: |
+          Copy-Item "target\release\quinus.exe" "quinus.exe" -Force
+          Write-Host "Staged files:"
+          Get-ChildItem quinus.exe, runtime.obj, lld-link.exe -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
+
       - name: Create installer
         shell: pwsh
-        run: .\build-installer.ps1
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup not found" }
+          & $iscc "installer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
 
       - name: Create portable zip
         shell: pwsh
-        run: .\make-portable.ps1
+        run: |
+          $portableDir = "QuinusLang-portable"
+          $zipName = "QuinusLang-portable.zip"
+          if (Test-Path $portableDir) { Remove-Item $portableDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $portableDir | Out-Null
+          Copy-Item "quinus.exe" "$portableDir\"
+          if (Test-Path "runtime.obj") { Copy-Item "runtime.obj" "$portableDir\" }
+          if (Test-Path "lld-link.exe") { Copy-Item "lld-link.exe" "$portableDir\" }
+          Copy-Item "stdlib" "$portableDir\" -Recurse
+          Copy-Item "compiler" "$portableDir\" -Recurse
+          @"
+          QuinusLang - Portable (LLVM backend)
+          Run: .\quinus.exe --help
+          "@ | Out-File "$portableDir\README.txt" -Encoding utf8
+          if (Test-Path $zipName) { Remove-Item $zipName -Force }
+          Compress-Archive -Path $portableDir -DestinationPath $zipName
+          Remove-Item $portableDir -Recurse -Force
+          Write-Host "Created $zipName"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
