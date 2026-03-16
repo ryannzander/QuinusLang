@@ -24,9 +24,10 @@ jobs:
 
       - name: Setup LLVM env
         run: |
-          echo "LLVM_SYS_181_PREFIX=${{ env.LLVM_PATH }}" >> $GITHUB_ENV
-          echo "${{ env.LLVM_PATH }}/bin" >> $GITHUB_PATH
-          llvm-config --version
+          echo "LLVM_SYS_181_PREFIX=$LLVM_PATH" >> $GITHUB_ENV
+          echo "$LLVM_PATH/bin" >> $GITHUB_PATH
+          ls -la $LLVM_PATH/bin/llvm-config || true
+          $LLVM_PATH/bin/llvm-config --version
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
