@@ -69,8 +69,18 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "C:\LLVM\bin;$env:PATH"
-          Write-Host "clang location: $(Get-Command clang -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
-          .\scripts\build-runtime.ps1
+          $clang = Get-Command clang -ErrorAction SilentlyContinue
+          if ($clang) {
+            Write-Host "Found clang: $($clang.Source)"
+          } else {
+            Write-Host "clang not found, listing C:\LLVM\bin:"
+            Get-ChildItem "C:\LLVM\bin\clang*" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
+          }
+          New-Item -ItemType Directory -Force -Path "dist-runtime" | Out-Null
+          Write-Host "Compiling runtime..."
+          & "C:\LLVM\bin\clang.exe" -c -O2 -fno-exceptions -o "dist-runtime\runtime.obj" "runtime\runtime.c" 2>&1
+          if ($LASTEXITCODE -ne 0) { throw "Runtime compilation failed with exit code $LASTEXITCODE" }
+          Write-Host "Runtime compiled successfully"
 
       - name: Copy LLVM tools
         shell: pwsh
