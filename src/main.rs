@@ -189,6 +189,81 @@ fn find_runtime_path(project_base: &PathBuf) -> Option<std::path::PathBuf> {
     None
 }
 
+/// Find MSVC and Windows SDK library paths for lld-link on Windows.
+/// Returns (lib_paths, default_libs) to pass as /libpath: and extra .lib args.
+#[cfg(target_os = "windows")]
+fn find_msvc_libs() -> (Vec<String>, Vec<&'static str>) {
+    let mut lib_paths = Vec::new();
+    let default_libs = vec![
+        "libcmt", "libucrt", "libvcruntime", "kernel32", "uuid",
+        "ucrt", "msvcrt",
+    ];
+
+    // Find MSVC tools lib path via vswhere or known paths
+    let program_files = std::env::var("ProgramFiles(x86)")
+        .unwrap_or_else(|_| r"C:\Program Files (x86)".to_string());
+    let vswhere = format!(
+        r"{}\Microsoft Visual Studio\Installer\vswhere.exe",
+        program_files
+    );
+    if std::path::Path::new(&vswhere).exists() {
+        if let Ok(out) = std::process::Command::new(&vswhere)
+            .args(["-latest", "-property", "installationPath", "-requires",
+                   "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"])
+            .output()
+        {
+            let vs_path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !vs_path.is_empty() {
+                // Find latest MSVC version
+                let tools_dir = format!(r"{}\VC\Tools\MSVC", vs_path);
+                if let Ok(entries) = std::fs::read_dir(&tools_dir) {
+                    let mut versions: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+                        .map(|e| e.file_name().to_string_lossy().to_string())
+                        .collect();
+                    versions.sort();
+                    if let Some(ver) = versions.last() {
+                        let msvc_lib = format!(r"{}\{}\lib\x64", tools_dir, ver);
+                        if std::path::Path::new(&msvc_lib).exists() {
+                            lib_paths.push(msvc_lib);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Find Windows SDK (ucrt + um) lib paths
+    let sdk_root = std::env::var("WindowsSdkDir").unwrap_or_else(|_| {
+        format!(r"{}\Windows Kits\10", program_files.replace("(x86)", "").trim())
+    });
+    let sdk_lib = format!(r"{}\Lib", sdk_root);
+    if std::path::Path::new(&sdk_lib).exists() {
+        if let Ok(entries) = std::fs::read_dir(&sdk_lib) {
+            let mut versions: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .filter(|n| n.starts_with("10."))
+                .collect();
+            versions.sort();
+            if let Some(ver) = versions.last() {
+                let ucrt = format!(r"{}\{}\ucrt\x64", sdk_lib, ver);
+                let um = format!(r"{}\{}\um\x64", sdk_lib, ver);
+                if std::path::Path::new(&ucrt).exists() {
+                    lib_paths.push(ucrt);
+                }
+                if std::path::Path::new(&um).exists() {
+                    lib_paths.push(um);
+                }
+            }
+        }
+    }
+
+    (lib_paths, default_libs)
+}
+
 /// Find lld next to quinus.exe (bundled with installer/portable)
 fn find_bundled_lld() -> Option<std::path::PathBuf> {
     let exe = std::env::current_exe().ok()?;
@@ -223,6 +298,16 @@ fn link_with_lld(
                 cmd.arg(r);
             }
             cmd.arg("/entry:main");
+            #[cfg(target_os = "windows")]
+            {
+                let (msvc_paths, crt_libs) = find_msvc_libs();
+                for p in &msvc_paths {
+                    cmd.arg(format!("/libpath:{}", p));
+                }
+                for lib in &crt_libs {
+                    cmd.arg(format!("{}.lib", lib));
+                }
+            }
             for lib in libs {
                 cmd.arg(format!("{}.lib", lib));
             }
@@ -262,6 +347,16 @@ fn link_with_lld(
             cmd.arg(r);
         }
         cmd.arg("/entry:main");
+        #[cfg(target_os = "windows")]
+        {
+            let (msvc_paths, crt_libs) = find_msvc_libs();
+            for p in &msvc_paths {
+                cmd.arg(format!("/libpath:{}", p));
+            }
+            for lib in &crt_libs {
+                cmd.arg(format!("{}.lib", lib));
+            }
+        }
         for lib in libs {
             cmd.arg(format!("{}.lib", lib));
         }
