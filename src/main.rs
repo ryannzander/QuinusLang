@@ -195,8 +195,13 @@ fn find_runtime_path(project_base: &PathBuf) -> Option<std::path::PathBuf> {
 fn find_msvc_libs() -> (Vec<String>, Vec<&'static str>) {
     let mut lib_paths = Vec::new();
     let default_libs = vec![
-        "libcmt", "libucrt", "libvcruntime", "kernel32", "uuid",
-        "ucrt", "msvcrt",
+        "libcmt",
+        "libucrt",
+        "libvcruntime",
+        "kernel32",
+        "uuid",
+        "ucrt",
+        "msvcrt",
     ];
 
     // Find MSVC tools lib path via vswhere or known paths
@@ -208,8 +213,13 @@ fn find_msvc_libs() -> (Vec<String>, Vec<&'static str>) {
     );
     if std::path::Path::new(&vswhere).exists() {
         if let Ok(out) = std::process::Command::new(&vswhere)
-            .args(["-latest", "-property", "installationPath", "-requires",
-                   "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"])
+            .args([
+                "-latest",
+                "-property",
+                "installationPath",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            ])
             .output()
         {
             let vs_path = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -236,7 +246,10 @@ fn find_msvc_libs() -> (Vec<String>, Vec<&'static str>) {
 
     // Find Windows SDK (ucrt + um) lib paths
     let sdk_root = std::env::var("WindowsSdkDir").unwrap_or_else(|_| {
-        format!(r"{}\Windows Kits\10", program_files.replace("(x86)", "").trim())
+        format!(
+            r"{}\Windows Kits\10",
+            program_files.replace("(x86)", "").trim()
+        )
     });
     let sdk_lib = format!(r"{}\Lib", sdk_root);
     if std::path::Path::new(&sdk_lib).exists() {
