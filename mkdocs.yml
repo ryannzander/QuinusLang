@@ -1,0 +1,130 @@
+site_name: QuinusLang
+site_url: https://ryannzander.github.io/QuinusLang/
+site_description: A systems programming language with assembly-level control and readable syntax
+repo_url: https://github.com/ryannzander/QuinusLang
+repo_name: ryannzander/QuinusLang
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  custom_dir: docs/overrides
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ryannzander/QuinusLang
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.mark
+  - pymdownx.keys
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: install.md
+    - Quick Tour: tour.md
+    - Quick Reference: quick-reference.md
+  - Language Reference:
+    - Overview: language.md
+    - Keywords: keywords.md
+    - Types: types.md
+    - Expressions: expressions.md
+    - Control Flow: control-flow.md
+    - Structs and Enums: structs-enums.md
+    - Pointers and Memory: pointers-memory.md
+    - Modules and FFI: modules-ffi.md
+    - Compile Flags: compile-flags.md
+    - String Interpolation: string-interpolation.md
+    - Result Type: result-type.md
+    - Pattern Matching: pattern-matching.md
+    - Defer: defer.md
+    - With Blocks: with-blocks.md
+    - Move Semantics: move-semantics.md
+    - Builtins: builtins.md
+    - Numeric Literals: numeric-literals.md
+  - Standard Library:
+    - Index: stdlib-index.md
+    - fs: std-fs.md
+    - os: std-os.md
+    - math: std-math.md
+    - str: std-str.md
+    - io: std-io.md
+    - vec: std-vec.md
+    - map: std-map.md
+    - fmt: std-fmt.md
+    - time: std-time.md
+    - rand: std-rand.md
+    - arena: std-arena.md
+    - simd: std-simd.md
+    - path: std-path.md
+    - hash: std-hash.md
+    - mem: std-mem.md
+    - term: std-term.md
+    - sys: std-sys.md
+    - gui: std-gui.md
+  - CLI Reference: cli.md
+  - Advanced:
+    - LLVM Backend: llvm-backend.md
+    - Benchmarks: benchmarks.md
+    - C FFI: ffi.md
+    - Hazard and Unsafe: hazard-unsafe.md
+    - Embedded: embedded.md
+  - Contributing:
+    - Guide: contributing.md
+    - Architecture: ARCHITECTURE.md

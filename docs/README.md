@@ -1,15 +1,17 @@
 # QuinusLang Documentation
 
-Built with [mdBook](https://rust-lang.github.io/mdBook/).
+Built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
 
 **Local preview:**
 ```bash
-mdbook serve
+pip install mkdocs-material
+pip install -e .
+mkdocs serve
 ```
-Then open http://localhost:3000
+Then open http://localhost:8000
 
 **Build only:**
 ```bash
-mdbook build
+mkdocs build
 ```
-Output goes to `book/`.
+Output goes to `site/`.
