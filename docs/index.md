@@ -1,5 +1,5 @@
 ---
-title: QuinusLang
+title: Q++
 hide:
   - navigation
   - toc
@@ -8,15 +8,15 @@ hide:
 <div class="ql-hero" markdown>
 <div class="ql-hero-inner" markdown>
 
-<img src="assets/logo.png" alt="QuinusLang" class="ql-hero-logo" />
+<img src="assets/logo-transparent.png" alt="Q++" class="ql-hero-logo" />
 
-# QuinusLang
+# Q++
 
 **A systems programming language with assembly-level control, readable syntax, and an LLVM-powered native compiler.**
 
 [Get Started](install.md){ .md-button .md-button--primary .ql-hero-btn }
 [Quick Tour](tour.md){ .md-button .ql-hero-btn }
-[GitHub](https://github.com/ryannzander/QuinusLang){ .md-button .ql-hero-btn }
+[GitHub](https://github.com/ryannzander/Q++){ .md-button .ql-hero-btn }
 
 </div>
 </div>
@@ -83,7 +83,7 @@ Package manager, formatter, file watcher, REPL, and syntax highlighting. One `qu
 
 <div class="ql-link-grid" markdown>
 
-- :material-rocket-launch: **[Quick Tour](tour.md)** -- Learn QuinusLang in 15 minutes
+- :material-rocket-launch: **[Quick Tour](tour.md)** -- Learn Q++ in 15 minutes
 - :material-book: **[Language Reference](language.md)** -- Full syntax and semantics
 - :material-library: **[Standard Library](stdlib-index.md)** -- All 18 modules documented
 - :material-console: **[CLI Reference](cli.md)** -- Every command explained

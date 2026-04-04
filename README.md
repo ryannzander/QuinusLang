@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="QuinusLang" width="280" />
+  <img src="assets/logo-transparent.png" alt="Q++" width="280" />
 </p>
 
-<h1 align="center">QuinusLang</h1>
+<h1 align="center">Q++</h1>
 
 <p align="center">
   <strong>A systems programming language with assembly-level control, readable syntax, and an LLVM-powered native compiler.</strong>
@@ -22,7 +22,7 @@
 
 ---
 
-## Why QuinusLang?
+## Why Q++?
 
 - **Explicit control** — Expensive or dangerous operations are visible in code
 - **Readability** — Low-level code should be easy to read
@@ -37,8 +37,8 @@
 
 | Option | How |
 |--------|-----|
-| **Installer** (recommended) | Download `QuinusLang-Setup.exe` from [Releases](https://github.com/ryannzander/QuinusLang/releases) — run it, check "Add to PATH", done. |
-| **Portable zip** | Download `QuinusLang-portable.zip` — extract anywhere, run `quinus.exe`. No admin needed. |
+| **Installer** (recommended) | Download `Q++-Setup.exe` from [Releases](https://github.com/ryannzander/QuinusLang/releases) — run it, check "Add to PATH", done. |
+| **Portable zip** | Download `Q++-portable.zip` — extract anywhere, run `qpp.exe`. No admin needed. |
 | **From source** | `git clone https://github.com/ryannzander/QuinusLang.git && cd QuinusLang && cargo build --release` (requires Rust + LLVM 18) |
 
 Both the installer and portable zip bundle `lld-link` so you can compile `.q` files without installing any other toolchain.
@@ -48,16 +48,16 @@ Both the installer and portable zip bundle `lld-link` so you can compile `.q` fi
 ## Quick Start
 
 ```bash
-quinus init my-app      # scaffold a new project
+qpp init my-app      # scaffold a new project
 cd my-app
-quinus run              # compile and execute
+qpp run              # compile and execute
 ```
 
 Your entry point is `src/main.q`:
 
 ```q
 craft main() -> void {
-    print("Hello, QuinusLang!");
+    print("Hello, Q++!");
     send;
 }
 ```
@@ -65,8 +65,8 @@ craft main() -> void {
 Build only (output goes to `build/output.exe`):
 
 ```bash
-quinus build
-quinus build --release   # optimized
+qpp build
+qpp build --release   # optimized
 ```
 
 ---
@@ -159,7 +159,7 @@ hazard {
 
 ## Standard Library
 
-QuinusLang ships with a growing stdlib in `stdlib/`:
+Q++ ships with a growing stdlib in `stdlib/`:
 
 | Module | Purpose |
 |--------|---------|
@@ -206,19 +206,19 @@ Import with `bring "std.fs";` etc.
 
 | Command | Description |
 |---------|-------------|
-| `quinus build [path]` | Compile to native executable |
-| `quinus build --release` | Optimized build |
-| `quinus build --emit-llvm` | Emit LLVM IR only |
-| `quinus run [path]` | Build and run |
-| `quinus check [path]` | Parse and type-check without compiling |
-| `quinus init [name]` | Scaffold a new project |
-| `quinus fmt [path]` | Format `.q` source files |
-| `quinus watch [path]` | Rebuild on file changes |
-| `quinus repl` | Interactive REPL |
-| `quinus add <pkg>` | Add dependency |
-| `quinus remove <pkg>` | Remove dependency |
-| `quinus update` | Update dependencies |
-| `quinus publish` | Validate and tag a release |
+| `qpp build [path]` | Compile to native executable |
+| `qpp build --release` | Optimized build |
+| `qpp build --emit-llvm` | Emit LLVM IR only |
+| `qpp run [path]` | Build and run |
+| `qpp check [path]` | Parse and type-check without compiling |
+| `qpp init [name]` | Scaffold a new project |
+| `qpp fmt [path]` | Format `.q` source files |
+| `qpp watch [path]` | Rebuild on file changes |
+| `qpp repl` | Interactive REPL |
+| `qpp add <pkg>` | Add dependency |
+| `qpp remove <pkg>` | Remove dependency |
+| `qpp update` | Update dependencies |
+| `qpp publish` | Validate and tag a release |
 
 ---
 
@@ -236,7 +236,7 @@ Import with `bring "std.fs";` etc.
   → Executable
 ```
 
-The compiler is written in Rust and uses LLVM 18 via [inkwell](https://github.com/TheDan64/inkwell). A self-hosting bootstrap compiler written in QuinusLang itself lives in `compiler/`.
+The compiler is written in Rust and uses LLVM 18 via [inkwell](https://github.com/TheDan64/inkwell). A self-hosting bootstrap compiler written in Q++ itself lives in `compiler/`.
 
 ### Project Structure
 

@@ -1,32 +1,32 @@
-site_name: QuinusLang
+site_name: Q++
 site_url: https://ryannzander.github.io/QuinusLang/
-site_description: A systems programming language with assembly-level control and readable syntax
+site_description: Q++ is a systems programming language with assembly-level control and readable syntax
 repo_url: https://github.com/ryannzander/QuinusLang
 repo_name: ryannzander/QuinusLang
 edit_uri: edit/master/docs/
 
 theme:
   name: material
-  logo: assets/logo.png
-  favicon: assets/logo.png
+  logo: assets/logo-transparent.png
+  favicon: assets/logo-transparent.png
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: deep purple
-      accent: cyan
+      primary: grey
+      accent: teal
       toggle:
         icon: material/brightness-7
         name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: deep purple
-      accent: cyan
+      primary: grey
+      accent: teal
       toggle:
         icon: material/brightness-4
         name: Switch to dark mode
   font:
-    text: Inter
-    code: JetBrains Mono
+    text: "IBM Plex Sans"
+    code: "JetBrains Mono"
   features:
     - navigation.instant
     - navigation.tracking

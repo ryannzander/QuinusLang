@@ -1,61 +1,109 @@
-/* ── QuinusLang brand colors ── */
+/* QuinusLang — restrained palette, no loud purple defaults */
+
 :root {
-  --ql-blue: #3b82f6;
-  --ql-violet: #7c3aed;
-  --ql-cyan: #06b6d4;
-  --ql-gradient: linear-gradient(135deg, #3b82f6, #7c3aed);
-  --ql-gradient-subtle: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(124, 58, 237, 0.08));
+  --ql-accent: #5a9d8f;
+  --ql-accent-dim: rgba(90, 157, 143, 0.35);
+  --ql-border: rgba(255, 255, 255, 0.08);
+  --ql-border-light: rgba(15, 18, 22, 0.12);
 }
 
 [data-md-color-scheme="slate"] {
-  --ql-card-bg: #1e1e2e;
-  --ql-card-border: #313244;
-  --ql-hero-bg: linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 50%, var(--md-default-bg-color) 100%);
-  --ql-text-muted: #a6adc8;
+  --ql-card-bg: #181b21;
+  --ql-card-border: #2a2f38;
+  --ql-hero-bg: radial-gradient(
+      ellipse 90% 80% at 50% -30%,
+      rgba(90, 157, 143, 0.09),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #0e1014 0%, #14181f 45%, var(--md-default-bg-color) 100%);
+  --ql-text-muted: #9a9590;
+  --ql-title: #e8e6e1;
 }
 
 [data-md-color-scheme="default"] {
-  --ql-card-bg: #ffffff;
-  --ql-card-border: #e2e8f0;
-  --ql-hero-bg: linear-gradient(180deg, #f0f0ff 0%, #e8e0ff 50%, var(--md-default-bg-color) 100%);
-  --ql-text-muted: #64748b;
+  --ql-card-bg: #fafaf8;
+  --ql-card-border: #e2e0db;
+  --ql-hero-bg: radial-gradient(
+      ellipse 90% 80% at 50% -30%,
+      rgba(90, 157, 143, 0.06),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #f5f4f1 0%, #fafaf8 50%, var(--md-default-bg-color) 100%);
+  --ql-text-muted: #5c5955;
+  --ql-title: #1a1917;
 }
 
-/* ── Hero section ── */
+/* ── Logo: true transparency in header / drawer (no matte box) ── */
+.md-header__button.md-logo,
+.md-nav__button.md-logo {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.md-header__button.md-logo img,
+.md-nav__button.md-logo img {
+  background: transparent !important;
+  display: block;
+  height: 1.45rem;
+  width: auto;
+  object-fit: contain;
+}
+
+/* ── Hero ── */
 .ql-hero {
   background: var(--ql-hero-bg);
   text-align: center;
-  padding: 4rem 1.5rem 2rem;
+  padding: 3.5rem 1.5rem 2.25rem;
   margin: -1rem -0.8rem 0;
 }
 
 .ql-hero-inner h1 {
-  font-size: 3rem;
-  font-weight: 800;
-  background: var(--ql-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--ql-title);
   margin: 0.5rem 0;
-  letter-spacing: -0.02em;
+  background: none;
+  -webkit-text-fill-color: var(--ql-title);
+  background-clip: unset;
 }
 
 .ql-hero-inner p strong {
   font-weight: 400;
-  font-size: 1.15rem;
+  font-size: 1.08rem;
   color: var(--ql-text-muted);
-  line-height: 1.7;
+  line-height: 1.75;
+  max-width: 38rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .ql-hero-logo {
-  width: 140px;
+  width: min(132px, 36vw);
   height: auto;
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 4px 24px rgba(124, 58, 237, 0.3));
+  margin-bottom: 0.75rem;
+  background: transparent !important;
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.35));
+}
+
+[data-md-color-scheme="default"] .ql-hero-logo {
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.08));
 }
 
 .ql-hero-btn {
-  margin: 0.25rem;
+  margin: 0.3rem;
+}
+
+/* Primary CTA: muted teal, not electric purple */
+.ql-hero .md-button--primary {
+  background-color: var(--ql-accent);
+  border-color: var(--ql-accent);
+  color: #0d0f12;
+}
+
+.ql-hero .md-button--primary:hover {
+  background-color: #4d8f82;
+  border-color: #4d8f82;
 }
 
 /* ── Code preview ── */
@@ -66,9 +114,9 @@
 }
 
 .ql-code-preview pre {
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid var(--ql-card-border);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 /* ── Feature cards ── */
@@ -81,36 +129,41 @@
 .ql-feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .ql-feature-card {
   background: var(--ql-card-bg);
   border: 1px solid var(--ql-card-border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: 8px;
+  padding: 1.35rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ql-feature-card:hover {
-  border-color: var(--ql-violet);
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.12);
+  border-color: var(--ql-accent-dim);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+}
+
+[data-md-color-scheme="slate"] .ql-feature-card:hover {
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
 }
 
 .ql-feature-card h3 {
   margin-top: 0;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .ql-feature-card p {
   color: var(--ql-text-muted);
-  font-size: 0.92rem;
+  font-size: 0.91rem;
   margin-bottom: 0;
   line-height: 1.6;
 }
 
-/* ── Quick links section ── */
+/* ── Quick links ── */
 .ql-quick-links {
   max-width: 960px;
   margin: 2rem auto 4rem;
@@ -119,14 +172,17 @@
 
 .ql-quick-links h2 {
   text-align: center;
-  font-size: 1.6rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.35rem;
+  color: var(--ql-title);
 }
 
 .ql-link-grid ul {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.75rem;
+  gap: 0.65rem;
   list-style: none;
   padding: 0;
 }
@@ -135,44 +191,60 @@
   background: var(--ql-card-bg);
   border: 1px solid var(--ql-card-border);
   border-radius: 8px;
-  padding: 1rem 1.25rem;
-  transition: border-color 0.2s;
+  padding: 0.95rem 1.15rem;
+  transition: border-color 0.2s ease;
 }
 
 .ql-link-grid li:hover {
-  border-color: var(--ql-cyan);
+  border-color: var(--ql-accent-dim);
 }
 
-/* ── Global tweaks ── */
-
-/* Accent overrides for Material theme */
+/* ── Header: one surface, no second “purple bar” ── */
 .md-header {
-  background: rgba(13, 13, 26, 0.95);
-  backdrop-filter: blur(8px);
+  background: #12151a !important;
+  border-bottom: 1px solid var(--ql-border);
+  backdrop-filter: blur(10px);
 }
 
 [data-md-color-scheme="default"] .md-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(252, 252, 250, 0.96) !important;
+  border-bottom: 1px solid var(--ql-border-light);
 }
 
-/* Code block accent line */
-.md-typeset .highlight > pre > code {
-  border-left: 3px solid var(--ql-violet);
-}
-
-/* Nav tabs styling */
+/* Tabs blend into chrome instead of a separate loud strip */
 .md-tabs {
-  border-bottom: 1px solid var(--ql-card-border);
+  background-color: #12151a !important;
+  border-bottom: 1px solid var(--ql-border) !important;
 }
 
-/* Better mobile hero */
+[data-md-color-scheme="default"] .md-tabs {
+  background-color: rgba(252, 252, 250, 0.98) !important;
+  border-bottom: 1px solid var(--ql-border-light) !important;
+}
+
+.md-tabs__link {
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+.md-tabs__item--active .md-tabs__link {
+  opacity: 1;
+}
+
+/* Code blocks: accent line uses theme teal, not violet */
+.md-typeset .highlight > pre > code {
+  border-left: 3px solid var(--ql-accent);
+}
+
 @media (max-width: 600px) {
   .ql-hero-inner h1 {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
+
   .ql-hero-logo {
-    width: 100px;
+    width: 104px;
   }
+
   .ql-feature-grid {
     grid-template-columns: 1fr;
   }
