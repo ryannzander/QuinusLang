@@ -314,7 +314,22 @@ craft main() -> void {
 "#,
     );
     assert!(ir.contains("printf"));
-    assert!(ir.contains("%ld"));
+    assert!(ir.contains("%lld"));
+}
+
+#[test]
+fn cg_print_i32_variable() {
+    let ir = codegen_ir(
+        r#"
+craft main() -> void {
+    make x: i32 = 7;
+    print(x);
+    send;
+}
+"#,
+    );
+    assert!(ir.contains("printf"));
+    assert!(ir.contains("%d"));
 }
 
 #[test]

@@ -6,6 +6,13 @@ All notable changes to Q++ will be documented in this file.
 
 - (none)
 
+## [0.2.3] - 2026-04-03
+
+### Fixed
+
+- **`print` / `write` / `writeln`**: Choose `printf` format from the emitted value type so variables work (previously non-literals used `%s` and mis-read integers as pointers).
+- **Integer printing**: Use `%lld` for 64-bit values so literals and `int` values match the C runtime on Windows (LLP64) and other targets.
+
 ## [0.2.6] - 2025-03-14
 
 ### Fixed

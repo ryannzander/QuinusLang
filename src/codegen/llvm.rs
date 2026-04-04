@@ -553,6 +553,59 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
     Ok(())
 }
 
+/// C `printf` variadic promotions: integer types narrower than `int` and `bool` (i1) → i32;
+/// `f32` → `f64`.
+fn coerce_variadic_printf_arg<'ctx>(
+    ctx: &mut LlvmCtx<'ctx>,
+    v: BasicValueEnum<'ctx>,
+) -> Result<BasicValueEnum<'ctx>> {
+    match v {
+        BasicValueEnum::IntValue(iv) => {
+            let w = iv.get_type().get_bit_width();
+            if w == 1 || (w > 0 && w < 32) {
+                Ok(ctx
+                    .builder
+                    .build_int_z_extend(iv, ctx.context.i32_type(), "iprom")?
+                    .into())
+            } else {
+                Ok(v)
+            }
+        }
+        BasicValueEnum::FloatValue(fv) if fv.get_type().get_bit_width() == 32 => Ok(ctx
+            .builder
+            .build_float_ext(fv, ctx.context.f64_type(), "fprom")?
+            .into()),
+        _ => Ok(v),
+    }
+}
+
+/// Format for the first argument after `coerce_variadic_printf_arg` (matches C `printf`).
+fn printf_fmt_for_value(v: &BasicValueEnum<'_>) -> &'static str {
+    match v {
+        BasicValueEnum::IntValue(iv) => match iv.get_type().get_bit_width() {
+            32 => "%d\0",
+            64 => "%lld\0",
+            _ => "%d\0",
+        },
+        BasicValueEnum::FloatValue(_) => "%f\0",
+        BasicValueEnum::PointerValue(_) => "%s\0",
+        _ => "%s\0",
+    }
+}
+
+fn printf_fmt_for_value_with_newline(v: &BasicValueEnum<'_>) -> &'static str {
+    match v {
+        BasicValueEnum::IntValue(iv) => match iv.get_type().get_bit_width() {
+            32 => "%d\n\0",
+            64 => "%lld\n\0",
+            _ => "%d\n\0",
+        },
+        BasicValueEnum::FloatValue(_) => "%f\n\0",
+        BasicValueEnum::PointerValue(_) => "%s\n\0",
+        _ => "%s\n\0",
+    }
+}
+
 fn emit_builtin_call<'ctx>(
     ctx: &mut LlvmCtx<'ctx>,
     name: &str,
@@ -566,13 +619,12 @@ fn emit_builtin_call<'ctx>(
             if args.is_empty() {
                 return Ok(Some(ctx.context.i64_type().const_zero().into()));
             }
-            let fmt = match &args[0] {
-                Expr::Literal(Literal::Str(_)) => "%s\0",
-                Expr::Literal(Literal::Int(_)) => "%ld\0",
-                Expr::Literal(Literal::Float(_)) => "%f\0",
-                Expr::Literal(Literal::Bool(_)) => "%d\0",
-                _ => "%s\0",
-            };
+            let mut promoted: Vec<BasicValueEnum<'ctx>> = Vec::with_capacity(args.len());
+            for a in args {
+                let v = emit_expr(ctx, a)?;
+                promoted.push(coerce_variadic_printf_arg(ctx, v)?);
+            }
+            let fmt = printf_fmt_for_value(&promoted[0]);
             let init = ctx.context.const_string(fmt.as_bytes(), true);
             let fmt_global = ctx.module.add_global(
                 init.get_type(),
@@ -586,25 +638,20 @@ fn emit_builtin_call<'ctx>(
                     .build_pointer_cast(fmt_global.as_pointer_value(), i8_ptr, "fmt_ptr")?;
 
             let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum> = vec![fmt_ptr.into()];
-            for a in args {
-                let v = emit_expr(ctx, a)?;
+            for v in promoted {
                 call_args.push(v.into());
             }
             ctx.builder.build_call(printf_fn, &call_args, "print")?;
             Ok(Some(ctx.context.i64_type().const_zero().into()))
         }
         "writeln" => {
-            let (fmt, num_args) = if args.is_empty() {
-                ("\n\0", 0)
+            let (fmt, promoted_vals): (&str, Vec<BasicValueEnum<'ctx>>) = if args.is_empty() {
+                ("\n\0", vec![])
             } else {
-                let f = match &args[0] {
-                    Expr::Literal(Literal::Str(_)) => "%s\n\0",
-                    Expr::Literal(Literal::Int(_)) => "%ld\n\0",
-                    Expr::Literal(Literal::Float(_)) => "%f\n\0",
-                    Expr::Literal(Literal::Bool(_)) => "%d\n\0",
-                    _ => "%s\n\0",
-                };
-                (f, 1)
+                let v = emit_expr(ctx, &args[0])?;
+                let p = coerce_variadic_printf_arg(ctx, v)?;
+                let f = printf_fmt_for_value_with_newline(&p);
+                (f, vec![p])
             };
             let n = STRING_COUNTER.fetch_add(1, Ordering::Relaxed);
             let init = ctx.context.const_string(fmt.as_bytes(), true);
@@ -618,8 +665,7 @@ fn emit_builtin_call<'ctx>(
                     .build_pointer_cast(fmt_global.as_pointer_value(), i8_ptr, "fmt_ptr")?;
 
             let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum> = vec![fmt_ptr.into()];
-            for a in args.iter().take(num_args) {
-                let v = emit_expr(ctx, a)?;
+            for v in promoted_vals {
                 call_args.push(v.into());
             }
             ctx.builder.build_call(printf_fn, &call_args, "writeln")?;
