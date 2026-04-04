@@ -83,19 +83,33 @@ pub fn apply_compile_flags(source: &str, defines: &mut HashSet<String>) -> Strin
 fn resolve_bring_path(base_dir: &Path, path: &[String]) -> Result<PathBuf> {
     let rel: PathBuf = path.iter().collect();
     let ext = rel.with_extension("q");
-    let mut candidates: Vec<PathBuf> = vec![
-        base_dir.join(&ext),
-        base_dir
-            .join("src")
-            .join(ext.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
-        base_dir.join("stdlib").join(&ext),
-        base_dir.join(rel.join("mod.q")),
-        base_dir.join("stdlib").join(rel.join("mod.q")),
-    ];
-    // "std.fs" -> stdlib/fs.q (flat stdlib)
-    if path.len() == 2 && path[0] == "std" {
-        candidates.push(base_dir.join("stdlib").join(format!("{}.q", path[1])));
+
+    let mut search_roots: Vec<PathBuf> = vec![base_dir.to_path_buf()];
+
+    // Also search next to the compiler executable (installed stdlib)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            if exe_dir != base_dir {
+                search_roots.push(exe_dir.to_path_buf());
+            }
+        }
     }
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    for root in &search_roots {
+        candidates.push(root.join(&ext));
+        candidates.push(
+            root.join("src")
+                .join(ext.file_name().unwrap_or(std::ffi::OsStr::new("main.q"))),
+        );
+        candidates.push(root.join("stdlib").join(&ext));
+        candidates.push(root.join(rel.join("mod.q")));
+        candidates.push(root.join("stdlib").join(rel.join("mod.q")));
+        if path.len() == 2 && path[0] == "std" {
+            candidates.push(root.join("stdlib").join(format!("{}.q", path[1])));
+        }
+    }
+
     for p in &candidates {
         if p.exists() {
             return Ok(p.clone());
