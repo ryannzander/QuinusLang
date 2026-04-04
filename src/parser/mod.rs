@@ -775,6 +775,18 @@ fn parse_block(stream: &mut TokenStream) -> Result<Vec<Stmt>> {
     Ok(stmts)
 }
 
+fn parse_for_step(stream: &mut TokenStream) -> Result<Stmt> {
+    let expr = parse_postfix(stream)?;
+    if stream.peek() == Some(&Token::Eq) {
+        stream.consume();
+        let value = parse_expr(stream)?;
+        let target = expr_to_assign_target(expr)?;
+        Ok(Stmt::Assign { target, value })
+    } else {
+        Ok(Stmt::ExprStmt(expr))
+    }
+}
+
 fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
     match stream.peek() {
         Some(Token::Check) => {
@@ -806,9 +818,9 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             let init = if stream.peek() != Some(&Token::Semicolon) {
                 Some(Box::new(parse_stmt(stream)?))
             } else {
+                stream.consume();
                 None
             };
-            stream.expect(";")?;
             let cond = if stream.peek() != Some(&Token::Semicolon) {
                 Some(parse_expr(stream)?)
             } else {
@@ -816,7 +828,7 @@ fn parse_stmt(stream: &mut TokenStream) -> Result<Stmt> {
             };
             stream.expect(";")?;
             let step = if stream.peek() != Some(&Token::RParen) {
-                Some(Box::new(parse_stmt(stream)?))
+                Some(Box::new(parse_for_step(stream)?))
             } else {
                 None
             };

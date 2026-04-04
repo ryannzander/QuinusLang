@@ -241,7 +241,10 @@ fn emit_fn<'ctx>(ctx: &mut LlvmCtx<'ctx>, f: &FnDef) -> Result<()> {
 
     for (i, param) in f.params.iter().enumerate() {
         let val = function.get_nth_param(i as u32).unwrap();
-        ctx.vars.insert(param.name.clone(), val.into());
+        let llvm_ty = type_to_llvm(ctx.context, &param.ty);
+        let alloca = ctx.builder.build_alloca(llvm_ty, &param.name)?;
+        ctx.builder.build_store(alloca, val)?;
+        ctx.vars.insert(param.name.clone(), alloca.into());
         ctx.var_types.insert(param.name.clone(), param.ty.clone());
     }
 
@@ -280,6 +283,7 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
                 .unwrap_or_else(|| expr_type(init, ctx).unwrap_or(Type::Int));
             let llvm_ty = type_to_llvm(ctx.context, &ty_resolved);
             let val = emit_expr(ctx, init)?;
+            let val = coerce_value_to_type(ctx, val, llvm_ty)?;
             let alloca = ctx.builder.build_alloca(llvm_ty, name)?;
             ctx.builder.build_store(alloca, val)?;
             ctx.vars.insert(name.clone(), alloca.into());
@@ -298,6 +302,16 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
         Stmt::Return(expr) => {
             if let Some(e) = expr {
                 let val = emit_expr(ctx, e)?;
+                let func = ctx.builder.get_insert_block().and_then(|b| b.get_parent());
+                let val = if let Some(f) = func {
+                    if let Some(ret_ty) = f.get_type().get_return_type() {
+                        coerce_value_to_type(ctx, val, ret_ty)?
+                    } else {
+                        val
+                    }
+                } else {
+                    val
+                };
                 ctx.builder.build_return(Some(&val))?;
             } else {
                 ctx.builder.build_return(None)?;
@@ -389,6 +403,9 @@ fn emit_stmt<'ctx>(ctx: &mut LlvmCtx<'ctx>, stmt: &Stmt) -> Result<()> {
             }
 
             ctx.builder.position_at_end(merge_bb);
+            if merge_bb.get_first_use().is_none() {
+                ctx.builder.build_unreachable()?;
+            }
         }
         Stmt::For {
             init,
@@ -612,6 +629,47 @@ fn emit_builtin_call<'ctx>(
     }
 }
 
+fn coerce_int_types<'ctx>(
+    ctx: &mut LlvmCtx<'ctx>,
+    a: inkwell::values::IntValue<'ctx>,
+    b: inkwell::values::IntValue<'ctx>,
+) -> Result<(
+    inkwell::values::IntValue<'ctx>,
+    inkwell::values::IntValue<'ctx>,
+)> {
+    let a_bits = a.get_type().get_bit_width();
+    let b_bits = b.get_type().get_bit_width();
+    if a_bits == b_bits {
+        return Ok((a, b));
+    }
+    if a_bits > b_bits {
+        let b_ext = ctx.builder.build_int_s_extend(b, a.get_type(), "sext")?;
+        Ok((a, b_ext))
+    } else {
+        let a_ext = ctx.builder.build_int_s_extend(a, b.get_type(), "sext")?;
+        Ok((a_ext, b))
+    }
+}
+
+fn coerce_value_to_type<'ctx>(
+    ctx: &mut LlvmCtx<'ctx>,
+    val: BasicValueEnum<'ctx>,
+    target_ty: inkwell::types::BasicTypeEnum<'ctx>,
+) -> Result<BasicValueEnum<'ctx>> {
+    match (val, target_ty) {
+        (BasicValueEnum::IntValue(iv), inkwell::types::BasicTypeEnum::IntType(it))
+            if iv.get_type().get_bit_width() != it.get_bit_width() =>
+        {
+            if iv.get_type().get_bit_width() > it.get_bit_width() {
+                Ok(ctx.builder.build_int_truncate(iv, it, "trunc")?.into())
+            } else {
+                Ok(ctx.builder.build_int_s_extend(iv, it, "sext")?.into())
+            }
+        }
+        _ => Ok(val),
+    }
+}
+
 fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnum<'ctx>> {
     match expr {
         Expr::Literal(Literal::Int(n)) => {
@@ -659,6 +717,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             match op {
                 BinOp::Add => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_int_add(a, b, "add")?.into())
                     } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
                         (l, r)
@@ -670,6 +729,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Sub => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_int_sub(a, b, "sub")?.into())
                     } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
                         (l, r)
@@ -681,6 +741,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Mul => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_int_mul(a, b, "mul")?.into())
                     } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
                         (l, r)
@@ -692,6 +753,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Div => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_int_signed_div(a, b, "div")?.into())
                     } else if let (BasicValueEnum::FloatValue(a), BasicValueEnum::FloatValue(b)) =
                         (l, r)
@@ -703,6 +765,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Eq => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::EQ, a, b, "eq")?
@@ -713,6 +776,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Ne => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::NE, a, b, "ne")?
@@ -723,6 +787,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Lt => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::SLT, a, b, "lt")?
@@ -733,6 +798,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Le => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::SLE, a, b, "le")?
@@ -743,6 +809,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Gt => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::SGT, a, b, "gt")?
@@ -753,6 +820,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Ge => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx
                             .builder
                             .build_int_compare(inkwell::IntPredicate::SGE, a, b, "ge")?
@@ -763,6 +831,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Mod => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_int_signed_rem(a, b, "mod")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in %"))
@@ -770,6 +839,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::And => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_and(a, b, "and")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in &&"))
@@ -777,6 +847,7 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
                 }
                 BinOp::Or => {
                     if let (BasicValueEnum::IntValue(a), BasicValueEnum::IntValue(b)) = (l, r) {
+                        let (a, b) = coerce_int_types(ctx, a, b)?;
                         Ok(ctx.builder.build_or(a, b, "or")?.into())
                     } else {
                         Err(crate::error::semantic_err("Type mismatch in ||"))
@@ -836,13 +907,18 @@ fn emit_expr<'ctx>(ctx: &mut LlvmCtx<'ctx>, expr: &Expr) -> Result<BasicValueEnu
             let fn_val = ctx.module.get_function(&fn_name).ok_or_else(|| {
                 crate::error::semantic_err(format!("Function not found: {}", fn_name))
             })?;
-            let arg_vals: Vec<inkwell::values::BasicMetadataValueEnum> = args
-                .iter()
-                .map(|a| emit_expr(ctx, a))
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .map(|v| v.into())
-                .collect();
+            let param_types = fn_val.get_type().get_param_types();
+            let mut arg_vals: Vec<inkwell::values::BasicMetadataValueEnum> = Vec::new();
+            for (i, a) in args.iter().enumerate() {
+                let val = emit_expr(ctx, a)?;
+                let coerced =
+                    if let Some(param_ty) = param_types.get(i).and_then(|t| (*t).try_into().ok()) {
+                        coerce_value_to_type(ctx, val, param_ty)?
+                    } else {
+                        val
+                    };
+                arg_vals.push(coerced.into());
+            }
             let call = ctx.builder.build_call(fn_val, &arg_vals, "call")?;
             Ok(call
                 .try_as_basic_value()

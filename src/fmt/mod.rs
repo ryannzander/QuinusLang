@@ -72,7 +72,48 @@ fn format_top_level(out: &mut String, item: &TopLevelItem) {
             }
             let _ = writeln!(out, ";");
         }
-        _ => {}
+        TopLevelItem::Enum(e) => {
+            let _ = writeln!(out, "state {} {{", e.name);
+            for v in &e.variants {
+                match v {
+                    EnumVariant::Unit(name) => {
+                        let _ = writeln!(out, "    {},", name);
+                    }
+                    EnumVariant::Tuple(name, types) => {
+                        let tys: Vec<String> = types.iter().map(|t| t.to_string()).collect();
+                        let _ = writeln!(out, "    {}({}),", name, tys.join(", "));
+                    }
+                }
+            }
+            let _ = writeln!(out, "}}");
+        }
+        TopLevelItem::Alias(a) => {
+            let _ = writeln!(out, "alias {} = {};", a.name, a.ty);
+        }
+        TopLevelItem::Impl(imp) => {
+            let _ = writeln!(out, "impl {} {{", imp.struct_name);
+            for m in &imp.methods {
+                let f = FnDef {
+                    name: m.name.clone(),
+                    params: m.params.clone(),
+                    return_type: m.return_type.clone(),
+                    body: m.body.clone(),
+                    open: false,
+                    span: Span::default(),
+                };
+                let _ = write!(out, "    ");
+                format_fn(out, &f, false);
+            }
+            let _ = writeln!(out, "}}");
+        }
+        TopLevelItem::Union(u) => {
+            let _ = writeln!(out, "fusion {} {{", u.name);
+            for f in &u.fields {
+                let _ = writeln!(out, "    {}: {},", f.name, f.ty);
+            }
+            let _ = writeln!(out, "}}");
+        }
+        TopLevelItem::Class(_) => {}
     }
 }
 
@@ -172,7 +213,7 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
                 format_stmt(out, s, indent + 1);
             }
             if let Some(else_b) = else_body {
-                let _ = writeln!(out, "{}otherwise {{", pad);
+                let _ = writeln!(out, "{}}} otherwise {{", pad);
                 for s in else_b {
                     format_stmt(out, s, indent + 1);
                 }
@@ -205,17 +246,19 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             let _ = write!(out, "{}for (", pad);
             if let Some(i) = init {
                 format_stmt(out, i, 0);
-                out.pop();
-                out.pop();
+                let trimmed = out.trim_end();
+                let len = trimmed.len();
+                out.truncate(len);
+            } else {
+                out.push(';');
             }
-            out.push_str("; ");
+            out.push_str(" ");
             if let Some(c) = cond {
                 format_expr(out, c);
             }
             out.push_str("; ");
             if let Some(s) = step {
-                format_stmt(out, s, 0);
-                // Keep semicolon for step (parser expects it)
+                format_for_step(out, s);
             }
             let _ = writeln!(out, ") {{");
             for s in body {
@@ -291,7 +334,7 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             for s in try_body {
                 format_stmt(out, s, indent + 1);
             }
-            let _ = write!(out, "{}catch", pad);
+            let _ = write!(out, "{}}} catch", pad);
             if let Some(p) = catch_param {
                 let _ = write!(out, " ({})", p);
             }
@@ -327,6 +370,25 @@ fn format_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
             let _ = write!(out, " = ");
             format_expr(out, value);
             let _ = writeln!(out, ";");
+        }
+    }
+}
+
+fn format_for_step(out: &mut String, stmt: &Stmt) {
+    match stmt {
+        Stmt::Assign { target, value } => {
+            format_assign_target(out, target);
+            let _ = write!(out, " = ");
+            format_expr(out, value);
+        }
+        Stmt::ExprStmt(e) => {
+            format_expr(out, e);
+        }
+        _ => {
+            format_stmt(out, stmt, 0);
+            let trimmed = out.trim_end();
+            let len = trimmed.len();
+            out.truncate(len);
         }
     }
 }
