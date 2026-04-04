@@ -1,22 +1,22 @@
 {
-  "name": "quinuslang",
-  "displayName": "QuinusLang",
-  "description": "Syntax highlighting for QuinusLang (.q files). Supports backtick interpolation, keywords, types, and builtins.",
-  "version": "0.2.2",
-  "publisher": "quinuslang",
+  "name": "qpp",
+  "displayName": "Q++",
+  "description": "Syntax highlighting for Q++ (.q files). Supports backtick interpolation, keywords, types, and builtins.",
+  "version": "0.3.0",
+  "publisher": "qpp",
   "engines": { "vscode": "^1.60.0" },
   "categories": ["Programming Languages"],
   "contributes": {
     "languages": [{
-      "id": "quinuslang",
-      "aliases": ["QuinusLang", "q"],
+      "id": "qpp",
+      "aliases": ["Q++", "q"],
       "extensions": [".q"],
       "configuration": "./language-configuration.json"
     }],
     "grammars": [{
-      "language": "quinuslang",
+      "language": "qpp",
       "scopeName": "source.q",
-      "path": "./quinuslang.tmLanguage.json"
+      "path": "./qpp.tmLanguage.json"
     }]
   }
 }

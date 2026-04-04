@@ -578,7 +578,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "quinuslang"
+name = "qpp"
 version = "0.2.2"
 dependencies = [
  "anyhow",

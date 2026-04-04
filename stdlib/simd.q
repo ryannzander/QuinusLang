@@ -1,4 +1,4 @@
-// QuinusLang standard library: SIMD intrinsics (SSE)
+// Q++ standard library: SIMD intrinsics (SSE)
 // Use hazard { cblock { "#include <xmmintrin.h>" } } then call via extern
 // Or use hazard { cblock { " __m128 x = _mm_loadu_ps(p); " } } for inline
 

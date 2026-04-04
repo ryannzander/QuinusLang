@@ -1,4 +1,4 @@
-// QuinusLang AST types for bootstrap compiler
+// Q++ AST types for bootstrap compiler
 // Minimal subset: Literal, Ident, Binary, Call, Unary
 // Uses tagged union: form with tag + payload fields
 

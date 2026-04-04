@@ -1,4 +1,4 @@
-// QuinusLang bootstrap compiler driver
+// Q++ bootstrap compiler driver
 // Pipeline: read source -> lex -> parse -> semantic -> codegen -> write C -> invoke cc
 // Usage: build this, then run with input file (default: input.q)
 // Build: cargo run -- build compiler/main.q

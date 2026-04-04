@@ -1,4 +1,4 @@
-# Build QuinusLang runtime to runtime.o / runtime.obj
+# Build Q++ runtime to runtime.o / runtime.obj
 # Requires: clang (or gcc on Linux) in PATH
 # Output: runtime/runtime.o (Linux/macOS) or runtime/runtime.obj (Windows)
 

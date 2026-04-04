@@ -1,4 +1,4 @@
-//! Parse quinus.toml manifest
+//! Parse qpp.toml manifest
 
 use crate::error::{Error, Result};
 use std::collections::HashMap;

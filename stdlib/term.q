@@ -1,4 +1,4 @@
-// QuinusLang standard library: Terminal/ANSI
+// Q++ standard library: Terminal/ANSI
 // Colors and cursor control via escape codes
 
 extern craft ql_term_reset() -> void;

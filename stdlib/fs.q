@@ -1,4 +1,4 @@
-// QuinusLang standard library: File system operations
+// Q++ standard library: File system operations
 // Uses C FFI to wrap fopen, fread, fwrite, fclose
 
 extern craft fopen(path: str, mode: str) -> link void;

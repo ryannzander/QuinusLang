@@ -1,4 +1,4 @@
-// QuinusLang lexer - hand-written tokenizer for bootstrap compiler
+// Q++ lexer - hand-written tokenizer for bootstrap compiler
 // Output: vec of tokens (link void = token pointer)
 // Use: bring "compiler.lexer"; toks = lexer.tokenize(source);
 

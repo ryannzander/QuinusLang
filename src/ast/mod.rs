@@ -1,4 +1,4 @@
-//! Abstract Syntax Tree for QuinusLang
+//! Abstract Syntax Tree for Q++
 
 use std::fmt;
 

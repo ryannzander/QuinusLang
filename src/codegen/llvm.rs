@@ -1,4 +1,4 @@
-//! LLVM backend - compiles QuinusLang to machine code via LLVM IR
+//! LLVM backend - compiles Q++ to machine code via LLVM IR
 //! Requires LLVM 17 dev libraries installed
 
 use crate::ast::*;
@@ -22,7 +22,7 @@ pub fn compile_to_object(program: &AnnotatedProgram, obj_path: &Path) -> Result<
     Target::initialize_native(&InitializationConfig::default())?;
 
     let context = Context::create();
-    let module = context.create_module("quinus");
+    let module = context.create_module("qpp");
     let builder = context.create_builder();
 
     declare_builtins(&context, &module);
@@ -80,7 +80,7 @@ pub fn compile_to_ir(program: &AnnotatedProgram, ir_path: &Path) -> Result<()> {
     Target::initialize_native(&InitializationConfig::default())?;
 
     let context = Context::create();
-    let module = context.create_module("quinus");
+    let module = context.create_module("qpp");
     let builder = context.create_builder();
 
     declare_builtins(&context, &module);
@@ -125,7 +125,7 @@ pub fn compile_to_ir_string(program: &AnnotatedProgram) -> Result<String> {
     Target::initialize_native(&InitializationConfig::default())?;
 
     let context = Context::create();
-    let module = context.create_module("quinus");
+    let module = context.create_module("qpp");
     let builder = context.create_builder();
 
     declare_builtins(&context, &module);

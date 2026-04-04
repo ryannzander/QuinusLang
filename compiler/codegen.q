@@ -1,4 +1,4 @@
-// QuinusLang codegen - walk AST, emit C
+// Q++ codegen - walk AST, emit C
 // Minimal: Literal, Ident, Binary (+, -, *, /)
 // Build: cargo run -- build compiler/codegen_test.q
 

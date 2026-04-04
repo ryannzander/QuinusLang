@@ -1,12 +1,12 @@
 # Quick Reference
 
-One-page cheat sheet for QuinusLang.
+One-page cheat sheet for Q++.
 
 ## Project Setup
 
 ```bash
-quinus init
-quinus run
+qpp init
+qpp run
 ```
 
 ## Variables
@@ -78,10 +78,10 @@ hazard {
 ## CLI
 
 ```bash
-quinus build [--release] [--emit-llvm] [--define NAME]
-quinus run
-quinus fmt
-quinus watch
-quinus check
-quinus lsp
+qpp build [--release] [--emit-llvm] [--define NAME]
+qpp run
+qpp fmt
+qpp watch
+qpp check
+qpp lsp
 ```

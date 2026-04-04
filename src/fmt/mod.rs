@@ -1,4 +1,4 @@
-//! Basic formatter for QuinusLang
+//! Basic formatter for Q++
 
 use crate::ast::*;
 use std::fmt::Write;

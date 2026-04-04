@@ -1,4 +1,4 @@
-// QuinusLang standard library: String formatting (sprintf-style)
+// Q++ standard library: String formatting (sprintf-style)
 // For codegen string building
 
 extern craft malloc(size: usize) -> link void;

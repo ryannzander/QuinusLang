@@ -1,4 +1,4 @@
-# QuinusLang Bootstrap Handoff
+# Q++ Bootstrap Handoff
 
 Handoff document for continuing the bootstrap compiler work from a different device.
 
@@ -35,7 +35,7 @@ Handoff document for continuing the bootstrap compiler work from a different dev
 ### How to Run
 
 ```powershell
-# Build the bootstrap compiler (Rust compiles QuinusLang)
+# Build the bootstrap compiler (Rust compiles Q++)
 cargo run -- build compiler/main.q
 
 # Run bootstrap compiler from compiler/ (reads input.q, writes build/output.c)
@@ -68,9 +68,9 @@ The bootstrap compiler produces valid C (e.g. `#include <stdio.h>\nint main(void
 
 ### Long-Term: Full Self-Hosting
 
-- Support the full QuinusLang syntax used by `compiler/main.q` and the rest of the compiler
-- Bootstrap compiler compiles itself: `quinus build compiler/main.q` runs the QuinusLang bootstrap binary instead of the Rust compiler
-- Eventually retire the Rust compiler for QuinusLang compilation
+- Support the full Q++ syntax used by `compiler/main.q` and the rest of the compiler
+- Bootstrap compiler compiles itself: `qpp build compiler/main.q` runs the Q++ bootstrap binary instead of the Rust compiler
+- Eventually retire the Rust compiler for Q++ compilation
 
 ---
 
@@ -94,8 +94,8 @@ The bootstrap compiler produces valid C (e.g. `#include <stdio.h>\nint main(void
 ## Build Commands
 
 ```powershell
-# Build from project root (uses quinus.toml entry)
-quinus build .
+# Build from project root (uses qpp.toml entry)
+qpp build .
 
 # Build a specific file (base_dir auto-resolves to project root)
 cargo run -- build compiler/semantic_test.q

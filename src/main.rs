@@ -1,13 +1,13 @@
-//! QuinusLang compiler CLI
+//! Q++ compiler CLI
 
 use clap::{Parser, Subcommand};
-use quinuslang::{analyze, codegen, fmt, package, parse, preprocess};
+use qpp::{analyze, codegen, fmt, package, parse, preprocess};
 use std::path::PathBuf;
 use std::process::Command;
 
 #[derive(Parser)]
-#[command(name = "quinus")]
-#[command(about = "QuinusLang compiler and package manager")]
+#[command(name = "qpp")]
+#[command(about = "Q++ compiler and package manager")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
@@ -16,7 +16,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Compile a QuinusLang source file to executable
+    /// Compile a Q++ source file to executable
     Build {
         #[arg(default_value = ".")]
         path: PathBuf,
@@ -30,7 +30,7 @@ enum Commands {
         #[arg(long, action = clap::ArgAction::Append)]
         define: Vec<String>,
     },
-    /// Build and run a QuinusLang program
+    /// Build and run a Q++ program
     Run {
         #[arg(default_value = ".")]
         path: PathBuf,
@@ -122,7 +122,7 @@ fn cmd_build(
         let search = parent.canonicalize().unwrap_or(parent.clone());
         let mut p = search.as_path();
         while let Some(next) = p.parent() {
-            if next.join("stdlib").exists() || next.join("quinus.toml").exists() {
+            if next.join("stdlib").exists() || next.join("qpp.toml").exists() {
                 project_root = next.to_path_buf();
                 break;
             }
@@ -277,7 +277,7 @@ fn find_msvc_libs() -> (Vec<String>, Vec<&'static str>) {
     (lib_paths, default_libs)
 }
 
-/// Find lld next to quinus.exe (bundled with installer/portable)
+/// Find lld next to qpp.exe (bundled with installer/portable)
 fn find_bundled_lld() -> Option<std::path::PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
@@ -460,7 +460,7 @@ fn cmd_preprocess(path: &PathBuf, output: Option<&PathBuf>) -> anyhow::Result<()
         let search = parent.canonicalize().unwrap_or(parent.clone());
         let mut p = search.as_path();
         while let Some(next) = p.parent() {
-            if next.join("stdlib").exists() || next.join("quinus.toml").exists() {
+            if next.join("stdlib").exists() || next.join("qpp.toml").exists() {
                 project_root = next.to_path_buf();
                 break;
             }
@@ -490,9 +490,9 @@ fn cmd_parse(path: &PathBuf) -> anyhow::Result<()> {
 }
 
 fn cmd_init(path: &PathBuf) -> anyhow::Result<()> {
-    let manifest_path = path.join("quinus.toml");
+    let manifest_path = path.join("qpp.toml");
     if manifest_path.exists() {
-        anyhow::bail!("quinus.toml already exists");
+        anyhow::bail!("qpp.toml already exists");
     }
     let manifest = r#"[package]
 name = "my-app"
@@ -520,9 +520,9 @@ entry = "src/main.q"
 }
 
 fn cmd_add(name: &str, git: Option<&str>) -> anyhow::Result<()> {
-    let manifest_path = PathBuf::from("quinus.toml");
+    let manifest_path = PathBuf::from("qpp.toml");
     if !manifest_path.exists() {
-        anyhow::bail!("Run 'quinus init' first");
+        anyhow::bail!("Run 'qpp init' first");
     }
     let content = std::fs::read_to_string(&manifest_path)?;
     let dep_line = if let Some(url) = git {
@@ -544,9 +544,9 @@ fn cmd_add(name: &str, git: Option<&str>) -> anyhow::Result<()> {
 }
 
 fn cmd_remove(name: &str) -> anyhow::Result<()> {
-    let manifest_path = PathBuf::from("quinus.toml");
+    let manifest_path = PathBuf::from("qpp.toml");
     if !manifest_path.exists() {
-        anyhow::bail!("No quinus.toml found");
+        anyhow::bail!("No qpp.toml found");
     }
     let content = std::fs::read_to_string(&manifest_path)?;
     let lines: Vec<&str> = content
@@ -559,9 +559,9 @@ fn cmd_remove(name: &str) -> anyhow::Result<()> {
 }
 
 fn cmd_publish() -> anyhow::Result<()> {
-    let manifest_path = PathBuf::from("quinus.toml");
+    let manifest_path = PathBuf::from("qpp.toml");
     if !manifest_path.exists() {
-        anyhow::bail!("No quinus.toml found. Run 'quinus init' first.");
+        anyhow::bail!("No qpp.toml found. Run 'qpp init' first.");
     }
     let manifest = package::manifest::parse_manifest(&manifest_path)?;
     let version = &manifest.package.version;
@@ -602,9 +602,9 @@ fn cmd_publish() -> anyhow::Result<()> {
 }
 
 fn cmd_update() -> anyhow::Result<()> {
-    let manifest_path = PathBuf::from("quinus.toml");
+    let manifest_path = PathBuf::from("qpp.toml");
     if !manifest_path.exists() {
-        anyhow::bail!("No quinus.toml found. Run 'quinus init' first.");
+        anyhow::bail!("No qpp.toml found. Run 'qpp init' first.");
     }
     let manifest = package::manifest::parse_manifest(&manifest_path)?;
     let resolved = package::resolve::resolve_dependencies(&manifest)?;
@@ -686,7 +686,7 @@ fn cmd_watch(path: &PathBuf) -> anyhow::Result<()> {
 
 fn cmd_repl() -> anyhow::Result<()> {
     use std::io::{self, BufRead, Write};
-    println!("QuinusLang REPL (type .help for commands)");
+    println!("Q++ REPL (type .help for commands)");
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     for line in stdin.lock().lines() {
@@ -710,15 +710,15 @@ fn cmd_repl() -> anyhow::Result<()> {
                 Ok(annotated) => {
                     writeln!(stdout, "ok")?;
                     if let Some(last) = p.items.first().and_then(|i| {
-                        if let quinuslang::ast::TopLevelItem::Fn(f) = i {
+                        if let qpp::ast::TopLevelItem::Fn(f) = i {
                             f.body.last()
                         } else {
                             None
                         }
                     }) {
                         let expr = match last {
-                            quinuslang::ast::Stmt::VarDecl { init, .. } => Some(init),
-                            quinuslang::ast::Stmt::ExprStmt(e) => Some(e),
+                            qpp::ast::Stmt::VarDecl { init, .. } => Some(init),
+                            qpp::ast::Stmt::ExprStmt(e) => Some(e),
                             _ => None,
                         };
                         if let Some(e) = expr {
@@ -755,7 +755,7 @@ fn cmd_lsp() -> anyhow::Result<()> {
     let result = InitializeResult {
         capabilities: caps,
         server_info: Some(lsp_types::ServerInfo {
-            name: "quinus".to_string(),
+            name: "qpp".to_string(),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
         }),
         ..Default::default()
@@ -852,14 +852,14 @@ fn collect_diagnostics(text: &str) -> Vec<lsp_types::Diagnostic> {
     match parse(text) {
         Ok(program) => {
             if let Err(e) = analyze(&program) {
-                if let quinuslang::Error::Semantic(se) = e {
+                if let qpp::Error::Semantic(se) = e {
                     let range = line_col_to_range(text, se.line, se.col);
                     diagnostics.push(lsp_types::Diagnostic {
                         range,
                         severity: Some(lsp_types::DiagnosticSeverity::ERROR),
                         code: None,
                         code_description: None,
-                        source: Some("quinus".into()),
+                        source: Some("qpp".into()),
                         message: format!("{}", se),
                         related_information: None,
                         tags: None,
@@ -870,8 +870,8 @@ fn collect_diagnostics(text: &str) -> Vec<lsp_types::Diagnostic> {
         }
         Err(e) => {
             let (line, col) = match &e {
-                quinuslang::Error::Lexer { line, col, .. } => (*line, *col),
-                quinuslang::Error::Parse { line, col, .. } => (*line, *col),
+                qpp::Error::Lexer { line, col, .. } => (*line, *col),
+                qpp::Error::Parse { line, col, .. } => (*line, *col),
                 _ => (1usize, 1usize),
             };
             let range = line_col_to_range(text, Some(line), Some(col));
@@ -880,7 +880,7 @@ fn collect_diagnostics(text: &str) -> Vec<lsp_types::Diagnostic> {
                 severity: Some(lsp_types::DiagnosticSeverity::ERROR),
                 code: None,
                 code_description: None,
-                source: Some("quinus".into()),
+                source: Some("qpp".into()),
                 message: format!("{}", e),
                 related_information: None,
                 tags: None,
@@ -952,7 +952,7 @@ fn position_to_offset(text: &str, pos: lsp_types::Position) -> Option<usize> {
 }
 
 fn find_hover_at_offset(
-    annotated: &quinuslang::semantic::AnnotatedProgram,
+    annotated: &qpp::semantic::AnnotatedProgram,
     text: &str,
     offset: usize,
 ) -> Option<String> {
@@ -1003,16 +1003,16 @@ fn find_hover_at_offset(
 }
 
 fn semantic_expr_type(
-    annotated: &quinuslang::semantic::AnnotatedProgram,
-    expr: &quinuslang::ast::Expr,
+    annotated: &qpp::semantic::AnnotatedProgram,
+    expr: &qpp::ast::Expr,
 ) -> Option<String> {
-    let ty = quinuslang::type_of_expr(&annotated.symbol_table, expr)?;
+    let ty = qpp::type_of_expr(&annotated.symbol_table, expr)?;
     Some(format!("{}", ty))
 }
 
 #[allow(dead_code)]
 fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> {
-    let manifest_path = base_dir.join("quinus.toml");
+    let manifest_path = base_dir.join("qpp.toml");
     if !manifest_path.exists() {
         return vec![];
     }
@@ -1037,7 +1037,7 @@ fn resolve_build_packages(base_dir: &std::path::Path) -> Vec<(String, PathBuf)> 
 }
 
 fn find_entry(path: &PathBuf) -> anyhow::Result<(String, PathBuf)> {
-    let manifest_path = path.join("quinus.toml");
+    let manifest_path = path.join("qpp.toml");
     if manifest_path.exists() {
         let manifest = package::manifest::parse_manifest(&manifest_path)?;
         let entry = path.join(&manifest.build.entry);
@@ -1055,5 +1055,5 @@ fn find_entry(path: &PathBuf) -> anyhow::Result<(String, PathBuf)> {
         let source = std::fs::read_to_string(&direct)?;
         return Ok((source, direct));
     }
-    anyhow::bail!("No entry point found. Create src/main.q or quinus.toml with [build] entry");
+    anyhow::bail!("No entry point found. Create src/main.q or qpp.toml with [build] entry");
 }

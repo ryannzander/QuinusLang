@@ -1,5 +1,5 @@
-use quinuslang::preprocess;
-use quinuslang::{analyze, codegen, parse, parse_with_imports};
+use qpp::preprocess;
+use qpp::{analyze, codegen, parse, parse_with_imports};
 use std::path::Path;
 
 #[test]
@@ -138,7 +138,7 @@ craft main() -> void { send; }
 
 #[test]
 fn test_formatter_roundtrip() {
-    use quinuslang::fmt;
+    use qpp::fmt;
     let source = r#"craft main() -> void {
     check (x > 0) {
         print(1);
@@ -154,7 +154,7 @@ fn test_formatter_roundtrip() {
 
 #[test]
 fn test_formatter_roundtrip_defer() {
-    use quinuslang::fmt;
+    use qpp::fmt;
     let source = r#"craft main() -> void {
     defer { print(1); }
     send;
@@ -168,7 +168,7 @@ fn test_formatter_roundtrip_defer() {
 
 #[test]
 fn test_formatter_roundtrip_foreach() {
-    use quinuslang::fmt;
+    use qpp::fmt;
     let source = r#"craft main() -> void {
     make shift arr: [i32; 3] = { 1, 2, 3 };
     foreach x in arr { print(x); }

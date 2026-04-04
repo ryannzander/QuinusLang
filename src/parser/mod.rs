@@ -1,4 +1,4 @@
-//! Parser for QuinusLang
+//! Parser for Q++
 
 use crate::ast::{EnumVariant, Span, *};
 use crate::error::{Error, Result};

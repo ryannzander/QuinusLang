@@ -1,8 +1,8 @@
-# QuinusLang Specification
+# Q++ Specification
 
 Assembly Power with Readable Modern Syntax
 
-QuinusLang is a modern low-level systems programming language designed to provide assembly-level control with a clean, readable syntax. It compiles to C, then to native executables via your system compiler.
+Q++ is a modern low-level systems programming language designed to provide assembly-level control with a clean, readable syntax. It compiles to C, then to native executables via your system compiler.
 
 ## Core Philosophy
 

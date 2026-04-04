@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to QuinusLang will be documented in this file.
+All notable changes to Q++ will be documented in this file.
 
 ## [Unreleased]
 
@@ -18,7 +18,7 @@ All notable changes to QuinusLang will be documented in this file.
 
 - **stdlib expansion**: std.hash (FNV-1a, djb2), std.mem (copy, set, compare), std.term (ANSI colors/cursor), std.sys (is_windows, is_unix), std.gui (Raylib)
 - **with blocks**: scope-bound resources with automatic cleanup; `with f = fs.open_file(...) { ... }` closes file on block exit
-- **Benchmark suite**: benchmarks/ with sum, fib, sieve, mandelbrot, nbody in QuinusLang, C, Rust, Zig; run.ps1 for timing
+- **Benchmark suite**: benchmarks/ with sum, fib, sieve, mandelbrot, nbody in Q++, C, Rust, Zig; run.ps1 for timing
 - **VSCode syntax**: updated keywords (with, defer, choose, alias, extern, move, cblock)
 
 ## [0.2.1] - 2025-03-14
@@ -63,7 +63,7 @@ All notable changes to QuinusLang will be documented in this file.
 ### Changed
 
 - Fixed outdated cmd_run message (C backend, not NASM)
-- Fixed README: `quinus publish` description
+- Fixed README: `qpp publish` description
 - LSP version from Cargo.toml
 - REPL type display uses Display instead of Debug
 

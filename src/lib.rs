@@ -1,4 +1,4 @@
-//! QuinusLang compiler library
+//! Q++ compiler library
 
 pub mod ast;
 pub mod codegen;

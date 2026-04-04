@@ -1,6 +1,6 @@
 # Keywords Reference
 
-Complete reference for QuinusLang keywords and their usage.
+Complete reference for Q++ keywords and their usage.
 
 ## Variables and Bindings
 

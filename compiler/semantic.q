@@ -1,6 +1,6 @@
-// QuinusLang semantic analysis for bootstrap compiler
+// Q++ semantic analysis for bootstrap compiler
 // Type-checks AST, builds symbol table (two vecs: names, types)
-// Build: quinus build compiler/semantic_test.q
+// Build: qpp build compiler/semantic_test.q
 
 bring "vec";
 bring "compiler.ast";

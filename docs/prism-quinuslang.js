@@ -1,11 +1,11 @@
 /**
- * Prism.js language definition for QuinusLang
+ * Prism.js language definition for Q++
  * https://prismjs.com/extending.html
  */
 (function () {
   if (typeof Prism === 'undefined') return;
 
-  Prism.languages.quinuslang = {
+  Prism.languages.qpp = {
     comment: {
       pattern: /\/\/.*/,
       greedy: true,

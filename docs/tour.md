@@ -1,15 +1,15 @@
 # Quick Tour
 
-A 15–20 minute walkthrough of QuinusLang.
+A 15–20 minute walkthrough of Q++.
 
 ## 1. Create a Project
 
 ```bash
-quinus init my-app
+qpp init my-app
 cd my-app
 ```
 
-This creates `src/main.q` and `quinus.toml`.
+This creates `src/main.q` and `qpp.toml`.
 
 ## 2. Variables
 
@@ -96,9 +96,9 @@ craft main() -> void {
 ## 7. Build and Run
 
 ```bash
-quinus run
+qpp run
 # or
-quinus build
+qpp build
 .\build\output.exe
 ```
 

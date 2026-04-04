@@ -1,4 +1,4 @@
-"""Pygments lexer for QuinusLang (.q files)."""
+"""Pygments lexer for Q++ (.q files)."""
 
 from pygments.lexer import RegexLexer, bygroups, include
 from pygments.token import (
@@ -11,14 +11,14 @@ from pygments.token import (
     Text,
 )
 
-__all__ = ["QuinusLangLexer"]
+__all__ = ["QppLexer"]
 
 
-class QuinusLangLexer(RegexLexer):
-    """Lexer for QuinusLang source code."""
+class QppLexer(RegexLexer):
+    """Lexer for Q++ source code."""
 
-    name = "QuinusLang"
-    aliases = ["quinuslang", "quinus", "q"]
+    name = "Q++"
+    aliases = ["qpp", "q"]
     filenames = ["*.q"]
 
     tokens = {

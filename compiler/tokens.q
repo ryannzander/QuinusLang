@@ -1,4 +1,4 @@
-// Token type constants for QuinusLang lexer
+// Token type constants for Q++ lexer
 // Matches Rust lexer Token enum order for bootstrap compatibility
 
 realm tokens {

@@ -1,9 +1,9 @@
 # Compilation (LLVM)
 
-QuinusLang compiles directly to native executables via LLVM. There is no C backend—LLVM is the sole codegen path.
+Q++ compiles directly to native executables via LLVM. There is no C backend—LLVM is the sole codegen path.
 
 **No separate LLVM download for end users.** The installer and portable zip include everything:
-- **quinus.exe** — LLVM codegen is built in (statically linked); no LLVM DLLs required
+- **qpp.exe** — LLVM codegen is built in (statically linked); no LLVM DLLs required
 - **lld-link.exe** (Windows) / **ld.lld** (Linux) — Bundled linker
 - **runtime.obj** / **runtime.o** — Precompiled stdlib helpers
 
@@ -11,7 +11,7 @@ One download, no additional tools.
 
 ## For End Users (Installer/Portable)
 
-If you downloaded the installer or portable zip: **no additional setup required**. Run `quinus build` and it will compile your `.q` files to executables using the bundled tools.
+If you downloaded the installer or portable zip: **no additional setup required**. Run `qpp build` and it will compile your `.q` files to executables using the bundled tools.
 
 ## For Developers (Building from Source)
 
@@ -36,24 +36,24 @@ If you downloaded the installer or portable zip: **no additional setup required*
    .\scripts\build-runtime.ps1   # Windows
    ./scripts/build-runtime.sh   # Linux (if available)
    ```
-   Place `runtime.obj` (Windows) or `runtime.o` (Linux) next to `quinus.exe` or in `dist-runtime/`.
+   Place `runtime.obj` (Windows) or `runtime.o` (Linux) next to `qpp.exe` or in `dist-runtime/`.
 
 ## Usage
 
 ```bash
-quinus build
+qpp build
 ```
 
 Or for a specific file:
 
 ```bash
-quinus build path/to/main.q
+qpp build path/to/main.q
 ```
 
 Emit LLVM IR only (no linking):
 
 ```bash
-quinus build --emit-llvm
+qpp build --emit-llvm
 ```
 
 ## Supported Features

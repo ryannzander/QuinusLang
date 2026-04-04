@@ -1,6 +1,6 @@
-# Contributing to QuinusLang
+# Contributing to Q++
 
-Thank you for your interest in contributing to QuinusLang!
+Thank you for your interest in contributing to Q++!
 
 ## Building
 
@@ -21,7 +21,7 @@ Release build:
 cargo build --release
 ```
 
-The compiler binary will be at `target/release/quinus` (or `quinus.exe` on Windows).
+The compiler binary will be at `target/release/qpp` (or `qpp.exe` on Windows).
 
 ## Testing
 

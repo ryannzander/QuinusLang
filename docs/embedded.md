@@ -1,6 +1,6 @@
 # Embedded Development
 
-QuinusLang targets systems programming: kernels, bootloaders, firmware, embedded.
+Q++ targets systems programming: kernels, bootloaders, firmware, embedded.
 
 ## Zero Hidden Runtime
 

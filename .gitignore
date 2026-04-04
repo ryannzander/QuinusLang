@@ -23,6 +23,6 @@ site/
 book/
 # Python package build
 *.egg-info/
-QuinusLang-portable.zip
-QuinusLang-portable/
+Qpp-portable.zip
+Qpp-portable/
 /installer_output/

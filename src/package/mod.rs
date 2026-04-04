@@ -1,4 +1,4 @@
-//! Package manager for QuinusLang
+//! Package manager for Q++
 
 pub mod fetch;
 pub mod lockfile;

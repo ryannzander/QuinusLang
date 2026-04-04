@@ -1,4 +1,4 @@
-// QuinusLang standard library: Platform detection
+// Q++ standard library: Platform detection
 // Compile-time platform checks via #ifdef in emitted C
 
 realm sys {

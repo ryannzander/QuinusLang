@@ -1,11 +1,11 @@
-; QuinusLang Installer - Inno Setup script
+; Q++ Installer - Inno Setup script
 ; Build: iscc installer.iss (requires Inno Setup 6)
 ; Download: https://jrsoftware.org/isdl.php
 
-#define MyAppName "QuinusLang"
+#define MyAppName "Q++"
 #define MyAppVersion "0.1.1"
-#define MyAppPublisher "QuinusLang"
-#define MyAppExeName "quinus.exe"
+#define MyAppPublisher "Q++"
+#define MyAppExeName "qpp.exe"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -16,7 +16,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=installer_output
-OutputBaseFilename=QuinusLang-Setup-{#MyAppVersion}
+OutputBaseFilename=Q++-Setup-{#MyAppVersion}
 SetupIconFile=
 Compression=lzma2
 SolidCompression=yes
@@ -27,10 +27,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "addpath"; Description: "Add QuinusLang to PATH (run quinus from any folder)"; GroupDescription: "Options:"; Flags: checkedonce
+Name: "addpath"; Description: "Add Q++ to PATH (run qpp from any folder)"; GroupDescription: "Options:"; Flags: checkedonce
 
 [Files]
-Source: "quinus.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "qpp.exe"; DestDir: "{app}"; Flags: ignoreversion
 #ifexist "runtime.obj"
 Source: "runtime.obj"; DestDir: "{app}"; Flags: ignoreversion
 #endif
@@ -98,7 +98,7 @@ begin
 end;
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "--help"; Description: "Show quinus help"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--help"; Description: "Show qpp help"; Flags: nowait postinstall skipifsilent
 
 [Messages]
-FinishedLabel=Setup has finished installing [name].%n%nIf you added to PATH, close and reopen your terminal for "quinus" to work from any folder.
+FinishedLabel=Setup has finished installing [name].%n%nIf you added to PATH, close and reopen your terminal for "qpp" to work from any folder.

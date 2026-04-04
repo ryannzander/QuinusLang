@@ -1,6 +1,6 @@
-// QuinusLang parser - minimal recursive descent
+// Q++ parser - minimal recursive descent
 // Reads tokens from lexer, produces AST (subset: int, ident, binary +)
-// Build: quinus build compiler/parser.q
+// Build: qpp build compiler/parser.q
 
 bring "fs";
 bring "vec";

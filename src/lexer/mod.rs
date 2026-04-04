@@ -1,4 +1,4 @@
-//! Lexer (tokenizer) for QuinusLang
+//! Lexer (tokenizer) for Q++
 
 use crate::error::{Error, Result};
 use logos::Logos;

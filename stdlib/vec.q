@@ -1,4 +1,4 @@
-// QuinusLang standard library: Growable arrays
+// Q++ standard library: Growable arrays
 // VecPtr: array of void* (for AST nodes, tokens)
 // VecU8: growable byte buffer (for string building)
 

@@ -1,12 +1,12 @@
-# QuinusLang Project Rules
+# Q++ Project Rules
 
 ## Version Bump (when releasing)
 
 When bumping the version (e.g. 0.1.0 → 0.1.1), update **all** of these:
 
-- `Cargo.toml` — `version = "X.Y.Z"` (source of truth for `quinus --version`)
+- `Cargo.toml` — `version = "X.Y.Z"` (source of truth for `qpp --version`)
 - `installer.iss` — `#define MyAppVersion "X.Y.Z"`
-- `quinus.toml` — `version = "X.Y.Z"` (if project uses it)
+- `qpp.toml` — `version = "X.Y.Z"` (if project uses it)
 - `CHANGELOG.md` — Add `## [X.Y.Z] - YYYY-MM-DD` section
 
 Then rebuild installer and zip: `.\build-installer.ps1` and `.\make-portable.ps1`
@@ -62,12 +62,12 @@ The workflow (`.github/workflows/release.yml`) patches version from the tag, bui
 
 ## Roadmap (Think Bigger)
 
-**Plan file**: `.cursor/plans/quinuslang_next_release_078ed5ca.plan.md`
+**Plan file**: `.cursor/plans/qpp_next_release_078ed5ca.plan.md`
 
 - **v0.2.0** ✓ — C FFI, fs/os stdlib, tuple destructuring, type alias, cast
 - **v0.3.0** — String interpolation, improved error messages, formatter completion
-- **v0.4.0** — Git package fetch, math/str stdlib, quinus publish
-- **v0.5.0** — LSP, quinus check, REPL eval
+- **v0.4.0** — Git package fetch, math/str stdlib, qpp publish
+- **v0.5.0** — LSP, qpp check, REPL eval
 - **Long-term**: Generics, traits, Wasm target, self-hosting
 
 ## Project Structure

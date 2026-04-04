@@ -1,6 +1,6 @@
 # Built-in Functions
 
-QuinusLang provides built-in functions without importing any module.
+Q++ provides built-in functions without importing any module.
 
 ## Output
 

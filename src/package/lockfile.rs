@@ -1,4 +1,4 @@
-//! Parse and write quinus.lock
+//! Parse and write qpp.lock
 
 use crate::error::{Error, Result};
 use std::collections::HashMap;

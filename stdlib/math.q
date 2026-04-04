@@ -1,4 +1,4 @@
-// QuinusLang standard library: Math operations
+// Q++ standard library: Math operations
 // Uses C FFI to wrap math.h and stdlib.h
 
 extern craft abs(x: i32) -> i32;

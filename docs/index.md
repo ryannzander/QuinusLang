@@ -5,73 +5,107 @@ hide:
   - toc
 ---
 
-<div class="ql-hero" markdown>
-<div class="ql-hero-inner" markdown>
+<!-- TypeScript-inspired landing: full-width blue hero, two-column grid, editor mockup -->
 
-<img src="assets/logo-transparent.png" alt="Q++" class="ql-hero-logo" />
+<div class="ql-ts-home">
 
-# Q++
+<section class="ql-ts-hero">
+<div class="ql-ts-hero-inner">
+<div class="ql-ts-hero-grid">
 
-**A systems programming language with assembly-level control, readable syntax, and an LLVM-powered native compiler.**
+<div class="ql-ts-copy">
 
-[Get Started](install.md){ .md-button .md-button--primary .ql-hero-btn }
-[Quick Tour](tour.md){ .md-button .ql-hero-btn }
-[GitHub](https://github.com/ryannzander/Q++){ .md-button .ql-hero-btn }
+<img src="assets/logo-transparent.png" alt="" class="ql-ts-logo" width="120" height="120" />
+
+<h1 class="ql-ts-headline">Q++ is <strong>systems code</strong> with <strong>readable</strong> syntax.</h1>
+
+<p class="ql-ts-lead">A systems programming language with assembly-level control, an LLVM-powered native compiler, and no hidden runtime. Tooling at any scale.</p>
+
+<p class="ql-ts-cta-wrap"><a href="install/" class="ql-ts-cta"><span class="ql-ts-cta-main">Get started</span><span class="ql-ts-cta-sub">Installer, portable zip, or build from source</span></a></p>
+
+<p class="ql-ts-hero-actions">
+<a href="tour.md" class="ql-ts-link">Quick tour</a><span class="ql-ts-dot" aria-hidden="true"> · </span><a href="https://github.com/ryannzander/QuinusLang" class="ql-ts-link">GitHub</a>
+</p>
 
 </div>
-</div>
 
-<div class="ql-code-preview" markdown>
+<div class="ql-ts-demo">
+
+<div class="ql-ts-win">
+<div class="ql-ts-win-tabs" role="tablist">
+<span class="ql-ts-tab ql-ts-tab--active">Type checks</span>
+<span class="ql-ts-tab">LLVM</span>
+<span class="ql-ts-tab">Unsafe</span>
+<span class="ql-ts-tab">FFI</span>
+</div>
+<div class="ql-ts-win-body" markdown="1">
 
 ```q
 craft main() -> void {
-    make shift name: str = "world";
-    print("Hello, " + name + "!");
-
-    make shift nums: [i32; 5] = { 1, 2, 3, 4, 5 };
-    foreach n in nums {
-        check (n > 3) {
-            print(n);
-        }
-    }
+    make shift user: User = {
+        name: "Ada",
+        role: Role.Admin,
+    };
+    print(user.display_name);
     send;
 }
 ```
 
+<div class="ql-ts-squiggle" aria-hidden="true"></div>
+<div class="ql-ts-errbox">
+<span class="ql-ts-err-title">check failed</span>
+<code class="ql-ts-err-msg">no field <span class="hl">display_name</span> on <span class="hl">User</span> — did you mean <span class="hl">name</span>?</code>
 </div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+</section>
+
+<div class="ql-ts-announce">
+<a href="https://github.com/ryannzander/QuinusLang/releases" class="ql-ts-announce-link">Latest release</a> — Q++ ships with <code>qpp</code>, formatter, package manager, and REPL.
+</div>
+
+</div>
+
+<div class="ql-ts-below" markdown>
 
 <div class="ql-features" markdown>
 
 <div class="ql-feature-grid" markdown>
 
 <div class="ql-feature-card" markdown>
-### :material-lightning-bolt: LLVM Backend
-Compiles to native machine code via LLVM 18. No interpreter, no VM, no garbage collector. Just fast executables.
+### LLVM backend
+Compiles to native machine code via LLVM. No interpreter, no VM, no garbage collector.
 </div>
 
 <div class="ql-feature-card" markdown>
-### :material-shield-check: Safety by Design
-Dangerous operations require explicit `hazard` blocks. Pointers use `link`/`mark`/`reach` for visibility. No hidden costs.
+### Safety by design
+Dangerous operations require explicit `hazard` blocks. Pointers use `link` / `mark` / `reach`.
 </div>
 
 <div class="ql-feature-card" markdown>
-### :material-book-open-variant: Readable Syntax
-Keywords like `craft`, `send`, `check`, `loopwhile` make low-level code read like intent. No cryptic symbols.
+### Readable syntax
+Keywords like `craft`, `send`, `check`, `loopwhile` keep low-level code legible.
 </div>
 
 <div class="ql-feature-card" markdown>
-### :material-package-variant: Rich Standard Library
-18 stdlib modules: file I/O, networking, math, vectors, maps, string manipulation, SIMD, terminal colors, and more.
+### Standard library
+File I/O, networking, math, SIMD, terminal colors, and more in one toolchain.
 </div>
 
 <div class="ql-feature-card" markdown>
-### :material-memory: Zero Hidden Runtime
-No hidden allocations. Suitable for kernels, bootloaders, firmware, and embedded systems. Inline assembly via `machine` blocks.
+### Zero hidden runtime
+Suitable for kernels, bootloaders, firmware, and embedded. Inline `machine` blocks.
 </div>
 
 <div class="ql-feature-card" markdown>
-### :material-tools: Batteries Included
-Package manager, formatter, file watcher, REPL, and syntax highlighting. One `quinus` binary does it all.
+### Batteries included
+Formatter, watcher, syntax highlighting — one `qpp` binary does it all.
 </div>
 
 </div>
@@ -83,12 +117,14 @@ Package manager, formatter, file watcher, REPL, and syntax highlighting. One `qu
 
 <div class="ql-link-grid" markdown>
 
-- :material-rocket-launch: **[Quick Tour](tour.md)** -- Learn Q++ in 15 minutes
-- :material-book: **[Language Reference](language.md)** -- Full syntax and semantics
-- :material-library: **[Standard Library](stdlib-index.md)** -- All 18 modules documented
-- :material-console: **[CLI Reference](cli.md)** -- Every command explained
-- :material-download: **[Installation](install.md)** -- Installer, portable zip, or build from source
-- :material-cog: **[LLVM Backend](llvm-backend.md)** -- How the compiler works under the hood
+- :material-rocket-launch: **[Quick Tour](tour.md)** — Learn Q++ in minutes
+- :material-book: **[Language Reference](language.md)** — Syntax and semantics
+- :material-library: **[Standard Library](stdlib-index.md)** — All modules
+- :material-console: **[CLI Reference](cli.md)** — Commands and flags
+- :material-download: **[Installation](install.md)** — Setup options
+- :material-cog: **[LLVM Backend](llvm-backend.md)** — How compilation works
 
 </div>
+</div>
+
 </div>

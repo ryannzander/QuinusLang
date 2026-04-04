@@ -1,4 +1,4 @@
-// QuinusLang standard library: Arena allocator
+// Q++ standard library: Arena allocator
 // Simple alloc/free wrappers; full bump allocator requires hazard blocks
 
 extern craft malloc(size: usize) -> link void;

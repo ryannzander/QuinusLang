@@ -1,4 +1,4 @@
-//! Bring/module preprocessor for QuinusLang
+//! Bring/module preprocessor for Q++
 //! Reads .q files, resolves bring statements recursively, outputs flattened source.
 //! Handles module-level compile flags: #define, #if, #else, #endif.
 

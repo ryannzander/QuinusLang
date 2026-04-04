@@ -1,4 +1,4 @@
-// Test semantic analysis - build: quinus build compiler/semantic_test.q
+// Test semantic analysis - build: qpp build compiler/semantic_test.q
 
 bring "vec";
 bring "compiler.lexer";

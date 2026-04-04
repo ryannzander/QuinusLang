@@ -1,4 +1,4 @@
-//! Error types and reporting for QuinusLang
+//! Error types and reporting for Q++
 
 use thiserror::Error;
 

@@ -1,4 +1,4 @@
-// QuinusLang standard library: Hashing
+// Q++ standard library: Hashing
 // FNV-1a and djb2 via C runtime
 
 extern craft ql_hash_fnv1a(ptr: link void, len: usize) -> u64;

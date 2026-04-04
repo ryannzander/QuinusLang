@@ -1,4 +1,4 @@
-// QuinusLang standard library: Time
+// Q++ standard library: Time
 // Uses C FFI: time.h
 
 extern craft ql_time_now() -> i64;

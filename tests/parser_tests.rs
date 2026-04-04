@@ -1,4 +1,4 @@
-use quinuslang::parse;
+use qpp::parse;
 
 #[test]
 fn test_parse_simple_fn() {
@@ -22,7 +22,7 @@ craft main() -> void {
 "#;
     let program = parse(source).unwrap();
     assert_eq!(program.items.len(), 1);
-    use quinuslang::ast::{Stmt, TopLevelItem, Type};
+    use qpp::ast::{Stmt, TopLevelItem, Type};
     if let TopLevelItem::Fn(f) = &program.items[0] {
         if let Stmt::VarDecl { ty: Some(t), .. } = &f.body[0] {
             assert!(matches!(t, Type::ArraySized(_, 5)));

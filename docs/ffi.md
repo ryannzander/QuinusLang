@@ -1,6 +1,6 @@
 # C FFI
 
-QuinusLang compiles to C, so calling C is straightforward.
+Q++ compiles to C, so calling C is straightforward.
 
 ## extern craft
 
@@ -36,7 +36,7 @@ craft main() -> void {
 
 ## Common C Types
 
-| QuinusLang | C |
+| Q++ | C |
 |------------|---|
 | `i32` | `int32_t` |
 | `u64` | `uint64_t` |

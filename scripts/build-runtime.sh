@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build QuinusLang runtime to runtime.o
+# Build Q++ runtime to runtime.o
 # Requires: clang or gcc in PATH
 # Output: dist-runtime/runtime.o
 

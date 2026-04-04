@@ -1,6 +1,6 @@
 # Docs deployment
 
-Docs are built with **mdBook** and deployed via GitHub Actions.
+Q++ documentation is built with **mdBook** and deployed via GitHub Actions.
 
 **Required:** Repo → Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 

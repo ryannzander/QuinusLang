@@ -1,4 +1,4 @@
-// QuinusLang standard library: Random numbers
+// Q++ standard library: Random numbers
 // Uses C FFI: stdlib.h (rand, srand)
 
 extern craft rand() -> i32;

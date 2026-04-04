@@ -1,4 +1,4 @@
-// QuinusLang standard library: String utilities
+// Q++ standard library: String utilities
 // trim, concat (beyond +)
 
 extern craft malloc(size: usize) -> link void;

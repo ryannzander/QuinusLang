@@ -1,6 +1,6 @@
 # Expressions
 
-Operators and expression syntax in QuinusLang.
+Operators and expression syntax in Q++.
 
 ## Arithmetic
 

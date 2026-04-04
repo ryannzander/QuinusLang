@@ -1,6 +1,6 @@
-# QuinusLang Benchmarks
+# Q++ Benchmarks
 
-Cross-language benchmarks comparing QuinusLang against C, Rust, and Zig.
+Cross-language benchmarks comparing Q++ against C, Rust, and Zig.
 
 ## How to Run
 
@@ -21,7 +21,7 @@ With options:
 
 ## Prerequisites
 
-1. **QuinusLang**: `cargo build --release` (compiler at `target/release/quinus.exe`)
+1. **Q++**: `cargo build --release` (compiler at `target/release/qpp.exe`)
 2. **C**: gcc or MSVC (`winget install mingw` or Visual Studio Build Tools)
 3. **Rust**: `rustc` (from rustup)
 4. **Zig**: `zig` (from ziglang.org or `winget install zig`)

@@ -1,22 +1,22 @@
-# Build QuinusLang and create the installer
+# Build Q++ and create the installer
 # Requires: Inno Setup 6 (https://jrsoftware.org/isdl.php)
 # Usage: .\build-installer.ps1
 #
-# Packages the Rust-built quinus (full CLI: build, run, init, --version)
+# Packages the Rust-built qpp (full CLI: build, run, init, --version)
 # NOT the Q-built compiler (minimal driver)
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Building QuinusLang (Rust)..."
+Write-Host "Building Q++ (Rust)..."
 cargo build --release
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Rust build failed"
 }
 
-# Use Rust quinus for installer - has full CLI (build, run, init, etc.)
-Copy-Item "target\release\quinus.exe" "quinus.exe" -Force
-if (-not (Test-Path "quinus.exe")) {
-    Write-Error "quinus.exe not found"
+# Use Rust qpp for installer - has full CLI (build, run, init, etc.)
+Copy-Item "target\release\qpp.exe" "qpp.exe" -Force
+if (-not (Test-Path "qpp.exe")) {
+    Write-Error "qpp.exe not found"
 }
 
 # Build runtime and copy lld for bundling

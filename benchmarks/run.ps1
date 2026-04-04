@@ -1,6 +1,6 @@
-# QuinusLang Benchmark Suite - Run all benchmarks and report mean/stddev
+# Q++ Benchmark Suite - Run all benchmarks and report mean/stddev
 # Usage: .\run.ps1 [-Runs N] [-Release]
-# Prerequisites: quinus (target/release/quinus.exe), gcc/clang, rustc, zig
+# Prerequisites: qpp (target/release/qpp.exe), gcc/clang, rustc, zig
 
 param(
     [int]$Runs = 5,
@@ -12,12 +12,12 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir = Split-Path -Parent $ScriptDir
 
 # Resolve compiler paths
-$Quinus = if (Test-Path "$RootDir\target\release\quinus.exe") {
-    "$RootDir\target\release\quinus.exe"
-} elseif (Test-Path "$RootDir\target\debug\quinus.exe") {
-    "$RootDir\target\debug\quinus.exe"
+$Qpp = if (Test-Path "$RootDir\target\release\qpp.exe") {
+    "$RootDir\target\release\qpp.exe"
+} elseif (Test-Path "$RootDir\target\debug\qpp.exe") {
+    "$RootDir\target\debug\qpp.exe"
 } else {
-    throw "QuinusLang compiler not found. Run: cargo build --release"
+    throw "Q++ compiler not found. Run: cargo build --release"
 }
 
 $Benchmarks = @("sum", "fib", "sieve", "mandelbrot", "nbody")
@@ -56,7 +56,7 @@ function Build-And-Run {
     return @{ Mean = $mean; StdDev = $stddev }
 }
 
-function Build-Quinus {
+function Build-Qpp {
     param([string]$Path)
     $qPath = Join-Path $Path "main.q"
     if (-not (Test-Path $qPath)) { return $false }
@@ -64,7 +64,7 @@ function Build-Quinus {
     if (-not (Test-Path $buildDir)) { New-Item -ItemType Directory -Path $buildDir | Out-Null }
     $args = @("build", $qPath)
     if ($Release) { $args += "--release" }
-    & $Quinus $args 2>&1 | Out-Null
+    & $Qpp $args 2>&1 | Out-Null
     $exe = Join-Path $buildDir "output.exe"
     return (Test-Path $exe)
 }
@@ -120,7 +120,7 @@ function Build-Zig {
     return (Test-Path $exe)
 }
 
-Write-Host "QuinusLang Benchmark Suite" -ForegroundColor Cyan
+Write-Host "Q++ Benchmark Suite" -ForegroundColor Cyan
 Write-Host "Runs: $Runs | Release: $Release"
 Write-Host ""
 
@@ -130,8 +130,8 @@ foreach ($bench in $Benchmarks) {
     $benchPath = Join-Path $ScriptDir $bench
     $results[$bench] = @{}
     
-    # Quinus
-    if (Build-Quinus $benchPath) {
+    # Q++
+    if (Build-Qpp $benchPath) {
         $exe = Join-Path $benchPath "build\output.exe"
         $r = Build-And-Run $bench "q" $exe
         $results[$bench]["q"] = $r
@@ -161,7 +161,7 @@ foreach ($bench in $Benchmarks) {
 
 # Print table
 Write-Host "Results (seconds, mean +/- stddev):" -ForegroundColor Cyan
-Write-Host ("{0,-12} | {1,-12} | {2,-12} | {3,-12} | {4,-12}" -f "Benchmark", "Quinus", "C", "Rust", "Zig")
+Write-Host ("{0,-12} | {1,-12} | {2,-12} | {3,-12} | {4,-12}" -f "Benchmark", "Q++", "C", "Rust", "Zig")
 Write-Host ("{0,-12}-+-{1,-12}-+-{2,-12}-+-{3,-12}-+-{4,-12}" -f "------------", "------------", "------------", "------------", "------------")
 
 foreach ($bench in $Benchmarks) {

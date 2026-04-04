@@ -42,5 +42,5 @@ jobs:
       - name: Test
         run: cargo test ${{ env.LLVM_FEATURES }}
 
-      - name: Build QuinusLang project
+      - name: Build Q++ project
         run: cargo run --release ${{ env.LLVM_FEATURES }} -- build

@@ -40,7 +40,7 @@ Use `0` or a cast when interfacing with C. Dereferencing null is undefined behav
 
 ## C Mapping
 
-| QuinusLang | C |
+| Q++ | C |
 |------------|---|
 | `link T` | `T*` |
 | `mark x` | `&x` |

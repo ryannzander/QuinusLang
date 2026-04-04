@@ -1,4 +1,4 @@
-//! Semantic analysis for QuinusLang
+//! Semantic analysis for Q++
 
 use crate::ast::*;
 use crate::error::{semantic_err, semantic_err_hint, semantic_err_span, Result};

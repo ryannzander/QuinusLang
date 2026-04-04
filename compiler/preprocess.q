@@ -1,4 +1,4 @@
-// QuinusLang preprocessor - bring flattening
+// Q++ preprocessor - bring flattening
 // Resolves bring statements recursively, outputs flattened source
 // Port of src/preprocess.rs
 

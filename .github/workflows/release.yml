@@ -91,9 +91,9 @@ jobs:
       - name: Stage release files
         shell: pwsh
         run: |
-          Copy-Item "target\release\quinus.exe" "quinus.exe" -Force
+          Copy-Item "target\release\qpp.exe" "qpp.exe" -Force
           Write-Host "Staged files:"
-          Get-ChildItem quinus.exe, runtime.obj, lld-link.exe -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
+          Get-ChildItem qpp.exe, runtime.obj, lld-link.exe -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
 
       - name: Create installer
         shell: pwsh
@@ -107,18 +107,18 @@ jobs:
       - name: Create portable zip
         shell: pwsh
         run: |
-          $portableDir = "QuinusLang-portable"
-          $zipName = "QuinusLang-portable.zip"
+          $portableDir = "Qpp-portable"
+          $zipName = "Qpp-portable.zip"
           if (Test-Path $portableDir) { Remove-Item $portableDir -Recurse -Force }
           New-Item -ItemType Directory -Path $portableDir | Out-Null
-          Copy-Item "quinus.exe" "$portableDir\"
+          Copy-Item "qpp.exe" "$portableDir\"
           if (Test-Path "runtime.obj") { Copy-Item "runtime.obj" "$portableDir\" }
           if (Test-Path "lld-link.exe") { Copy-Item "lld-link.exe" "$portableDir\" }
           Copy-Item "stdlib" "$portableDir\" -Recurse
           Copy-Item "compiler" "$portableDir\" -Recurse
           @"
-          QuinusLang - Portable (LLVM backend)
-          Run: .\quinus.exe --help
+          Q++ - Portable (LLVM backend)
+          Run: .\qpp.exe --help
           "@ | Out-File "$portableDir\README.txt" -Encoding utf8
           if (Test-Path $zipName) { Remove-Item $zipName -Force }
           Compress-Archive -Path $portableDir -DestinationPath $zipName
@@ -129,8 +129,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            installer_output/QuinusLang-Setup-*.exe
-            QuinusLang-portable.zip
+            installer_output/Qpp-Setup-*.exe
+            Qpp-portable.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

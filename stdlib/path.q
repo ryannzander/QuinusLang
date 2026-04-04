@@ -1,4 +1,4 @@
-// QuinusLang standard library: Path manipulation
+// Q++ standard library: Path manipulation
 // Simple path utilities using str.concat
 
 bring "str";

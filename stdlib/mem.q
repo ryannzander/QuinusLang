@@ -1,4 +1,4 @@
-// QuinusLang standard library: Memory utilities
+// Q++ standard library: Memory utilities
 // Thin wrappers over string.h
 
 extern craft memcpy(dest: link void, src: link void, n: usize) -> link void;

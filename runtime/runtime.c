@@ -1,4 +1,4 @@
-/* QuinusLang runtime - compiled to runtime.o / runtime.obj and linked with LLVM output */
+/* Q++ runtime - compiled to runtime.o / runtime.obj and linked with LLVM output */
 
 #include "runtime.h"
 

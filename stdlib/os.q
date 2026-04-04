@@ -1,4 +1,4 @@
-// QuinusLang standard library: Process execution and environment
+// Q++ standard library: Process execution and environment
 // Uses C FFI to wrap system(), getenv, getcwd
 
 extern craft system(cmd: str) -> i32;

@@ -1,4 +1,4 @@
-// QuinusLang standard library: File system operations
+// Q++ standard library: File system operations
 // Uses C FFI to wrap fopen, fread, fwrite, fclose
 
 extern craft fopen(path: str, mode: str) -> link void;
@@ -53,7 +53,7 @@ realm fs {
         send (written == n) as i32;
     }
 }
-// QuinusLang standard library: Growable arrays
+// Q++ standard library: Growable arrays
 // VecPtr: array of void* (for AST nodes, tokens)
 // VecU8: growable byte buffer (for string building)
 
@@ -134,7 +134,7 @@ realm vec {
         send;
     }
 }
-// Token type constants for QuinusLang lexer
+// Token type constants for Q++ lexer
 // Matches Rust lexer Token enum order for bootstrap compatibility
 
 realm tokens {
@@ -181,7 +181,7 @@ realm tokens {
     eternal ANDAND: i32 = 40;
     eternal OROR: i32 = 41;
 }
-// QuinusLang lexer - hand-written tokenizer for bootstrap compiler
+// Q++ lexer - hand-written tokenizer for bootstrap compiler
 // Output: vec of tokens (link void = token pointer)
 // Use: bring "compiler.lexer"; toks = lexer.tokenize(source);
 
@@ -484,7 +484,7 @@ realm lexer {
         send true;
     }
 }
-// QuinusLang standard library: String utilities
+// Q++ standard library: String utilities
 // trim, concat (beyond +)
 
 extern craft malloc(size: usize) -> link void;
@@ -509,7 +509,7 @@ realm str {
         send ql_str_concat(a, b);
     }
 }
-// QuinusLang AST types for bootstrap compiler
+// Q++ AST types for bootstrap compiler
 // Minimal subset: Literal, Ident, Binary, Call, Unary
 // Uses tagged union: form with tag + payload fields
 
@@ -576,9 +576,9 @@ realm ast {
         items: link void
     }
 }
-// QuinusLang parser - minimal recursive descent
+// Q++ parser - minimal recursive descent
 // Reads tokens from lexer, produces AST (subset: int, ident, binary +)
-// Build: quinus build compiler/parser.q
+// Build: qpp build compiler/parser.q
 
 
 // AST node constructors - must be before parser which calls them
@@ -1650,9 +1650,9 @@ realm parser {
         send result;
     }
 }
-// QuinusLang semantic analysis for bootstrap compiler
+// Q++ semantic analysis for bootstrap compiler
 // Type-checks AST, builds symbol table (two vecs: names, types)
-// Build: quinus build compiler/semantic_test.q
+// Build: qpp build compiler/semantic_test.q
 
 
 extern craft ql_ast_expr_tag(p: link void) -> i32;
@@ -1858,7 +1858,7 @@ realm semantic {
         send true;
     }
 }
-// QuinusLang standard library: String formatting (sprintf-style)
+// Q++ standard library: String formatting (sprintf-style)
 // For codegen string building
 
 extern craft malloc(size: usize) -> link void;
@@ -2135,7 +2135,7 @@ static void* ql_ast_expr_args(void* p) { return ((ast_Expr_t*)p)->args; }
         send str.concat(r4, ast_rt);
     }
 }
-// QuinusLang codegen - walk AST, emit C
+// Q++ codegen - walk AST, emit C
 // Minimal: Literal, Ident, Binary (+, -, *, /)
 // Build: cargo run -- build compiler/codegen_test.q
 
@@ -2560,7 +2560,7 @@ realm codegen {
         send out;
     }
 }
-// QuinusLang preprocessor - bring flattening
+// Q++ preprocessor - bring flattening
 // Resolves bring statements recursively, outputs flattened source
 // Port of src/preprocess.rs
 
@@ -2789,7 +2789,7 @@ realm preprocess {
         send vec.ptr_get(output, 0) as str;
     }
 }
-// QuinusLang standard library: Process execution and environment
+// Q++ standard library: Process execution and environment
 // Uses C FFI to wrap system(), getenv, getcwd
 
 extern craft system(cmd: str) -> i32;
@@ -2819,7 +2819,7 @@ realm os {
         send p;
     }
 }
-// QuinusLang bootstrap compiler driver
+// Q++ bootstrap compiler driver
 // Pipeline: read source -> lex -> parse -> semantic -> codegen -> write C -> invoke cc
 // Usage: build this, then run with input file (default: input.q)
 // Build: cargo run -- build compiler/main.q

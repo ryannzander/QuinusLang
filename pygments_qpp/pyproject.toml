@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pygments-quinus"
+name = "pygments-qpp"
 version = "0.1.0"
-description = "Pygments lexer for QuinusLang"
+description = "Pygments lexer for Q++"
 requires-python = ">=3.8"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pygments_quinus*"]
+include = ["pygments_qpp*"]
 
 [project.entry-points."pygments.lexers"]
-quinuslang = "pygments_quinus.lexer:QuinusLangLexer"
+qpp = "pygments_qpp.lexer:QppLexer"

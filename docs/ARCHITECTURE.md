@@ -1,4 +1,4 @@
-# QuinusLang Architecture
+# Q++ Architecture
 
 ## Compiler Pipeline
 
@@ -22,8 +22,8 @@
 
 ## Package Manager
 
-- `quinus.toml` — Manifest with package metadata and dependencies
-- `quinus.lock` — Lock file for reproducible builds
+- `qpp.toml` — Manifest with package metadata and dependencies
+- `qpp.lock` — Lock file for reproducible builds
 - Resolves dependencies from registry or Git
 
 ## Output

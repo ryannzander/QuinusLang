@@ -1,4 +1,4 @@
-// QuinusLang standard library: Linear-search map (str -> link void)
+// Q++ standard library: Linear-search map (str -> link void)
 // For symbol tables; O(n) lookup, no generics
 
 extern craft ql_map_str_ptr_new() -> link void;

@@ -1,4 +1,4 @@
-"""Custom Pygments lexer for QuinusLang (.q files)."""
+"""Custom Pygments lexer for Q++ (.q files)."""
 
 from pygments.lexer import RegexLexer, words, bygroups
 from pygments.token import (
@@ -6,9 +6,9 @@ from pygments.token import (
 )
 
 
-class QuinusLangLexer(RegexLexer):
-    name = "QuinusLang"
-    aliases = ["q", "quinuslang", "quinus"]
+class QppLexer(RegexLexer):
+    name = "Q++"
+    aliases = ["q", "qpp", "q++"]
     filenames = ["*.q"]
 
     tokens = {

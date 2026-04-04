@@ -1,12 +1,12 @@
 [package]
-name = "quinuslang"
+name = "qpp"
 version = "0.2.2"
 edition = "2021"
-authors = ["QuinusLang"]
-description = "A fully functional compilable programming language"
+authors = ["Q++"]
+description = "Q++ — a systems programming language with assembly-level control and readable syntax"
 
 [[bin]]
-name = "quinus"
+name = "qpp"
 path = "src/main.rs"
 
 [dependencies]

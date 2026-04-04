@@ -1,12 +1,12 @@
 from setuptools import setup
 
 setup(
-    name="quinuslang-lexer",
+    name="qpp-lexer",
     version="0.1.0",
-    py_modules=["quinuslang_lexer"],
+    py_modules=["qpp_lexer"],
     entry_points={
         "pygments.lexers": [
-            "quinuslang = quinuslang_lexer:QuinusLangLexer",
+            "qpp = qpp_lexer:QppLexer",
         ],
     },
 )

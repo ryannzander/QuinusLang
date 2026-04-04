@@ -1,14 +1,14 @@
-# Create a portable QuinusLang zip - no install, just extract and run
+# Create a portable Q++ zip - no install, just extract and run
 # Usage: .\make-portable.ps1
 # Requires: LLVM (for building), clang (for runtime)
-# Packages: quinus.exe, runtime.obj, lld-link.exe
+# Packages: qpp.exe, runtime.obj, lld-link.exe
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Building QuinusLang (Rust)..."
+Write-Host "Building Q++ (Rust)..."
 cargo build --release
 if ($LASTEXITCODE -ne 0) { exit 1 }
-Copy-Item "target\release\quinus.exe" "quinus.exe" -Force
+Copy-Item "target\release\qpp.exe" "qpp.exe" -Force
 
 # Build runtime
 Write-Host "Building runtime..."
@@ -29,13 +29,13 @@ if (Test-Path $lldLink) {
     Write-Warning "lld-link.exe not found at $lldLink - portable zip may not link. Install LLVM."
 }
 
-$portableDir = "QuinusLang-portable"
-$zipName = "QuinusLang-portable.zip"
+$portableDir = "Q++-portable"
+$zipName = "Q++-portable.zip"
 
 if (Test-Path $portableDir) { Remove-Item $portableDir -Recurse -Force }
 New-Item -ItemType Directory -Path $portableDir | Out-Null
 
-Copy-Item "quinus.exe" "$portableDir\"
+Copy-Item "qpp.exe" "$portableDir\"
 if (Test-Path "runtime.obj") { Copy-Item "runtime.obj" "$portableDir\" }
 if (Test-Path "lld-link.exe") { Copy-Item "lld-link.exe" "$portableDir\" }
 Get-ChildItem "*.dll" -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName "$portableDir\" }
@@ -44,18 +44,18 @@ Copy-Item "compiler" "$portableDir\" -Recurse
 
 # Add a simple README for portable users
 @"
-QuinusLang - Portable (LLVM backend)
+Q++ - Portable (LLVM backend)
 
-Run: .\quinus.exe --help
+Run: .\qpp.exe --help
 
 No C compiler required. The compiler uses LLVM and lld for linking.
 If lld-link.exe and runtime.obj are in this folder, they will be used automatically.
 
-Then: quinus build yourfile.q
+Then: qpp build yourfile.q
 "@ | Out-File "$portableDir\README.txt" -Encoding utf8
 
 if (Test-Path $zipName) { Remove-Item $zipName -Force }
 Compress-Archive -Path $portableDir -DestinationPath $zipName
 
 Remove-Item $portableDir -Recurse -Force
-Write-Host "Created $zipName - extract anywhere and run quinus.exe"
+Write-Host "Created $zipName - extract anywhere and run qpp.exe"

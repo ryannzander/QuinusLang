@@ -1,7 +1,7 @@
-// QuinusLang standard library: GUI via Raylib
+// Q++ standard library: GUI via Raylib
 // Requires: link with -lraylib
 // Install: https://www.raylib.com/
-// Build: quinus build && gcc -o out build/output.c -lraylib -I. (or use --link-extra)
+// Build: qpp build && gcc -o out build/output.c -lraylib -I. (or use --link-extra)
 
 extern craft ql_gui_init(width: i32, height: i32, title: str) -> void;
 extern craft ql_gui_close() -> void;

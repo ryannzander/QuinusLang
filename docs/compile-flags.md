@@ -33,6 +33,6 @@ craft main() -> void { send; }
 Pass symbols via `--define` when building:
 
 ```bash
-quinus build --define DEBUG
-quinus build --define RELEASE --define TRACE
+qpp build --define DEBUG
+qpp build --define RELEASE --define TRACE
 ```
