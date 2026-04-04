@@ -1,6 +1,6 @@
 [package]
 name = "qpp"
-version = "0.2.3"
+version = "0.3.2"
 edition = "2021"
 authors = ["Q++"]
 description = "Q++ — a systems programming language with assembly-level control and readable syntax"

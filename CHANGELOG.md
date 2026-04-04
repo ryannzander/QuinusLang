@@ -6,6 +6,12 @@ All notable changes to Q++ will be documented in this file.
 
 - (none)
 
+## [0.3.2] - 2026-04-04
+
+### Changed
+
+- Bump **qpp** crate to **0.3.2** for release (`Cargo.toml`, `Cargo.lock`).
+
 ## [0.2.3] - 2026-04-03
 
 ### Fixed
