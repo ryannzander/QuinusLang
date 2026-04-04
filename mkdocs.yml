@@ -2,13 +2,14 @@ site_name: Q++
 site_url: https://ryannzander.github.io/QuinusLang/
 site_description: Q++ is a systems programming language with assembly-level control and readable syntax
 repo_url: https://github.com/ryannzander/QuinusLang
-repo_name: ryannzander/QuinusLang
+repo_name: Q++
 edit_uri: edit/master/docs/
 
 theme:
   name: material
   logo: assets/logo-brand.svg
-  favicon: assets/logo-brand.svg
+  # PNG: SVG favicons are still spotty in Safari / some clients
+  favicon: assets/logo-transparent.png
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
