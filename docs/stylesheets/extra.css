@@ -105,16 +105,9 @@ body:has(.ql-ts-home) .md-source__facts {
 .md-nav__button.md-logo img {
   background: transparent !important;
   display: block;
-  height: 1.35rem;
+  height: 1.55rem;
   width: auto;
   object-fit: contain;
-}
-
-/* Minimal SVG mark: white on TypeScript-blue chrome */
-body:has(.ql-ts-home) .md-header__button.md-logo img,
-body:has(.ql-ts-home) .md-nav__button.md-logo img {
-  filter: brightness(0) invert(1);
-  opacity: 0.98;
 }
 
 /* ── Hero: blue band + two columns ── */
@@ -142,12 +135,11 @@ body:has(.ql-ts-home) .md-nav__button.md-logo img {
 }
 
 .ql-ts-logo {
-  width: 56px;
-  height: 56px;
+  width: min(120px, 32vw);
+  height: auto;
   display: block;
-  margin: 0 0 1rem;
-  filter: brightness(0) invert(1);
-  opacity: 0.98;
+  margin: 0 0 1.1rem;
+  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.22));
 }
 
 .ql-ts-headline {

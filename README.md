@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo-minimal.svg" alt="Q++" width="120" />
+  <img src="assets/logo-brand.svg" alt="Q++" width="220" />
 </p>
 
 <h1 align="center">Q++</h1>

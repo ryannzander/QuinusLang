@@ -7,8 +7,8 @@ edit_uri: edit/master/docs/
 
 theme:
   name: material
-  logo: assets/logo-minimal.svg
-  favicon: assets/logo-minimal.svg
+  logo: assets/logo-brand.svg
+  favicon: assets/logo-brand.svg
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate

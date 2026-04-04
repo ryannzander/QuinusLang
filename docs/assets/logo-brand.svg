@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="qp" x1="8%" y1="6%" x2="92%" y2="94%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="qp-shine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer pentagon (brand shape) -->
+  <path
+    fill="url(#qp)"
+    d="M50 8 L86 34 L73 86 L27 86 L14 34 Z"
+  />
+  <path
+    fill="url(#qp-shine)"
+    d="M50 8 L86 34 L73 86 L27 86 L14 34 Z"
+  />
+  <!-- Inner house cutout feel (flat, no texture) -->
+  <path
+    fill="#0f172a"
+    fill-opacity="0.88"
+    d="M50 34 L61 42 L58 64 L42 64 L39 42 Z"
+  />
+  <!-- Teal accent slash -->
+  <path
+    fill="#06b6d4"
+    d="M56 58 L78 52 L82 60 L64 68 Z"
+  />
+</svg>
