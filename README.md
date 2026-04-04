@@ -1,142 +1,85 @@
-# QuinusLang
+<p align="center">
+  <img src="assets/logo.png" alt="QuinusLang" width="280" />
+</p>
 
-A systems programming language with assembly-level control and readable syntax. Compiles to native executables via LLVM (no C compiler required).
+<h1 align="center">QuinusLang</h1>
 
-**[Documentation](https://ryannzander.github.io/QuinusLang/)** — Full language reference, stdlib, and guides
+<p align="center">
+  <strong>A systems programming language with assembly-level control, readable syntax, and an LLVM-powered native compiler.</strong>
+</p>
 
-## Philosophy
+<p align="center">
+  <a href="https://github.com/ryannzander/QuinusLang/releases"><img src="https://img.shields.io/github/v/release/ryannzander/QuinusLang?style=flat-square&color=7C3AED" alt="Release" /></a>
+  <a href="https://github.com/ryannzander/QuinusLang/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ryannzander/QuinusLang/ci.yml?branch=master&style=flat-square&label=CI" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ryannzander/QuinusLang?style=flat-square" alt="License" /></a>
+</p>
+
+<p align="center">
+  <a href="https://ryannzander.github.io/QuinusLang/">Documentation</a> &middot;
+  <a href="https://github.com/ryannzander/QuinusLang/releases">Downloads</a> &middot;
+  <a href="#quick-start">Quick Start</a>
+</p>
+
+---
+
+## Why QuinusLang?
 
 - **Explicit control** — Expensive or dangerous operations are visible in code
 - **Readability** — Low-level code should be easy to read
 - **Assembly-level power** — Inline assembly, pointers, zero-cost abstractions
 - **Safety by design** — Unsafe operations require explicit `hazard` blocks
 - **Zero hidden runtime** — Suitable for kernels, bootloaders, firmware, embedded
+- **LLVM backend** — Compiles `.q` files to native executables via LLVM, no C compiler required
 
 ---
 
-## Get started (easiest)
+## Install
 
-| Option | Steps |
-|--------|-------|
-| **Installer** | Download `QuinusLang-Setup.exe` from [releases](https://github.com/ryannzander/QuinusLang/releases) → Run it → Check "Add to PATH" → Done. Run `quinus` from any terminal. |
-| **Portable** | Download `QuinusLang-portable.zip` → Extract anywhere → Run `quinus.exe` from that folder. |
-| **Build from source** | `git clone` → `.\build.ps1` → Done. |
+| Option | How |
+|--------|-----|
+| **Installer** (recommended) | Download `QuinusLang-Setup.exe` from [Releases](https://github.com/ryannzander/QuinusLang/releases) — run it, check "Add to PATH", done. |
+| **Portable zip** | Download `QuinusLang-portable.zip` — extract anywhere, run `quinus.exe`. No admin needed. |
+| **From source** | `git clone https://github.com/ryannzander/QuinusLang.git && cd QuinusLang && cargo build --release` (requires Rust + LLVM 18) |
 
-**To compile `.q` files** use the bundled LLVM toolchain (included in installer/portable). No separate C compiler required.
-
----
-
-## Installation (detailed)
-
-### Windows installer
-
-Download from [releases](https://github.com/ryannzander/QuinusLang/releases) or build locally:
-```powershell
-.\build-installer.ps1   # Requires Inno Setup 6
-```
-Installer adds to PATH by default so you can run `quinus` from anywhere.
-
-### Portable zip (no install)
-
-```powershell
-.\make-portable.ps1     # Creates QuinusLang-portable.zip
-```
-Extract and run `quinus.exe`. No admin, no PATH changes.
-
-### From source
-
-```powershell
-git clone https://github.com/ryannzander/QuinusLang.git
-cd QuinusLang
-.\build.ps1             # Windows - needs Rust + LLVM 18
-./build.sh              # Linux/macOS
-```
+Both the installer and portable zip bundle `lld-link` so you can compile `.q` files without installing any other toolchain.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Create a new project
-quinus init
-
-# Compile and run
-quinus run
-
-# Or build only
-quinus build
+quinus init my-app      # scaffold a new project
+cd my-app
+quinus run              # compile and execute
 ```
 
 Your entry point is `src/main.q`:
 
 ```q
 craft main() -> void {
-    print(42);
     print("Hello, QuinusLang!");
     send;
 }
 ```
 
----
+Build only (output goes to `build/output.exe`):
 
-## CLI Reference
-
-| Command | Description |
-|---------|-------------|
-| `quinus build [path]` | Compile to executable (default: current dir) |
-| `quinus build --release` | Optimized build |
-| `quinus build --emit-c` | Emit C only, do not compile |
-| `quinus run [path]` | Build and run |
-| `quinus run --release` | Run release build |
-| `quinus init [path]` | Create new package |
-| `quinus parse <file>` | Parse and dump AST (debug) |
-| `quinus fmt [path]` | Format .q files |
-| `quinus watch [path]` | Rebuild on file changes |
-| `quinus repl` | Interactive REPL (parse & show AST) |
-| `quinus add <pkg>` | Add dependency |
-| `quinus add <pkg> --git <url>` | Add package from Git |
-| `quinus remove <pkg>` | Remove dependency |
-| `quinus update` | Update dependencies |
-| `quinus publish` | Validate manifest and create Git tag |
+```bash
+quinus build
+quinus build --release   # optimized
+```
 
 ---
 
-## Language Reference
-
-### File extension
-
-`.q`
+## Language at a Glance
 
 ### Variables
 
 ```q
-make x: i32 = 42;        // immutable
-make shift y: i32 = 10;  // mutable
-```
-
-### Control flow
-
-```q
-check (x > 0) {
-    // then
-}
-otherwise {
-    // else
-}
-
-loopwhile (i < 10) {
-    i = i + 1;
-}
-
-for (make shift i: i32 = 0; i < 10; i = i + 1) {
-    print(i);
-}
-
-foreach item in arr {
-    print(item);
-    stop;   // break
-    skip;   // continue
-}
+make x: i32 = 42;           // immutable
+make shift y: i32 = 10;     // mutable
+eternal PI: f64 = 3.14159;  // constant
+anchor counter: i32 = 0;    // static
 ```
 
 ### Functions
@@ -147,75 +90,64 @@ craft add(a: i32, b: i32) -> i32 {
 }
 ```
 
-### Structs
+### Control Flow
 
 ```q
-form Point {
-    x: i32,
-    y: i32
+check (x > 0) {
+    // then
+} otherwise {
+    // else
 }
 
-make shift p: Point = ...;
-make shift px: i32 = p.x;
+loopwhile (i < 10) { i = i + 1; }
+
+for (make shift i: i32 = 0; i < 10; i = i + 1) {
+    print(i);
+}
+
+foreach item in arr {
+    print(item);
+    stop;    // break
+    skip;    // continue
+}
 ```
 
-### Enums and unions
+### Structs, Enums & Unions
 
 ```q
-state Color {
-    Red,
-    Green,
-    Blue
-}
+form Point { x: i32, y: i32 }
 
-fusion Maybe {
-    value: i32
-}
+state Color { Red, Green, Blue }
+
+fusion Maybe { value: i32 }
 ```
 
 ### Pointers
 
 ```q
 make shift p: link i32 = mark x;   // address-of
-reach p = 99;                      // dereference and assign
-make shift v: i32 = reach p;       // dereference
+reach p = 99;                       // deref-assign
+make shift v: i32 = reach p;       // deref-read
 ```
 
-### Arrays
+### Arrays & Strings
 
 ```q
 make shift arr: [i32; 5] = { 1, 2, 3, 4, 5 };
-make shift n: usize = len(arr);
-make shift x: i32 = arr[0];
-
-// Slices (produce pointer to subarray)
-arr[1..4]   // from index 1 to 4
-arr[..3]    // from start to 3
-arr[2..]    // from 2 to end
+make shift s: str = "hello" + " world";
 ```
 
-### Strings
-
-```q
-make shift s: str = "hello";
-make shift t: str = s + " world";
-make shift n: usize = strlen(s);
-print(s);
-```
-
-### Modules and imports
+### Modules
 
 ```q
 bring "std.io";
 
 realm math {
-    craft add(a: i32, b: i32) -> i32 {
-        send a + b;
-    }
+    craft square(n: i32) -> i32 { send n * n; }
 }
 ```
 
-### Unsafe and inline assembly
+### Unsafe & Inline Assembly
 
 ```q
 hazard {
@@ -223,132 +155,127 @@ hazard {
 }
 ```
 
-### Constants and statics
+---
 
-```q
-eternal PI: f64 = 3.14159;
-anchor counter: i32 = 0;
-```
+## Standard Library
+
+QuinusLang ships with a growing stdlib in `stdlib/`:
+
+| Module | Purpose |
+|--------|---------|
+| `io` | Console I/O (`print`, `read`, `write`) |
+| `fs` | File system (open, read, write, close) |
+| `os` | OS interaction, environment variables |
+| `str` | String manipulation |
+| `vec` | Dynamic arrays |
+| `map` | Hash maps |
+| `math` | Math functions |
+| `fmt` | String formatting |
+| `rand` | Random number generation |
+| `time` | Timestamps and timing |
+| `mem` | Memory allocation (malloc, free, arena) |
+| `arena` | Arena allocator |
+| `hash` | Hashing utilities |
+| `path` | File path manipulation |
+| `sys` | Low-level system calls |
+| `term` | Terminal colors and control |
+| `simd` | SIMD intrinsics |
+| `gui` | GUI primitives |
+
+Import with `bring "std.fs";` etc.
 
 ---
 
-## Builtins
-
-| Builtin | Description |
-|---------|-------------|
-| `print(...)` | Print to stdout with newline |
-| `write(...)` | Print to stdout without newline |
-| `writeln(...)` | Print to stdout with newline |
-| `read()` | Read integer from stdin |
-| `len(arr)` | Array length (array or `[T; N]`) |
-| `strlen(s)` | String length |
-| `panic()` | Abort with message |
-| `assert(cond)` | Abort if condition is false |
-
----
-
-## Types
+## Type System
 
 | Type | Description |
 |------|-------------|
-| `i8`, `i16`, `i32`, `i64` | Signed integers |
-| `u8`, `u16`, `u32`, `u64` | Unsigned integers |
-| `usize` | Unsigned size |
-| `f32`, `f64` | Floats |
+| `i8` `i16` `i32` `i64` | Signed integers |
+| `u8` `u16` `u32` `u64` | Unsigned integers |
+| `usize` | Unsigned pointer-size |
+| `f32` `f64` | Floating point |
 | `bool` | Boolean |
-| `str` | String (char*) |
-| `void` | Unit type |
-| `int`, `float` | Legacy aliases |
-| `link T` | Pointer to T |
+| `str` | String (`char*`) |
+| `void` | Unit |
+| `link T` | Pointer to `T` |
 | `[T; N]` | Fixed-size array |
-| `[T]` | Array (unsized) |
 
 ---
 
-## Project layout
+## CLI Reference
 
-```
-my-project/
-├── quinus.toml      # Manifest (optional)
-├── src/
-│   └── main.q       # Entry point
-├── stdlib/          # Optional: local stdlib
-└── build/           # Output (generated)
-    ├── output.c
-    └── output.exe
-```
-
-### quinus.toml
-
-```toml
-[package]
-name = "my-app"
-version = "0.1.0"
-
-[dependencies]
-# foo = "0.1"
-
-[build]
-entry = "src/main.q"
-```
+| Command | Description |
+|---------|-------------|
+| `quinus build [path]` | Compile to native executable |
+| `quinus build --release` | Optimized build |
+| `quinus build --emit-llvm` | Emit LLVM IR only |
+| `quinus run [path]` | Build and run |
+| `quinus check [path]` | Parse and type-check without compiling |
+| `quinus init [name]` | Scaffold a new project |
+| `quinus fmt [path]` | Format `.q` source files |
+| `quinus watch [path]` | Rebuild on file changes |
+| `quinus repl` | Interactive REPL |
+| `quinus add <pkg>` | Add dependency |
+| `quinus remove <pkg>` | Remove dependency |
+| `quinus update` | Update dependencies |
+| `quinus publish` | Validate and tag a release |
 
 ---
 
-## Requirements
-
-- **C compiler** — To compile `.q` files. Easiest: `winget install mingw`. Or MSVC Build Tools.
-- **Rust** — Only if building from source (or use pre-built installer/zip from releases)
-
----
-
-## Compiler pipeline
+## Compiler Architecture
 
 ```
-.q source → Preprocess (bring flatten) → Lexer → Parser → AST → Semantic → C code → System compiler → .exe
+.q source
+  → Preprocessor (bring/flatten)
+  → Lexer (logos)
+  → Parser → AST
+  → Semantic analysis (type checking, symbol resolution)
+  → LLVM IR codegen (inkwell)
+  → Native object code (LLVM)
+  → Linker (lld-link / ld.lld)
+  → Executable
 ```
 
-The bootstrap compiler (`compiler/*.q`) is written in Quinus and compiles to C. It is self-hosting: once built, only a C compiler is required.
+The compiler is written in Rust and uses LLVM 18 via [inkwell](https://github.com/TheDan64/inkwell). A self-hosting bootstrap compiler written in QuinusLang itself lives in `compiler/`.
 
----
-
-## Project structure (compiler)
+### Project Structure
 
 ```
 src/
-├── lexer/     # Tokenization
-├── parser/    # AST parsing
-├── ast/       # AST definitions
-├── semantic/  # Type checking, symbol tables
-├── codegen/   # C emission
-├── fmt/       # Formatter
-└── package/   # Package manager
+├── lexer/      Tokenization (logos)
+├── parser/     Recursive-descent parser → AST
+├── ast/        AST node definitions
+├── semantic/   Type checking, scopes, symbol tables
+├── codegen/    LLVM IR emission (inkwell)
+├── fmt/        Source formatter
+└── package/    Package manager & dependency resolution
+
+stdlib/         Standard library (.q modules)
+runtime/        C runtime linked into every executable
+compiler/       Self-hosting bootstrap compiler (.q)
 ```
 
 ---
 
-## Syntax highlighting
+## Syntax Highlighting
 
-Install the `syntax/` extension for Cursor/VS Code:
+Install the VS Code / Cursor extension from the `syntax/` folder:
 
 1. `Ctrl+Shift+P` → **Developer: Install Extension from Location...**
-2. Select the `syntax/` folder
+2. Select the `syntax/` directory
 
 ---
 
 ## Documentation
 
-**Live docs:** [https://ryannzander.github.io/QuinusLang/](https://ryannzander.github.io/QuinusLang/)
+Full language reference, guides, and API docs:
 
-Docs are built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages:
+**[https://ryannzander.github.io/QuinusLang/](https://ryannzander.github.io/QuinusLang/)**
 
-1. Edit `mkdocs.yml` — set `site_url` to your Pages URL (e.g. `https://ryannzander.github.io/QuinusLang/`)
-2. Push to GitHub — the `Deploy docs` workflow builds and deploys to the `gh-pages` branch
-3. Enable Pages — Repo → Settings → Pages → Source: Deploy from branch → Branch: `gh-pages`
-
-Local preview: `pip install mkdocs-material && mkdocs serve`
+Built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed automatically via GitHub Actions.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE)
