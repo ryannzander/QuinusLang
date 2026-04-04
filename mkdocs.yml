@@ -9,7 +9,6 @@ theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo.png
-  custom_dir: docs/overrides
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
