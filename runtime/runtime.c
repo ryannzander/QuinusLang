@@ -4,6 +4,7 @@
 
 #ifdef _WIN32
 #include <time.h>
+#define strdup _strdup
 #else
 #include <time.h>
 #endif
