@@ -7,8 +7,8 @@ edit_uri: edit/master/docs/
 
 theme:
   name: material
-  logo: assets/logo-brand.svg
-  # PNG: SVG favicons are still spotty in Safari / some clients
+  # PNG: reliable in theme, README, and all browsers (SVG img often fails on GitHub / some clients)
+  logo: assets/logo-transparent.png
   favicon: assets/logo-transparent.png
   palette:
     - media: "(prefers-color-scheme: dark)"

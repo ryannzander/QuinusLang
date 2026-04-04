@@ -15,7 +15,7 @@ hide:
 
 <div class="ql-ts-copy">
 
-<img src="assets/logo-brand.svg" alt="" class="ql-ts-logo" width="120" height="120" />
+<img src="assets/logo-transparent.png" alt="" class="ql-ts-logo" width="120" height="120" />
 
 <h1 class="ql-ts-headline">Q++ is <strong>systems code</strong> with <strong>readable</strong> syntax.</h1>
 
